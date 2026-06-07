@@ -1,248 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <title>JARVIS</title>
+<title>JARVIS Hologram</title>
 
-  <!-- 🔥 FONTS -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<!-- FONTS -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 
-  <style>
-    :root {
-      --bg:#020a14;
-      --surface:#050f1e;
-      --border:#0a2040;
-      --accent:#00d4ff;
-      --accent2:#0066cc;
-      --text:#c8e8ff;
-      --dim:#4a7a9b;
-      --glow:0 0 20px rgba(0,212,255,0.3);
+<style>
+:root {
+  --bg:#020a14;
+  --accent:#00d4ff;
+  --accent2:#0066ff;
+  --text:#c8e8ff;
+  --dim:#4a7a9b;
+  --glow:0 0 25px rgba(0,212,255,0.4);
 
-      /* FONT SYSTEM */
-      --font-ai:'Orbitron', sans-serif;
-      --font-body:'Rajdhani', sans-serif;
-      --font-mono:'Share Tech Mono', monospace;
-    }
+  --font-ai:'Orbitron',sans-serif;
+  --font-body:'Rajdhani',sans-serif;
+  --font-mono:'Share Tech Mono',monospace;
+}
 
-    * {
-      margin:0;
-      padding:0;
-      box-sizing:border-box;
-    }
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
 
-    body {
-      background:var(--bg);
-      color:var(--text);
-      font-family:var(--font-body);
-      height:100dvh;
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
-    }
+body{
+  background:radial-gradient(circle at center,#071423,#020a14);
+  color:var(--text);
+  font-family:var(--font-body);
+  overflow:hidden;
+}
 
-    /* HEADER */
-    #header {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:12px 14px;
-      border-bottom:1px solid var(--border);
-    }
+/* ───────── HUD LAYOUT ───────── */
+.hud {
+  display:flex;
+  height:100vh;
+  flex-direction:column;
+}
 
-    .logo {
-      font-family:var(--font-ai);
-      letter-spacing:5px;
-      font-size:16px;
-      color:var(--accent);
-      text-shadow:var(--glow);
-    }
+/* TOP BAR */
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  padding:10px 15px;
+  border-bottom:1px solid rgba(0,212,255,0.2);
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--dim);
+}
 
-    .status {
-      font-family:var(--font-mono);
-      font-size:11px;
-      color:var(--dim);
-    }
+/* CENTER HOLOGRAM */
+.center {
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  position:relative;
+}
 
-    /* CHAT AREA */
-    #chat {
-      flex:1;
-      overflow:auto;
-      padding:12px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
+/* ORB */
+.orb {
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,rgba(0,212,255,0.4),transparent 60%);
+  border:2px solid var(--accent);
+  box-shadow:0 0 40px rgba(0,212,255,0.3);
+  position:relative;
+  animation:float 3s ease-in-out infinite;
+}
 
-    .msg {
-      max-width:85%;
-      padding:10px 12px;
-      border-radius:12px;
-      font-size:14px;
-      line-height:1.5;
-    }
+/* RINGS */
+.orb::before,
+.orb::after {
+  content:"";
+  position:absolute;
+  inset:-40px;
+  border-radius:50%;
+  border:1px solid rgba(0,212,255,0.2);
+  animation:spin 6s linear infinite;
+}
 
-    .user {
-      align-self:flex-end;
-      background:rgba(0,102,204,0.25);
-      border:1px solid var(--accent2);
-      font-family:var(--font-body);
-    }
+.orb::after{
+  inset:-80px;
+  border:1px solid rgba(0,212,255,0.1);
+  animation-duration:10s;
+}
 
-    .ai {
-      align-self:flex-start;
-      background:rgba(0,212,255,0.05);
-      border:1px solid var(--border);
-      font-family:var(--font-body);
-      text-shadow:0 0 10px rgba(0,212,255,0.15);
-    }
+@keyframes spin {
+  from { transform:rotate(0deg); }
+  to { transform:rotate(360deg); }
+}
 
-    /* INPUT */
-    #inputBar {
-      display:flex;
-      gap:8px;
-      padding:10px;
-      border-top:1px solid var(--border);
-      align-items:center;
-    }
+@keyframes float {
+  0%,100% { transform:translateY(0); }
+  50% { transform:translateY(-12px); }
+}
 
-    #userInput {
-      flex:1;
-      padding:12px;
-      border-radius:25px;
-      border:1px solid var(--border);
-      background:var(--surface);
-      color:var(--text);
-      outline:none;
-      font-family:var(--font-body);
-      transition:0.2s;
-    }
+/* SCAN LINE */
+.scanline {
+  position:absolute;
+  width:100%;
+  height:2px;
+  background:rgba(0,212,255,0.3);
+  animation:scan 2.5s linear infinite;
+}
 
-    #userInput:focus {
-      border-color:var(--accent);
-      box-shadow:0 0 15px rgba(0,212,255,0.25);
-    }
+@keyframes scan {
+  0% { top:0; opacity:0; }
+  50% { opacity:1; }
+  100% { top:100%; opacity:0; }
+}
 
-    .btn {
-      width:42px;
-      height:42px;
-      border-radius:50%;
-      border:1px solid var(--border);
-      background:rgba(0,212,255,0.08);
-      color:var(--accent);
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      cursor:pointer;
-      transition:0.2s;
-      font-size:16px;
-    }
+/* CHAT PANEL */
+.chat {
+  position:absolute;
+  bottom:10px;
+  left:10px;
+  right:10px;
+  max-height:180px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
 
-    .btn:hover {
-      box-shadow:var(--glow);
-    }
+.msg{
+  padding:8px 10px;
+  border-radius:10px;
+  font-size:13px;
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(0,212,255,0.2);
+}
 
-    .recording {
-      border-color:red !important;
-      color:red !important;
-      box-shadow:0 0 15px rgba(255,0,0,0.3);
-    }
+.user{
+  align-self:flex-end;
+  background:rgba(0,102,255,0.2);
+}
 
-    /* MONO SYSTEM TEXT */
-    .sys {
-      font-family:var(--font-mono);
-      font-size:11px;
-      color:var(--dim);
-    }
-  </style>
+.ai{
+  align-self:flex-start;
+  background:rgba(0,212,255,0.08);
+}
+
+/* INPUT */
+.inputBar{
+  display:flex;
+  padding:10px;
+  gap:8px;
+  border-top:1px solid rgba(0,212,255,0.2);
+}
+
+input{
+  flex:1;
+  padding:10px;
+  border-radius:20px;
+  border:1px solid rgba(0,212,255,0.2);
+  background:rgba(0,0,0,0.3);
+  color:white;
+  font-family:var(--font-body);
+}
+
+button{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:1px solid rgba(0,212,255,0.3);
+  background:rgba(0,212,255,0.1);
+  color:var(--accent);
+}
+
+/* LISTENING MODE */
+.listening .orb {
+  box-shadow:0 0 80px rgba(255,50,50,0.5);
+  border-color:red;
+  animation:pulse 1s infinite;
+}
+
+@keyframes pulse{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.08); }
+}
+</style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<div id="header">
-  <div class="logo">J.A.R.V.I.S</div>
-  <div class="status">ONLINE • READY</div>
-</div>
+<div class="hud">
 
-<!-- CHAT -->
-<div id="chat"></div>
+  <!-- TOP -->
+  <div class="topbar">
+    <div>J.A.R.V.I.S CORE</div>
+    <div id="status">ONLINE</div>
+  </div>
 
-<!-- INPUT -->
-<div id="inputBar">
-  <input id="userInput" type="text" placeholder="Ask JARVIS..."
-    onkeydown="if(event.key==='Enter') sendMessage(this.value)"/>
+  <!-- CENTER HOLOGRAM -->
+  <div class="center" id="center">
 
-  <div class="btn" id="micBtn" onclick="toggleMic()">🎤</div>
-  <div class="btn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
+    <div class="scanline"></div>
+
+    <div class="orb" id="orb"></div>
+
+    <!-- CHAT FLOAT -->
+    <div class="chat" id="chat"></div>
+
+  </div>
+
+  <!-- INPUT -->
+  <div class="inputBar">
+    <input id="input" placeholder="Speak to JARVIS..."/>
+    <button onclick="send()">➤</button>
+    <button onclick="mic()">🎤</button>
+  </div>
+
 </div>
 
 <script>
-/* ───────── CHAT ───────── */
-function addMsg(text, type) {
-  const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.innerText = text;
-  document.getElementById("chat").appendChild(div);
-  document.getElementById("chat").scrollTop = 999999;
+function addMsg(text,type){
+  const d=document.createElement("div");
+  d.className="msg "+type;
+  d.innerText=text;
+  document.getElementById("chat").appendChild(d);
 }
 
-/* ───────── SEND ───────── */
-async function sendMessage(text) {
-  if (!text) return;
+/* SEND */
+async function send(){
+  const input=document.getElementById("input");
+  const text=input.value;
+  if(!text)return;
 
-  addMsg(text, "user");
-  document.getElementById("userInput").value = "";
+  addMsg(text,"user");
+  input.value="";
 
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messages: [{ role: "user", content: text }]
-    })
+  const res=await fetch("/api/chat",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({messages:[{role:"user",content:text}]})
   });
 
-  const data = await res.json();
-  addMsg(data.reply, "ai");
+  const data=await res.json();
+  addMsg(data.reply,"ai");
 }
 
-/* ───────── VOICE SYSTEM ───────── */
+/* MIC */
 let rec;
-let listening = false;
+function mic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return alert("No mic support");
 
-function toggleMic() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return alert("Voice not supported");
+  rec=new SR();
+  rec.lang="en-US";
 
-  if (listening) {
-    rec.stop();
-    return;
-  }
+  document.body.classList.add("listening");
 
-  rec = new SR();
-  rec.lang = "en-US";
-
-  rec.onstart = () => {
-    listening = true;
-    document.getElementById("micBtn").classList.add("recording");
+  rec.onresult=(e)=>{
+    const text=e.results[0][0].transcript;
+    document.getElementById("input").value=text;
+    send();
   };
 
-  rec.onresult = (e) => {
-    const text = e.results[0][0].transcript;
-    document.getElementById("userInput").value = text;
-    sendMessage(text);
+  rec.onend=()=>{
+    document.body.classList.remove("listening");
   };
-
-  rec.onerror = stopMic;
-  rec.onend = stopMic;
 
   rec.start();
-}
-
-function stopMic() {
-  listening = false;
-  document.getElementById("micBtn").classList.remove("recording");
 }
 </script>
 
