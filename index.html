@@ -4,13 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>JARVIS Hologram</title>
+<title>JARVIS CORE SYSTEM</title>
 
-<!-- FONTS -->
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 
 <style>
-:root {
+:root{
   --bg:#020a14;
   --accent:#00d4ff;
   --accent2:#0066ff;
@@ -23,39 +22,35 @@
   --font-mono:'Share Tech Mono',monospace;
 }
 
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-}
+*{margin:0;padding:0;box-sizing:border-box;}
 
 body{
-  background:radial-gradient(circle at center,#071423,#020a14);
+  background:radial-gradient(circle,#071424,#020a14);
   color:var(--text);
   font-family:var(--font-body);
   overflow:hidden;
-}
-
-/* ───────── HUD LAYOUT ───────── */
-.hud {
-  display:flex;
-  height:100vh;
-  flex-direction:column;
 }
 
 /* TOP BAR */
 .topbar{
   display:flex;
   justify-content:space-between;
-  padding:10px 15px;
-  border-bottom:1px solid rgba(0,212,255,0.2);
+  padding:10px 14px;
   font-family:var(--font-mono);
   font-size:11px;
   color:var(--dim);
+  border-bottom:1px solid rgba(0,212,255,0.2);
 }
 
-/* CENTER HOLOGRAM */
-.center {
+/* MAIN HUD */
+.hud{
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+}
+
+/* CENTER */
+.center{
   flex:1;
   display:flex;
   justify-content:center;
@@ -63,62 +58,55 @@ body{
   position:relative;
 }
 
-/* ORB */
-.orb {
-  width:160px;
-  height:160px;
+/* HOLOGRAM ORB */
+.orb{
+  width:170px;
+  height:170px;
   border-radius:50%;
-  background:radial-gradient(circle at 30% 30%,rgba(0,212,255,0.4),transparent 60%);
+  background:radial-gradient(circle at 30% 30%,rgba(0,212,255,0.5),transparent 60%);
   border:2px solid var(--accent);
-  box-shadow:0 0 40px rgba(0,212,255,0.3);
-  position:relative;
+  box-shadow:0 0 60px rgba(0,212,255,0.3);
   animation:float 3s ease-in-out infinite;
+  position:relative;
 }
 
 /* RINGS */
 .orb::before,
-.orb::after {
+.orb::after{
   content:"";
   position:absolute;
-  inset:-40px;
+  inset:-50px;
   border-radius:50%;
-  border:1px solid rgba(0,212,255,0.2);
-  animation:spin 6s linear infinite;
+  border:1px solid rgba(0,212,255,0.25);
+  animation:spin 8s linear infinite;
 }
 
 .orb::after{
-  inset:-80px;
+  inset:-90px;
   border:1px solid rgba(0,212,255,0.1);
-  animation-duration:10s;
+  animation-duration:12s;
 }
 
-@keyframes spin {
-  from { transform:rotate(0deg); }
-  to { transform:rotate(360deg); }
-}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 
-@keyframes float {
-  0%,100% { transform:translateY(0); }
-  50% { transform:translateY(-12px); }
-}
-
-/* SCAN LINE */
-.scanline {
+/* SCAN */
+.scan{
   position:absolute;
   width:100%;
   height:2px;
   background:rgba(0,212,255,0.3);
-  animation:scan 2.5s linear infinite;
+  animation:scan 3s linear infinite;
 }
 
-@keyframes scan {
-  0% { top:0; opacity:0; }
-  50% { opacity:1; }
-  100% { top:100%; opacity:0; }
+@keyframes scan{
+  0%{top:0;opacity:0}
+  50%{opacity:1}
+  100%{top:100%;opacity:0}
 }
 
-/* CHAT PANEL */
-.chat {
+/* CHAT HUD */
+.chat{
   position:absolute;
   bottom:10px;
   left:10px;
@@ -140,7 +128,7 @@ body{
 
 .user{
   align-self:flex-end;
-  background:rgba(0,102,255,0.2);
+  background:rgba(0,102,255,0.25);
 }
 
 .ai{
@@ -151,8 +139,8 @@ body{
 /* INPUT */
 .inputBar{
   display:flex;
-  padding:10px;
   gap:8px;
+  padding:10px;
   border-top:1px solid rgba(0,212,255,0.2);
 }
 
@@ -161,30 +149,32 @@ input{
   padding:10px;
   border-radius:20px;
   border:1px solid rgba(0,212,255,0.2);
-  background:rgba(0,0,0,0.3);
+  background:rgba(0,0,0,0.4);
   color:white;
   font-family:var(--font-body);
+  outline:none;
 }
 
 button{
-  width:40px;
-  height:40px;
+  width:42px;
+  height:42px;
   border-radius:50%;
   border:1px solid rgba(0,212,255,0.3);
   background:rgba(0,212,255,0.1);
   color:var(--accent);
+  cursor:pointer;
 }
 
 /* LISTENING MODE */
-.listening .orb {
-  box-shadow:0 0 80px rgba(255,50,50,0.5);
+.listening .orb{
   border-color:red;
+  box-shadow:0 0 80px rgba(255,0,0,0.4);
   animation:pulse 1s infinite;
 }
 
 @keyframes pulse{
-  0%,100%{ transform:scale(1); }
-  50%{ transform:scale(1.08); }
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.08)}
 }
 </style>
 </head>
@@ -193,27 +183,19 @@ button{
 
 <div class="hud">
 
-  <!-- TOP -->
   <div class="topbar">
-    <div>J.A.R.V.I.S CORE</div>
+    <div>JARVIS CORE ACTIVE</div>
     <div id="status">ONLINE</div>
   </div>
 
-  <!-- CENTER HOLOGRAM -->
   <div class="center" id="center">
-
-    <div class="scanline"></div>
-
-    <div class="orb" id="orb"></div>
-
-    <!-- CHAT FLOAT -->
+    <div class="scan"></div>
+    <div class="orb"></div>
     <div class="chat" id="chat"></div>
-
   </div>
 
-  <!-- INPUT -->
   <div class="inputBar">
-    <input id="input" placeholder="Speak to JARVIS..."/>
+    <input id="input" placeholder="Ask JARVIS..."/>
     <button onclick="send()">➤</button>
     <button onclick="mic()">🎤</button>
   </div>
@@ -221,6 +203,8 @@ button{
 </div>
 
 <script>
+
+/* CHAT */
 function addMsg(text,type){
   const d=document.createElement("div");
   d.className="msg "+type;
@@ -249,9 +233,10 @@ async function send(){
 
 /* MIC */
 let rec;
+
 function mic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR)return alert("No mic support");
+  if(!SR)return alert("Mic not supported");
 
   rec=new SR();
   rec.lang="en-US";
@@ -270,6 +255,7 @@ function mic(){
 
   rec.start();
 }
+
 </script>
 
 </body>
