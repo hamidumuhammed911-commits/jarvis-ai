@@ -1,255 +1,340 @@
-<!-- ═══════════════════════════════════════════════════════════════
-     JARVIS LIVE VOICE UPGRADE — paste this block into index.html
-     
-     1. Add the CSS inside your <style> tag (marked LIVE VOICE CSS)
-     2. Add the HTML button anywhere visible (marked LIVE VOICE BUTTON)
-     3. Add the JS before </body> (marked LIVE VOICE JS)
-     4. Add manifest + SW registration to <head> (marked PWA HEAD)
-═══════════════════════════════════════════════════════════════ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#020a14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="JARVIS" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>JARVIS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #020a14;
+      --accent: #00d4ff;
+      --accent3: #ff6b00;
+      --green: #00ff88;
+      --text: #c8e8ff;
+      --text-dim: #4a7a99;
+      --glow: 0 0 20px rgba(0,212,255,0.4);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
 
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-<!-- ── PWA HEAD ── paste inside <head> ──────────────────────── -->
-<link rel="manifest" href="/manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="JARVIS">
-<link rel="apple-touch-icon" href="https://api.iconify.design/mdi:robot.svg?color=%2300d4ff">
-<!-- ── end PWA HEAD ────────────────────────────────────────── -->
+    body::before {
+      content:'';
+      position:fixed; inset:0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);
+      background-size:40px 40px;
+      pointer-events:none; z-index:0;
+    }
 
+    header {
+      z-index:10;
+      padding:14px 20px;
+      border-bottom:1px solid rgba(0,212,255,0.15);
+      background:rgba(2,10,20,0.98);
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
+    .logo { display:flex; align-items:center; gap:10px; }
+    .logo-ring {
+      width:34px; height:34px; border-radius:50%;
+      border:2px solid var(--accent);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:var(--glow);
+      animation:spin-ring 8s linear infinite;
+    }
+    .logo-dot {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--accent); box-shadow:var(--glow);
+      animation:pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes spin-ring { to { transform:rotate(360deg); } }
+    @keyframes pulse-dot { 50% { opacity:0.5; transform:scale(0.8); } }
+    .logo-text {
+      font-family:'Orbitron',monospace; font-weight:900;
+      font-size:20px; letter-spacing:4px;
+      color:var(--accent); text-shadow:var(--glow);
+    }
+    .status-badge {
+      font-size:10px; color:var(--accent);
+      border:1px solid rgba(0,212,255,0.4);
+      padding:4px 10px; border-radius:20px; letter-spacing:1px;
+    }
 
-<!-- ── LIVE VOICE CSS ── paste inside <style> ────────────────── -->
-<style id="live-voice-css">
-/* ── Live Voice Button (Gemini-style) ── */
-.live-voice-btn {
-  position: fixed;
-  bottom: 110px;
-  right: 20px;
-  z-index: 999;
-  width: 62px;
-  height: 62px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0a2a3a, #001520);
-  border: 2px solid #00d4ff44;
-  box-shadow: 0 0 20px #00d4ff22, 0 4px 15px rgba(0,0,0,0.5);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  transition: all 0.3s;
-  color: #00d4ff;
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  letter-spacing: 0.5px;
-}
-.live-voice-btn:hover { transform: scale(1.05); border-color: #00d4ff88; }
-.live-voice-btn svg { width: 24px; height: 24px; }
-.live-voice-btn.lv-active {
-  background: linear-gradient(135deg, #003a1a, #001a0a);
-  border-color: #00ff8888;
-  box-shadow: 0 0 30px #00ff8844, 0 0 60px #00ff8822;
-  animation: lv-pulse 1.5s ease-in-out infinite;
-}
-.live-voice-btn.lv-thinking {
-  background: linear-gradient(135deg, #2a1500, #150a00);
-  border-color: #ffaa0088;
-  box-shadow: 0 0 30px #ffaa0044;
-  animation: lv-spin-border 1s linear infinite;
-}
-@keyframes lv-pulse {
-  0%, 100% { box-shadow: 0 0 20px #00ff8844, 0 0 40px #00ff8822; }
-  50% { box-shadow: 0 0 40px #00ff8888, 0 0 80px #00ff8844; }
-}
-@keyframes lv-spin-border {
-  0% { box-shadow: 0 0 20px #ffaa0044, 4px 0 15px #ffaa0066; }
-  25% { box-shadow: 0 0 20px #ffaa0044, 0 4px 15px #ffaa0066; }
-  50% { box-shadow: 0 0 20px #ffaa0044, -4px 0 15px #ffaa0066; }
-  75% { box-shadow: 0 0 20px #ffaa0044, 0 -4px 15px #ffaa0066; }
-  100% { box-shadow: 0 0 20px #ffaa0044, 4px 0 15px #ffaa0066; }
-}
+    #messages {
+      flex:1; overflow-y:auto;
+      padding:16px; display:flex; flex-direction:column; gap:12px;
+      z-index:1; scroll-behavior:smooth;
+    }
+    #messages::-webkit-scrollbar { width:3px; }
+    #messages::-webkit-scrollbar-thumb { background:rgba(0,212,255,0.3); }
 
-/* ── Live Voice Overlay ── */
-.lv-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  background: rgba(2, 10, 20, 0.97);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-  backdrop-filter: blur(20px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s;
-}
-.lv-overlay.lv-open {
-  opacity: 1;
-  pointer-events: all;
-}
+    .msg { max-width:88%; animation:msg-in 0.3s ease-out; }
+    @keyframes msg-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .msg.user { align-self:flex-end; }
+    .msg.ai   { align-self:flex-start; }
+    .msg-label { font-size:9px; letter-spacing:2px; margin-bottom:4px; opacity:0.5; }
+    .msg.user .msg-label { text-align:right; color:var(--accent3); }
+    .msg.ai .msg-label   { color:var(--accent); }
+    .msg-bubble { padding:12px 16px; line-height:1.6; font-size:14px; }
+    .msg.user .msg-bubble {
+      background:rgba(255,107,0,0.1);
+      border:1px solid rgba(255,107,0,0.3);
+      border-right:3px solid var(--accent3);
+      color:#ffd4a8; border-radius:2px;
+    }
+    .msg.ai .msg-bubble {
+      background:rgba(0,212,255,0.05);
+      border:1px solid rgba(0,212,255,0.2);
+      border-left:3px solid var(--accent);
+      color:var(--text); border-radius:2px;
+    }
+    .thinking { display:flex; gap:6px; align-items:center; padding:14px 16px; }
+    .thinking span {
+      width:7px; height:7px; border-radius:50%; background:var(--accent);
+      animation:think 1.2s ease-in-out infinite;
+    }
+    .thinking span:nth-child(2) { animation-delay:0.2s; }
+    .thinking span:nth-child(3) { animation-delay:0.4s; }
+    @keyframes think {
+      0%,100% { opacity:0.2; transform:scale(0.8); }
+      50% { opacity:1; transform:scale(1.3); box-shadow:0 0 8px var(--accent); }
+    }
 
-/* Central animated orb */
-.lv-orb {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #003a5a, #001020);
-  border: 2px solid #00d4ff33;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.5s;
-}
-.lv-orb::before, .lv-orb::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid #00d4ff22;
-  animation: lv-ring 3s linear infinite;
-}
-.lv-orb::before { width: 200px; height: 200px; animation-delay: 0s; }
-.lv-orb::after  { width: 250px; height: 250px; animation-delay: 1s; }
-@keyframes lv-ring {
-  0% { transform: scale(0.9); opacity: 0.6; }
-  100% { transform: scale(1.2); opacity: 0; }
-}
-.lv-orb.lv-orb-listening {
-  background: radial-gradient(circle at 35% 35%, #004a2a, #001508);
-  border-color: #00ff8866;
-  box-shadow: 0 0 60px #00ff8833;
-}
-.lv-orb.lv-orb-thinking {
-  background: radial-gradient(circle at 35% 35%, #3a2500, #150d00);
-  border-color: #ffaa0066;
-  box-shadow: 0 0 60px #ffaa0033;
-}
-.lv-orb.lv-orb-speaking {
-  background: radial-gradient(circle at 35% 35%, #001a3a, #000a20);
-  border-color: #00d4ff88;
-  box-shadow: 0 0 80px #00d4ff44;
-  animation: lv-orb-speak 0.8s ease-in-out infinite alternate;
-}
-@keyframes lv-orb-speak {
-  from { transform: scale(1); }
-  to   { transform: scale(1.05); }
-}
+    .welcome { text-align:center; padding:50px 20px; }
+    .welcome-title {
+      font-family:'Orbitron',monospace; font-weight:900;
+      font-size:26px; letter-spacing:6px;
+      color:var(--accent); text-shadow:var(--glow); margin-bottom:8px;
+    }
+    .welcome-sub { font-size:11px; letter-spacing:2px; color:var(--text-dim); }
+    .welcome-line {
+      width:80px; height:1px; margin:16px auto;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    }
+    .welcome-hint { font-size:12px; color:var(--text-dim); letter-spacing:1px; margin-top:30px; opacity:0.7; }
 
-/* Voice bars inside orb */
-.lv-bars {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  height: 48px;
-}
-.lv-bar {
-  width: 5px;
-  border-radius: 3px;
-  background: #00d4ff;
-  height: 8px;
-  transition: height 0.1s;
-}
-.lv-orb-listening .lv-bar { background: #00ff88; animation: lv-bar-dance 0.5s ease-in-out infinite alternate; }
-.lv-orb-thinking  .lv-bar { background: #ffaa00; animation: lv-bar-think 1s ease-in-out infinite; }
-.lv-orb-speaking  .lv-bar { background: #00d4ff; animation: lv-bar-speak 0.4s ease-in-out infinite alternate; }
+    footer {
+      z-index:10; flex-shrink:0;
+      border-top:1px solid rgba(0,212,255,0.15);
+      background:rgba(2,10,20,0.98);
+      padding:12px 12px 24px;
+    }
 
-@keyframes lv-bar-dance {
-  from { height: 8px; }
-  to   { height: 48px; }
-}
-@keyframes lv-bar-think {
-  0%, 100% { height: 8px; opacity: 0.4; }
-  50% { height: 28px; opacity: 1; }
-}
-@keyframes lv-bar-speak {
-  from { height: 12px; }
-  to   { height: 44px; }
-}
-/* Stagger each bar */
-.lv-bar:nth-child(1) { animation-delay: 0s; }
-.lv-bar:nth-child(2) { animation-delay: 0.08s; }
-.lv-bar:nth-child(3) { animation-delay: 0.16s; }
-.lv-bar:nth-child(4) { animation-delay: 0.24s; }
-.lv-bar:nth-child(5) { animation-delay: 0.32s; }
-.lv-bar:nth-child(6) { animation-delay: 0.40s; }
-.lv-bar:nth-child(7) { animation-delay: 0.16s; }
+    #tapBtn {
+      width:100%; padding:18px;
+      background:rgba(0,212,255,0.08);
+      border:2px solid var(--accent);
+      border-radius:6px;
+      color:var(--accent);
+      font-family:'Orbitron',monospace;
+      font-size:15px; letter-spacing:3px;
+      cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:12px;
+      box-shadow:0 0 20px rgba(0,212,255,0.15);
+      transition:all 0.15s;
+      touch-action:manipulation;
+      user-select:none;
+      margin-bottom:10px;
+    }
+    #tapBtn:active, #tapBtn.active {
+      background:rgba(0,212,255,0.2);
+      box-shadow:0 0 40px rgba(0,212,255,0.4);
+      transform:scale(0.98);
+    }
+    #tapBtn.listening {
+      border-color:var(--accent3); color:var(--accent3);
+      background:rgba(255,107,0,0.1);
+      animation:tap-pulse 1s ease-in-out infinite;
+    }
+    #tapBtn.speaking {
+      border-color:var(--green); color:var(--green);
+      background:rgba(0,255,136,0.08);
+    }
+    @keyframes tap-pulse {
+      0%,100% { box-shadow:0 0 20px rgba(255,107,0,0.3); }
+      50%      { box-shadow:0 0 40px rgba(255,107,0,0.7); }
+    }
 
-/* Status text */
-.lv-status {
-  font-family: 'Orbitron', monospace;
-  font-size: 13px;
-  letter-spacing: 3px;
-  color: #00d4ffcc;
-  text-align: center;
-  min-height: 20px;
-}
-.lv-transcript {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 16px;
-  color: #88ccee;
-  text-align: center;
-  max-width: 320px;
-  min-height: 48px;
-  line-height: 1.5;
-  padding: 0 24px;
-  font-style: italic;
-}
+    .text-row { display:flex; gap:8px; align-items:center; }
+    #userInput {
+      flex:1; background:rgba(0,212,255,0.04);
+      border:1px solid rgba(0,212,255,0.25);
+      border-radius:4px; color:var(--text);
+      font-family:'Share Tech Mono',monospace;
+      font-size:15px; padding:14px 14px;
+      outline:none; resize:none;
+      min-height:50px; max-height:100px;
+      touch-action:manipulation; -webkit-appearance:none;
+    }
+    #userInput::placeholder { color:var(--text-dim); }
+    #userInput:focus { border-color:rgba(0,212,255,0.6); }
 
-/* Close button */
-.lv-close {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #0a2030;
-  border: 1px solid #00d4ff33;
-  color: #00d4ff;
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-.lv-close:hover { background: #1a3040; border-color: #00d4ff88; }
+    #sendBtn {
+      width:56px; height:50px; flex-shrink:0;
+      background:rgba(0,212,255,0.1);
+      border:2px solid var(--accent);
+      border-radius:4px; color:var(--accent);
+      font-size:24px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      touch-action:manipulation;
+    }
+    #sendBtn:active { background:rgba(0,212,255,0.3); transform:scale(0.95); }
 
-/* Mute button */
-.lv-mute {
-  padding: 10px 28px;
-  border-radius: 30px;
-  background: #0a2030;
-  border: 1px solid #00d4ff33;
-  color: #00d4ff99;
-  font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  letter-spacing: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.lv-mute:hover { border-color: #00d4ff88; color: #00d4ff; }
-.lv-mute.muted { border-color: #ff444488; color: #ff4444; }
-</style>
-<!-- ── end LIVE VOICE CSS ─────────────────────────────────────── -->
+    /* ── LIVE MODE OVERLAY (Gemini-style) ── */
+    #liveOverlay {
+      display:none; position:fixed; inset:0; z-index:200;
+      background:rgba(2,10,20,0.97);
+      flex-direction:column; align-items:center; justify-content:center; gap:28px;
+      backdrop-filter:blur(20px);
+    }
+    #liveOverlay.active { display:flex; }
 
+    .live-orb {
+      width:170px; height:170px; border-radius:50%;
+      border:2px solid var(--accent);
+      background:radial-gradient(circle at 40% 35%,rgba(0,212,255,0.2),rgba(0,212,255,0.03));
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 0 40px rgba(0,212,255,0.3);
+      transition:all 0.3s;
+      position:relative;
+    }
+    .live-orb::before, .live-orb::after {
+      content:''; position:absolute; border-radius:50%;
+      border:1px solid rgba(0,212,255,0.15);
+      animation:lv-ring 3s linear infinite;
+    }
+    .live-orb::before { width:210px; height:210px; }
+    .live-orb::after  { width:260px; height:260px; animation-delay:1s; }
+    @keyframes lv-ring {
+      0% { transform:scale(0.9); opacity:0.5; }
+      100% { transform:scale(1.2); opacity:0; }
+    }
 
-<!-- ── LIVE VOICE BUTTON ── paste inside <body>, after your main UI ── -->
-<button class="live-voice-btn" id="lvBtn" onclick="lvToggle()" title="Live Voice Conversation">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-  </svg>
-  LIVE
-</button>
+    /* Live orb states */
+    .live-orb.listening {
+      border-color:var(--green);
+      box-shadow:0 0 60px rgba(0,255,136,0.4);
+      animation:orb-listen 1.4s ease-in-out infinite;
+    }
+    .live-orb.thinking {
+      border-color:#ffd700;
+      box-shadow:0 0 40px rgba(255,215,0,0.4);
+    }
+    .live-orb.speaking {
+      border-color:var(--accent);
+      box-shadow:0 0 80px rgba(0,212,255,0.5);
+      animation:orb-speak 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes orb-listen { 50% { transform:scale(1.06); box-shadow:0 0 70px rgba(0,255,136,0.6); } }
+    @keyframes orb-speak  { from { transform:scale(1); } to { transform:scale(1.05); } }
 
-<!-- Live Voice Overlay -->
-<div class="lv-overlay" id="lvOverlay">
-  <button class="lv-close" id="lvClose" onclick="lvStop()">✕</button>
-  
-  <div class="lv-orb" id="lvOrb">
+    /* Voice bars inside orb */
+    .lv-bars {
+      display:flex; gap:5px; align-items:center; height:50px;
+    }
+    .lv-bar {
+      width:5px; border-radius:3px;
+      background:var(--accent); height:8px; transition:height 0.1s;
+    }
+    .live-orb.listening .lv-bar { background:var(--green); animation:bar-dance 0.5s ease-in-out infinite alternate; }
+    .live-orb.thinking  .lv-bar { background:#ffd700; animation:bar-think 1s ease-in-out infinite; }
+    .live-orb.speaking  .lv-bar { background:var(--accent); animation:bar-speak 0.4s ease-in-out infinite alternate; }
+    @keyframes bar-dance { from{height:8px;} to{height:48px;} }
+    @keyframes bar-think { 0%,100%{height:8px;opacity:0.4;} 50%{height:28px;opacity:1;} }
+    @keyframes bar-speak { from{height:12px;} to{height:44px;} }
+    .lv-bar:nth-child(1){animation-delay:0s;}
+    .lv-bar:nth-child(2){animation-delay:0.08s;}
+    .lv-bar:nth-child(3){animation-delay:0.16s;}
+    .lv-bar:nth-child(4){animation-delay:0.24s;}
+    .lv-bar:nth-child(5){animation-delay:0.32s;}
+    .lv-bar:nth-child(6){animation-delay:0.40s;}
+    .lv-bar:nth-child(7){animation-delay:0.16s;}
+
+    .live-label {
+      font-family:'Orbitron',monospace; font-size:13px;
+      letter-spacing:4px; color:var(--accent);
+    }
+    .live-text {
+      font-size:14px; color:var(--text-dim);
+      text-align:center; max-width:80%;
+      line-height:1.6; font-style:italic;
+      min-height:44px;
+    }
+
+    /* Live mode bottom buttons */
+    .live-bottom { display:flex; gap:16px; align-items:center; margin-top:8px; }
+    .btn-end {
+      padding:12px 28px;
+      border:1px solid rgba(0,212,255,0.3); background:none;
+      color:var(--text-dim); font-family:'Share Tech Mono',monospace;
+      font-size:12px; letter-spacing:2px; border-radius:4px;
+      cursor:pointer; touch-action:manipulation;
+    }
+    .btn-end:active { border-color:var(--accent); color:var(--accent); }
+    .btn-mute {
+      padding:12px 20px;
+      border:1px solid rgba(0,212,255,0.2); background:none;
+      color:var(--text-dim); font-family:'Share Tech Mono',monospace;
+      font-size:12px; letter-spacing:1px; border-radius:4px;
+      cursor:pointer; touch-action:manipulation;
+    }
+    .btn-mute.muted { border-color:rgba(255,68,68,0.5); color:#ff4444; }
+
+    /* LIVE floating button */
+    #liveBtn {
+      position:fixed; bottom:110px; right:16px; z-index:150;
+      width:58px; height:58px; border-radius:50%;
+      background:linear-gradient(135deg,#0a2a3a,#001520);
+      border:2px solid rgba(0,212,255,0.4);
+      box-shadow:0 0 20px rgba(0,212,255,0.2);
+      color:var(--accent);
+      font-family:'Orbitron',monospace; font-size:9px; letter-spacing:0.5px;
+      cursor:pointer; touch-action:manipulation;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+      transition:all 0.3s;
+    }
+    #liveBtn svg { width:22px; height:22px; }
+    #liveBtn.lv-on {
+      border-color:rgba(0,255,136,0.7);
+      box-shadow:0 0 30px rgba(0,255,136,0.4);
+      animation:lv-btn-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes lv-btn-pulse {
+      0%,100%{box-shadow:0 0 20px rgba(0,255,136,0.3);}
+      50%{box-shadow:0 0 40px rgba(0,255,136,0.7);}
+    }
+
+    .scan-line {
+      position:fixed; top:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent);
+      opacity:0.3; animation:scan 4s linear infinite; pointer-events:none; z-index:100;
+    }
+    @keyframes scan { from{top:0;opacity:0.3;} to{top:100%;opacity:0;} }
+  </style>
+</head>
+<body>
+<div class="scan-line"></div>
+
+<!-- LIVE MODE OVERLAY -->
+<div id="liveOverlay">
+  <div class="live-orb" id="liveOrb">
     <div class="lv-bars">
       <div class="lv-bar"></div>
       <div class="lv-bar"></div>
@@ -260,277 +345,307 @@
       <div class="lv-bar"></div>
     </div>
   </div>
-
-  <div class="lv-status" id="lvStatus">INITIALIZING...</div>
-  <div class="lv-transcript" id="lvTranscript"></div>
-  <button class="lv-mute" id="lvMuteBtn" onclick="lvToggleMute()">🔊 MUTE JARVIS</button>
+  <div class="live-label" id="liveLabel">INITIALIZING...</div>
+  <div class="live-text" id="liveText"></div>
+  <div class="live-bottom">
+    <button class="btn-mute" id="muteBtn" onclick="toggleMute()">🔊 MUTE</button>
+    <button class="btn-end" id="endBtn" onclick="closeLive()">✕ END SESSION</button>
+  </div>
 </div>
-<!-- ── end LIVE VOICE BUTTON ─────────────────────────────────── -->
 
+<!-- LIVE floating button -->
+<button id="liveBtn" onclick="toggleLive()" title="Live Voice Mode">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+  </svg>
+  LIVE
+</button>
 
-<!-- ── LIVE VOICE JS ── paste before </body> ─────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-ring"><div class="logo-dot"></div></div>
+    <span class="logo-text">JARVIS</span>
+  </div>
+  <div class="status-badge">ONLINE</div>
+</header>
+
+<div id="messages">
+  <div class="welcome">
+    <div class="welcome-title">J.A.R.V.I.S</div>
+    <div class="welcome-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+    <div class="welcome-line"></div>
+    <div style="font-size:11px;color:var(--text-dim);letter-spacing:1px;">READY FOR YOUR COMMAND</div>
+    <div class="welcome-hint">🎤 TAP THE BIG BUTTON BELOW TO SPEAK</div>
+  </div>
+</div>
+
+<footer>
+  <button id="tapBtn" ontouchstart="handleTapStart(event)" ontouchend="handleTapEnd(event)" onclick="handleTapClick()">
+    <span id="tapIcon">🎤</span>
+    <span id="tapLabel">TAP TO SPEAK</span>
+  </button>
+  <div class="text-row">
+    <textarea id="userInput" placeholder="Or type here..." rows="1"></textarea>
+    <button id="sendBtn" ontouchstart="" onclick="sendText()">⚡</button>
+  </div>
+</footer>
+
 <script>
-// ════════════════════════════════════════════════════════════
-//  JARVIS LIVE VOICE — Gemini-style hands-free loop
-//  State machine: idle → listening → thinking → speaking → listening
-// ════════════════════════════════════════════════════════════
+  const SYSTEM = `You are JARVIS, a highly intelligent AI assistant serving Muhammed Aali, your boss. Always address him as "Boss Muhammed Aali" on first message, then "Sir". You are precise, helpful, slightly formal but friendly. Keep responses concise — max 3 sentences unless more detail is truly needed.`;
 
-const LV = {
-  active: false,
-  muted: false,
-  state: 'idle', // idle | listening | thinking | speaking
-  rec: null,
-  synth: window.speechSynthesis,
-  voiceObj: null,
-  silenceTimer: null,
-  interimText: '',
-};
+  const messagesEl = document.getElementById('messages');
+  const userInput  = document.getElementById('userInput');
+  const tapBtn     = document.getElementById('tapBtn');
+  const tapIcon    = document.getElementById('tapIcon');
+  const tapLabel   = document.getElementById('tapLabel');
+  const liveOverlay= document.getElementById('liveOverlay');
+  const liveOrb    = document.getElementById('liveOrb');
+  const liveLabel  = document.getElementById('liveLabel');
+  const liveText   = document.getElementById('liveText');
+  const liveBtnEl  = document.getElementById('liveBtn');
 
-// ── Pick best female voice (same logic as your existing TTS) ──
-function lvPickVoice() {
-  const voices = LV.synth.getVoices();
-  const preferred = [
-    'Google UK English Female', 'Microsoft Zira', 'Karen', 'Samantha',
-    'Victoria', 'Fiona', 'Moira', 'Tessa', 'Google US English'
-  ];
-  for (const name of preferred) {
-    const v = voices.find(v => v.name.includes(name));
-    if (v) { LV.voiceObj = v; return; }
-  }
-  LV.voiceObj = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
-             || voices.find(v => v.lang.startsWith('en'))
-             || voices[0];
-}
+  let history  = [];
+  let busy     = false;
+  let liveMode = false;
+  let liveRec  = null;
+  let liveMuted= false;
 
-if (LV.synth.onvoiceschanged !== undefined) {
-  LV.synth.onvoiceschanged = lvPickVoice;
-}
-lvPickVoice();
-
-// ── UI state helpers ──
-function lvSetState(state) {
-  LV.state = state;
-  const orb    = document.getElementById('lvOrb');
-  const status = document.getElementById('lvStatus');
-  const btn    = document.getElementById('lvBtn');
-
-  orb.className = 'lv-orb';
-  btn.className = 'live-voice-btn';
-
-  const map = {
-    listening: { orbClass: 'lv-orb-listening', status: '🎙 LISTENING...', btnClass: 'lv-active' },
-    thinking:  { orbClass: 'lv-orb-thinking',  status: '⚡ PROCESSING...',  btnClass: 'lv-thinking' },
-    speaking:  { orbClass: 'lv-orb-speaking',  status: '🔊 JARVIS SPEAKING', btnClass: 'lv-active' },
-    idle:      { orbClass: '',                 status: 'TAP LIVE TO BEGIN', btnClass: '' },
-  };
-  const s = map[state] || map.idle;
-  if (s.orbClass) orb.classList.add(s.orbClass);
-  if (s.btnClass) btn.classList.add(s.btnClass);
-  status.textContent = s.status;
-}
-
-function lvSetTranscript(text) {
-  document.getElementById('lvTranscript').textContent = text;
-}
-
-// ── Open / close overlay ──
-function lvToggle() {
-  if (LV.active) { lvStop(); return; }
-  lvStart();
-}
-
-function lvStart() {
-  LV.active = true;
-  document.getElementById('lvOverlay').classList.add('lv-open');
-  lvPickVoice();
-  lvSetState('idle');
-  lvSetTranscript('');
-  // Small delay so the animation feels intentional
-  setTimeout(() => lvListen(), 600);
-}
-
-function lvStop() {
-  LV.active = false;
-  LV.synth.cancel();
-  if (LV.rec) { try { LV.rec.stop(); } catch(e){} LV.rec = null; }
-  clearTimeout(LV.silenceTimer);
-  document.getElementById('lvOverlay').classList.remove('lv-open');
-  document.getElementById('lvBtn').className = 'live-voice-btn';
-  lvSetState('idle');
-}
-
-// ── Toggle mute ──
-function lvToggleMute() {
-  LV.muted = !LV.muted;
-  const btn = document.getElementById('lvMuteBtn');
-  btn.textContent = LV.muted ? '🔇 UNMUTE JARVIS' : '🔊 MUTE JARVIS';
-  btn.classList.toggle('muted', LV.muted);
-}
-
-// ── LISTEN phase ──
-function lvListen() {
-  if (!LV.active) return;
-  
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    lvSetTranscript('Speech recognition not supported on this browser.');
-    return;
+
+  // ── MESSAGES ──
+  function clearWelcome() { document.querySelector('.welcome')?.remove(); }
+
+  function addMsg(role, text) {
+    clearWelcome();
+    const d = document.createElement('div');
+    d.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
+    d.innerHTML = `<div class="msg-label">${role==='user'?'YOU':'JARVIS'}</div>
+      <div class="msg-bubble">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+    messagesEl.appendChild(d);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  LV.synth.cancel(); // stop any ongoing speech
-  lvSetState('listening');
-  lvSetTranscript('');
+  function addThinking() {
+    clearWelcome();
+    const d = document.createElement('div');
+    d.className = 'msg ai';
+    d.innerHTML = `<div class="msg-label">JARVIS</div>
+      <div class="msg-bubble thinking"><span></span><span></span><span></span></div>`;
+    messagesEl.appendChild(d);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return d;
+  }
 
-  const rec = new SR();
-  LV.rec = rec;
-  rec.lang = 'en-US';
-  rec.interimResults = true;
-  rec.continuous = false;
-  rec.maxAlternatives = 1;
+  // ── TTS ──
+  function getVoice() {
+    const vs = speechSynthesis.getVoices();
+    return vs.find(v=>v.name.includes('Google UK English Female'))
+        || vs.find(v=>v.name.includes('Samantha'))
+        || vs.find(v=>v.name.includes('Zira'))
+        || vs.find(v=>v.lang.startsWith('en')&&v.name.toLowerCase().includes('female'))
+        || vs.find(v=>v.lang.startsWith('en'))
+        || vs[0];
+  }
+  speechSynthesis.onvoiceschanged = ()=>speechSynthesis.getVoices();
 
-  let finalTranscript = '';
-
-  rec.onstart = () => {
-    lvSetState('listening');
-  };
-
-  rec.onresult = (e) => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) {
-        finalTranscript += e.results[i][0].transcript;
-      } else {
-        interim += e.results[i][0].transcript;
-      }
+  function speak(text, onEnd) {
+    speechSynthesis.cancel();
+    if(liveMuted){ if(onEnd) setTimeout(onEnd,300); return; }
+    const u = new SpeechSynthesisUtterance(text.replace(/[*_`#]/g,''));
+    u.rate=0.95; u.pitch=1.1; u.volume=1;
+    const v=getVoice(); if(v) u.voice=v;
+    if(onEnd) {
+      u.onend = onEnd;
+      // fallback in case onend doesn't fire (Android bug)
+      const dur = Math.max(text.length * 65, 2000);
+      setTimeout(()=>{ if(speechSynthesis.speaking){ speechSynthesis.cancel(); onEnd(); } }, dur+1500);
     }
-    lvSetTranscript(finalTranscript || interim);
+    speechSynthesis.speak(u);
+  }
 
-    // Reset silence timer on speech
-    clearTimeout(LV.silenceTimer);
-    if (finalTranscript) {
-      // Got a final result — wait briefly then process
-      LV.silenceTimer = setTimeout(() => {
-        if (LV.rec) { try { LV.rec.stop(); } catch(e){} }
-      }, 400);
-    }
-  };
-
-  rec.onend = () => {
-    LV.rec = null;
-    if (!LV.active) return;
-    const text = finalTranscript.trim();
-    if (text) {
-      lvProcess(text);
-    } else {
-      // No speech detected — loop back after brief pause
-      lvSetTranscript('');
-      setTimeout(() => { if (LV.active) lvListen(); }, 800);
-    }
-  };
-
-  rec.onerror = (e) => {
-    LV.rec = null;
-    if (!LV.active) return;
-    // "no-speech" is normal, just re-listen
-    if (e.error === 'no-speech' || e.error === 'aborted') {
-      setTimeout(() => { if (LV.active) lvListen(); }, 500);
-    } else {
-      lvSetTranscript(`Mic error: ${e.error}. Retrying...`);
-      setTimeout(() => { if (LV.active) lvListen(); }, 2000);
-    }
-  };
-
-  try { rec.start(); } catch(e) { LV.rec = null; }
-}
-
-// ── PROCESS phase — call your existing Groq API ──
-async function lvProcess(userText) {
-  if (!LV.active) return;
-  lvSetState('thinking');
-  lvSetTranscript(`"${userText}"`);
-
-  // Re-use your existing history array if available, else create local one
-  const histArr = (typeof history !== 'undefined') ? history : [];
-
-  // Add to history
-  histArr.push({ role: 'user', content: userText });
-
-  // Also add to main chat UI if addMsg exists
-  if (typeof addMsg === 'function') addMsg('user', userText);
-
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: histArr.slice(-10),
-        system: `You are JARVIS. Speaking DIRECTLY to Boss Muhammed Aali. Use "Sir" after first message. Never third person. Concise — max 3 sentences.`
-      })
+  // ── API ──
+  async function askJarvis(msgs) {
+    const r = await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:msgs, system:SYSTEM})
     });
-
-    const data = await res.json();
-    const reply = data.reply || data.message || data.content || 'I did not catch that, Sir.';
-
-    histArr.push({ role: 'assistant', content: reply });
-    if (typeof addMsg === 'function') addMsg('assistant', reply);
-
-    lvSpeak(reply);
-  } catch (err) {
-    console.error('JARVIS Live Voice API error:', err);
-    lvSpeak("I'm having trouble connecting, Sir. Please check the network.");
-  }
-}
-
-// ── SPEAK phase ──
-function lvSpeak(text) {
-  if (!LV.active) return;
-  lvSetState('speaking');
-  lvSetTranscript(text);
-
-  if (LV.muted) {
-    // Skip TTS, go straight back to listening
-    setTimeout(() => { if (LV.active) lvListen(); }, 800);
-    return;
+    const d = await r.json();
+    if(!d.reply) throw new Error(d.error||'No reply');
+    return d.reply;
   }
 
-  LV.synth.cancel();
+  // ── TEXT SEND ──
+  function sendText() {
+    const text = userInput.value.trim();
+    if(!text||busy) return;
+    userInput.value='';
+    busy=true;
+    addMsg('user',text);
+    history.push({role:'user',content:text});
+    const t=addThinking();
+    askJarvis(history).then(reply=>{
+      t.remove(); addMsg('ai',reply);
+      speak(reply);
+      history.push({role:'assistant',content:reply});
+    }).catch(e=>{
+      t.remove(); addMsg('ai','ERROR: '+e.message);
+    }).finally(()=>{ busy=false; });
+  }
 
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.voice = LV.voiceObj;
-  utt.rate  = 0.95;
-  utt.pitch = 1.05;
-  utt.volume = 1;
-
-  utt.onend = () => {
-    if (!LV.active) return;
-    // Brief pause after JARVIS speaks, then listen again
-    setTimeout(() => { if (LV.active) lvListen(); }, 600);
-  };
-
-  utt.onerror = () => {
-    if (!LV.active) return;
-    setTimeout(() => { if (LV.active) lvListen(); }, 600);
-  };
-
-  LV.synth.speak(utt);
-
-  // Fallback in case onend doesn't fire (mobile Safari bug)
-  const duration = Math.max(text.length * 65, 2000);
-  setTimeout(() => {
-    if (LV.active && LV.state === 'speaking') {
-      LV.synth.cancel();
-      lvListen();
-    }
-  }, duration + 1500);
-}
-
-// ── PWA Service Worker registration ──
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
-      console.log('SW registration skipped:', err);
-    });
+  userInput.addEventListener('keydown', e=>{
+    if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendText(); }
   });
-}
+
+  // ── TAP TO SPEAK ──
+  let rec = null;
+
+  function setTapState(state) {
+    tapBtn.className='';
+    if(state==='idle')      { tapIcon.textContent='🎤'; tapLabel.textContent='TAP TO SPEAK'; }
+    if(state==='listening') { tapBtn.classList.add('listening'); tapIcon.textContent='🔴'; tapLabel.textContent='LISTENING... TAP TO SEND'; }
+    if(state==='thinking')  { tapBtn.classList.add('active'); tapIcon.textContent='⏳'; tapLabel.textContent='JARVIS IS THINKING...'; }
+    if(state==='speaking')  { tapBtn.classList.add('speaking'); tapIcon.textContent='🔊'; tapLabel.textContent='JARVIS SPEAKING...'; }
+  }
+
+  function handleTapStart(e) { e.preventDefault(); }
+  function handleTapEnd(e)   { e.preventDefault(); handleTapClick(); }
+
+  function handleTapClick() {
+    if(busy) return;
+    if(!SR) { alert('Voice not supported. Please use Chrome.'); return; }
+    if(rec) { rec.stop(); return; }
+
+    rec = new SR();
+    rec.lang='en-US'; rec.interimResults=false; rec.continuous=false;
+    rec.onstart = ()=>{ setTapState('listening'); };
+    rec.onresult = async(e)=>{
+      const text = e.results[0][0].transcript.trim();
+      rec=null;
+      if(!text){ setTapState('idle'); return; 
+if(!text){ setTapState('idle'); return; }
+      busy=true; setTapState('thinking');
+      addMsg('user',text);
+      history.push({role:'user',content:text});
+      const t=addThinking();
+      try {
+        const reply = await askJarvis(history);
+        t.remove(); addMsg('ai',reply);
+        history.push({role:'assistant',content:reply});
+        setTapState('speaking');
+        speak(reply, ()=>{ busy=false; setTapState('idle'); });
+      } catch(err) {
+        t.remove(); addMsg('ai','ERROR: '+err.message);
+        busy=false; setTapState('idle');
+      }
+    };
+    rec.onerror=()=>{ rec=null; busy=false; setTapState('idle'); };
+    rec.onend  =()=>{ if(rec){ rec=null; } if(!busy) setTapState('idle'); };
+    try { rec.start(); } catch(e){ rec=null; setTapState('idle'); }
+  }
+
+  // ── LIVE MODE ──
+  function toggleLive() {
+    if(liveMode) closeLive();
+    else openLive();
+  }
+
+  function openLive() {
+    liveMode = true;
+    liveBtnEl.classList.add('lv-on');
+    liveOverlay.classList.add('active');
+    setLiveState('idle');
+    liveText.textContent = '';
+    setTimeout(()=> startLiveListen(), 700);
+  }
+
+  function closeLive() {
+    liveMode = false;
+    liveBtnEl.classList.remove('lv-on');
+    liveOverlay.classList.remove('active');
+    speechSynthesis.cancel();
+    if(liveRec){ try{liveRec.stop();}catch(e){} liveRec=null; }
+    setLiveState('idle');
+  }
+
+  function toggleMute() {
+    liveMuted = !liveMuted;
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = liveMuted ? '🔇 UNMUTE' : '🔊 MUTE';
+    btn.classList.toggle('muted', liveMuted);
+  }
+
+  function setLiveState(state) {
+    liveOrb.className = 'live-orb';
+    if(state==='listening'){ liveOrb.classList.add('listening'); liveLabel.textContent='🎙 LISTENING...'; }
+    if(state==='thinking') { liveOrb.classList.add('thinking');  liveLabel.textContent='⚡ PROCESSING...'; }
+    if(state==='speaking') { liveOrb.classList.add('speaking');  liveLabel.textContent='🔊 JARVIS SPEAKING'; }
+    if(state==='idle')     { liveLabel.textContent='READY'; }
+  }
+
+  function startLiveListen() {
+    if(!liveMode || !SR) return;
+    speechSynthesis.cancel();
+    setLiveState('listening');
+    liveText.textContent = '';
+
+    liveRec = new SR();
+    liveRec.lang='en-US'; liveRec.interimResults=true; liveRec.continuous=false;
+
+    let finalText = '';
+
+    liveRec.onresult = (e)=>{
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal) finalText += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      liveText.textContent = finalText || interim;
+    };
+
+    liveRec.onend = async()=>{
+      liveRec = null;
+      if(!liveMode) return;
+      const text = finalText.trim();
+      if(!text){ setTimeout(()=>{ if(liveMode) startLiveListen(); }, 500); return; }
+
+      setLiveState('thinking');
+      liveText.textContent = '"' + text + '"';
+      addMsg('user', text);
+      history.push({role:'user', content:text});
+      const t = addThinking();
+
+      try {
+        const reply = await askJarvis(history);
+        t.remove(); addMsg('ai', reply);
+        history.push({role:'assistant', content:reply});
+        setLiveState('speaking');
+        liveText.textContent = reply;
+        speak(reply, ()=>{ if(liveMode) setTimeout(startLiveListen, 600); });
+      } catch(err) {
+        t.remove();
+        liveText.textContent = 'Error: ' + err.message;
+        if(liveMode) setTimeout(startLiveListen, 2000);
+      }
+    };
+
+    liveRec.onerror = (e)=>{
+      liveRec = null;
+      if(!liveMode) return;
+      if(e.error==='no-speech'||e.error==='aborted'){
+        setTimeout(()=>{ if(liveMode) startLiveListen(); }, 500);
+      } else {
+        liveText.textContent = 'Mic error: ' + e.error;
+        setTimeout(()=>{ if(liveMode) startLiveListen(); }, 2000);
+      }
+    };
+
+    try { liveRec.start(); } catch(e){ liveRec=null; }
+  }
+
+  // PWA
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
-<!-- ── end LIVE VOICE JS ──────────────────────────────────────── -->
+</body>
+</html>
