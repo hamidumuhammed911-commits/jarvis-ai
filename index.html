@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="JARVIS" />
   <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <title>JARVIS</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
   <style>
@@ -18,6 +19,7 @@
       --accent: #00d4ff;
       --accent2: #0088cc;
       --accent3: #ff6b00;
+      --green: #00ff88;
       --text: #c8e8ff;
       --text-dim: #4a7a99;
       --glow: 0 0 20px rgba(0,212,255,0.4);
@@ -37,7 +39,6 @@
       position: relative;
     }
 
-    /* Animated grid background */
     body::before {
       content: '';
       position: fixed;
@@ -50,7 +51,6 @@
       z-index: 0;
     }
 
-    /* Radial glow behind header */
     body::after {
       content: '';
       position: fixed;
@@ -77,131 +77,88 @@
       justify-content: space-between;
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .logo { display: flex; align-items: center; gap: 10px; }
 
     .logo-ring {
-      width: 36px;
-      height: 36px;
+      width: 36px; height: 36px;
       border-radius: 50%;
       border: 2px solid var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       box-shadow: var(--glow);
       position: relative;
       animation: spin-ring 8s linear infinite;
     }
-
     .logo-ring::before {
       content: '';
-      position: absolute;
-      inset: 3px;
+      position: absolute; inset: 3px;
       border-radius: 50%;
       border: 1px solid rgba(0,212,255,0.3);
     }
-
     .logo-dot {
-      width: 8px;
-      height: 8px;
+      width: 8px; height: 8px;
       border-radius: 50%;
       background: var(--accent);
       box-shadow: var(--glow-strong);
       animation: pulse-dot 2s ease-in-out infinite;
     }
 
-    @keyframes spin-ring {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
+    @keyframes spin-ring { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(0.8); }
+      0%,100% { opacity:1; transform:scale(1); }
+      50% { opacity:0.6; transform:scale(0.8); }
     }
 
     .logo-text {
       font-family: 'Orbitron', monospace;
-      font-weight: 900;
-      font-size: 20px;
+      font-weight: 900; font-size: 20px;
       letter-spacing: 4px;
       color: var(--accent);
       text-shadow: var(--glow);
     }
 
     .status-badge {
-      font-size: 10px;
-      color: var(--accent);
+      font-size: 10px; color: var(--accent);
       border: 1px solid rgba(0,212,255,0.3);
-      padding: 3px 8px;
-      border-radius: 20px;
+      padding: 3px 8px; border-radius: 20px;
       letter-spacing: 1px;
       animation: blink-border 3s ease-in-out infinite;
     }
-
     @keyframes blink-border {
-      0%, 100% { border-color: rgba(0,212,255,0.3); }
+      0%,100% { border-color: rgba(0,212,255,0.3); }
       50% { border-color: rgba(0,212,255,0.8); box-shadow: 0 0 8px rgba(0,212,255,0.3); }
     }
 
     /* ── MESSAGES ── */
     #messages {
-      flex: 1;
-      overflow-y: auto;
+      flex: 1; overflow-y: auto;
       padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      position: relative;
-      z-index: 1;
+      display: flex; flex-direction: column; gap: 12px;
+      position: relative; z-index: 1;
       scroll-behavior: smooth;
     }
-
     #messages::-webkit-scrollbar { width: 3px; }
-    #messages::-webkit-scrollbar-track { background: transparent; }
     #messages::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
 
-    .msg {
-      max-width: 88%;
-      animation: msg-in 0.3s ease-out;
-    }
-
-    @keyframes msg-in {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .msg { max-width: 88%; animation: msg-in 0.3s ease-out; }
+    @keyframes msg-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
     .msg.user { align-self: flex-end; }
     .msg.ai { align-self: flex-start; }
 
-    .msg-label {
-      font-size: 9px;
-      letter-spacing: 2px;
-      margin-bottom: 4px;
-      opacity: 0.5;
-    }
-
+    .msg-label { font-size: 9px; letter-spacing: 2px; margin-bottom: 4px; opacity: 0.5; }
     .msg.user .msg-label { text-align: right; color: var(--accent3); }
     .msg.ai .msg-label { color: var(--accent); }
 
     .msg-bubble {
-      padding: 10px 14px;
-      border-radius: 2px;
-      line-height: 1.6;
-      font-size: 13.5px;
-      position: relative;
+      padding: 10px 14px; border-radius: 2px;
+      line-height: 1.6; font-size: 13.5px; position: relative;
     }
-
     .msg.user .msg-bubble {
       background: rgba(255,107,0,0.1);
       border: 1px solid rgba(255,107,0,0.25);
       border-right: 3px solid var(--accent3);
       color: #ffd4a8;
     }
-
     .msg.ai .msg-bubble {
       background: rgba(0,212,255,0.05);
       border: 1px solid rgba(0,212,255,0.2);
@@ -209,80 +166,174 @@
       color: var(--text);
     }
 
-    /* Thinking indicator */
-    .thinking {
-      display: flex;
-      gap: 5px;
-      align-items: center;
-      padding: 12px 16px;
-    }
-
+    .thinking { display: flex; gap: 5px; align-items: center; padding: 12px 16px; }
     .thinking span {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
       background: var(--accent);
       animation: think 1.2s ease-in-out infinite;
     }
-
     .thinking span:nth-child(2) { animation-delay: 0.2s; }
     .thinking span:nth-child(3) { animation-delay: 0.4s; }
-
     @keyframes think {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 6px var(--accent); }
+      0%,100% { opacity:0.2; transform:scale(0.8); }
+      50% { opacity:1; transform:scale(1.2); box-shadow:0 0 6px var(--accent); }
     }
 
     /* ── WELCOME ── */
-    .welcome {
-      text-align: center;
-      padding: 40px 20px;
-      opacity: 0.6;
-    }
-
+    .welcome { text-align: center; padding: 40px 20px; opacity: 0.6; }
     .welcome-title {
       font-family: 'Orbitron', monospace;
-      font-size: 28px;
-      font-weight: 900;
-      color: var(--accent);
-      text-shadow: var(--glow-strong);
-      letter-spacing: 6px;
-      margin-bottom: 8px;
+      font-size: 28px; font-weight: 900;
+      color: var(--accent); text-shadow: var(--glow-strong);
+      letter-spacing: 6px; margin-bottom: 8px;
     }
-
-    .welcome-sub {
-      font-size: 11px;
-      letter-spacing: 2px;
-      color: var(--text-dim);
-    }
-
+    .welcome-sub { font-size: 11px; letter-spacing: 2px; color: var(--text-dim); }
     .welcome-line {
-      width: 80px;
-      height: 1px;
+      width: 80px; height: 1px;
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
       margin: 16px auto;
     }
 
+    /* ── LIVE VOICE OVERLAY ── */
+    #liveOverlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 200;
+      background: rgba(2,10,20,0.97);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+    #liveOverlay.active { display: flex; }
+
+    .live-orb-wrap { position: relative; width: 160px; height: 160px; }
+
+    .live-orb {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: radial-gradient(circle at 40% 35%, rgba(0,212,255,0.18), rgba(0,212,255,0.03));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 54px;
+      box-shadow: 0 0 40px rgba(0,212,255,0.3), inset 0 0 30px rgba(0,212,255,0.05);
+      transition: all 0.3s ease;
+    }
+
+    /* rings */
+    .live-orb::before, .live-orb::after {
+      content: '';
+      position: absolute; border-radius: 50%;
+      border: 1px solid rgba(0,212,255,0.2);
+      animation: ring-expand 2.5s ease-out infinite;
+    }
+    .live-orb::before { inset: -16px; animation-delay: 0s; }
+    .live-orb::after  { inset: -32px; animation-delay: 0.8s; }
+
+    @keyframes ring-expand {
+      0%   { opacity: 0.6; transform: scale(1); }
+      100% { opacity: 0;   transform: scale(1.15); }
+    }
+
+    /* state variants */
+    .live-orb.listening {
+      border-color: var(--accent);
+      box-shadow: 0 0 60px rgba(0,212,255,0.5), inset 0 0 40px rgba(0,212,255,0.08);
+      animation: orb-listen 1.4s ease-in-out infinite;
+    }
+    @keyframes orb-listen {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.04); box-shadow: 0 0 80px rgba(0,212,255,0.7), inset 0 0 40px rgba(0,212,255,0.1); }
+    }
+
+    .live-orb.thinking {
+      border-color: #ffd700;
+      box-shadow: 0 0 50px rgba(255,215,0,0.4), inset 0 0 30px rgba(255,215,0,0.05);
+      animation: orb-think 0.8s ease-in-out infinite;
+    }
+    @keyframes orb-think {
+      0%,100% { transform: scale(1) rotate(0deg); }
+      50%      { transform: scale(1.02) rotate(2deg); }
+    }
+
+    .live-orb.speaking {
+      border-color: var(--green);
+      box-shadow: 0 0 60px rgba(0,255,136,0.5), inset 0 0 40px rgba(0,255,136,0.08);
+      animation: orb-speak 0.5s ease-in-out infinite;
+    }
+    @keyframes orb-speak {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.06); }
+    }
+
+    .live-state-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px; letter-spacing: 4px;
+      color: var(--accent);
+      min-height: 20px;
+      text-align: center;
+      transition: color 0.3s;
+    }
+    .live-state-label.thinking { color: #ffd700; }
+    .live-state-label.speaking { color: var(--green); }
+
+    .live-transcript {
+      max-width: 80%;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-dim);
+      min-height: 40px;
+      line-height: 1.6;
+      transition: color 0.3s;
+    }
+
+    .btn-live-close {
+      position: absolute;
+      top: 20px; right: 20px;
+      background: none;
+      border: 1px solid rgba(0,212,255,0.3);
+      color: var(--text-dim);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px; letter-spacing: 2px;
+      padding: 6px 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-live-close:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* wave bars for speaking visual */
+    .wave-bars {
+      display: flex; gap: 4px; align-items: center;
+      height: 32px; opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .wave-bars.active { opacity: 1; }
+    .wave-bars span {
+      width: 3px; background: var(--green); border-radius: 2px;
+      animation: wave-bar 0.6s ease-in-out infinite;
+    }
+    .wave-bars span:nth-child(1) { animation-delay: 0s;    height: 8px; }
+    .wave-bars span:nth-child(2) { animation-delay: 0.1s;  height: 20px; }
+    .wave-bars span:nth-child(3) { animation-delay: 0.2s;  height: 32px; }
+    .wave-bars span:nth-child(4) { animation-delay: 0.15s; height: 24px; }
+    .wave-bars span:nth-child(5) { animation-delay: 0.05s; height: 12px; }
+    @keyframes wave-bar {
+      0%,100% { transform: scaleY(0.4); opacity: 0.5; }
+      50%      { transform: scaleY(1);   opacity: 1;   }
+    }
+
     /* ── INPUT AREA ── */
     footer {
-      position: relative;
-      z-index: 10;
+      position: relative; z-index: 10;
       padding: 12px 16px 20px;
       border-top: 1px solid rgba(0,212,255,0.15);
       background: rgba(2,10,20,0.97);
       backdrop-filter: blur(10px);
     }
 
-    .input-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-
-    .input-wrap {
-      flex: 1;
-      position: relative;
-    }
+    .input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .input-wrap { flex: 1; position: relative; }
 
     #userInput {
       width: 100%;
@@ -293,164 +344,74 @@
       font-family: 'Share Tech Mono', monospace;
       font-size: 14px;
       padding: 11px 14px;
-      resize: none;
-      outline: none;
+      resize: none; outline: none;
       line-height: 1.5;
-      max-height: 100px;
-      min-height: 44px;
+      max-height: 100px; min-height: 44px;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-
-    #userInput:focus {
-      border-color: rgba(0,212,255,0.5);
-      box-shadow: 0 0 12px rgba(0,212,255,0.1);
-    }
-
+    #userInput:focus { border-color: rgba(0,212,255,0.5); box-shadow: 0 0 12px rgba(0,212,255,0.1); }
     #userInput::placeholder { color: var(--text-dim); }
 
     .btn-send {
-      width: 44px;
-      height: 44px;
-      border-radius: 2px;
+      width: 44px; height: 44px; border-radius: 2px;
       border: 1px solid var(--accent);
       background: rgba(0,212,255,0.08);
-      color: var(--accent);
-      font-size: 18px;
+      color: var(--accent); font-size: 18px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
       box-shadow: 0 0 10px rgba(0,212,255,0.15);
     }
-
-    .btn-send:active {
-      background: rgba(0,212,255,0.2);
-      box-shadow: var(--glow);
-      transform: scale(0.95);
-    }
-
-    .btn-send:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
+    .btn-send:active { background: rgba(0,212,255,0.2); box-shadow: var(--glow); transform: scale(0.95); }
+    .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .btn-voice {
-      width: 44px;
-      height: 44px;
-      border-radius: 2px;
+      width: 44px; height: 44px; border-radius: 2px;
       border: 1px solid rgba(255,107,0,0.4);
       background: rgba(255,107,0,0.06);
-      color: var(--accent3);
-      font-size: 18px;
+      color: var(--accent3); font-size: 18px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
     }
-
     .btn-voice.listening {
       border-color: var(--accent3);
       background: rgba(255,107,0,0.15);
       box-shadow: 0 0 16px rgba(255,107,0,0.4);
       animation: voice-pulse 1s ease-in-out infinite;
     }
-
     @keyframes voice-pulse {
-      0%, 100% { box-shadow: 0 0 10px rgba(255,107,0,0.3); }
-      50% { box-shadow: 0 0 24px rgba(255,107,0,0.7); }
+      0%,100% { box-shadow: 0 0 10px rgba(255,107,0,0.3); }
+      50%      { box-shadow: 0 0 24px rgba(255,107,0,0.7); }
     }
 
-    .btn-voice:active { transform: scale(0.95); }
-
-    /* ── LIVE VOICE BUTTON ── */
-    .btn-live {
-      position: fixed;
-      bottom: 100px;
-      right: 20px;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      border: 2px solid var(--accent);
-      background: rgba(0,212,255,0.1);
-      color: var(--accent);
-      font-size: 26px;
+    /* Live conversation button in footer */
+    .btn-live-trigger {
+      width: 44px; height: 44px; border-radius: 2px;
+      border: 1px solid rgba(0,255,136,0.4);
+      background: rgba(0,255,136,0.06);
+      color: var(--green); font-size: 18px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-      box-shadow: var(--glow);
-      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
     }
+    .btn-live-trigger:active { background: rgba(0,255,136,0.15); transform: scale(0.95); }
 
-    .btn-live.active {
-      background: rgba(0,212,255,0.25);
-      box-shadow: var(--glow-strong);
-      animation: live-pulse 1s ease-in-out infinite;
-    }
+    /* corner decorations */
+    .corner { position: fixed; width: 20px; height: 20px; opacity: 0.4; z-index: 5; }
+    .corner.tl { top:8px; left:8px; border-top:1px solid var(--accent); border-left:1px solid var(--accent); }
+    .corner.tr { top:8px; right:8px; border-top:1px solid var(--accent); border-right:1px solid var(--accent); }
+    .corner.bl { bottom:8px; left:8px; border-bottom:1px solid var(--accent); border-left:1px solid var(--accent); }
+    .corner.br { bottom:8px; right:8px; border-bottom:1px solid var(--accent); border-right:1px solid var(--accent); }
 
-    .btn-live.speaking {
-      border-color: #00ff88;
-      background: rgba(0,255,136,0.15);
-      box-shadow: 0 0 30px rgba(0,255,136,0.5);
-    }
-
-    @keyframes live-pulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(0,212,255,0.4); }
-      50% { transform: scale(1.08); box-shadow: 0 0 40px rgba(0,212,255,0.8); }
-    }
-
-    .live-status {
-      position: fixed;
-      bottom: 172px;
-      right: 10px;
-      font-size: 9px;
-      letter-spacing: 1px;
-      color: var(--accent);
-      text-align: center;
-      width: 84px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      z-index: 50;
-    }
-
-    .live-status.visible { opacity: 1; }
-
-    /* Scan line effect */
     .scan-line {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
+      position: fixed; top:0; left:0; right:0; height:2px;
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
       opacity: 0.4;
       animation: scan 4s linear infinite;
-      pointer-events: none;
-      z-index: 100;
+      pointer-events: none; z-index: 100;
     }
-
-    @keyframes scan {
-      from { top: 0; opacity: 0.4; }
-      to { top: 100%; opacity: 0; }
-    }
-
-    /* corner decorations */
-    .corner {
-      position: fixed;
-      width: 20px;
-      height: 20px;
-      opacity: 0.4;
-      z-index: 5;
-    }
-    .corner.tl { top: 8px; left: 8px; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); }
-    .corner.tr { top: 8px; right: 8px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); }
-    .corner.bl { bottom: 8px; left: 8px; border-bottom: 1px solid var(--accent); border-left: 1px solid var(--accent); }
-    .corner.br { bottom: 8px; right: 8px; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); }
+    @keyframes scan { from { top:0; opacity:0.4; } to { top:100%; opacity:0; } }
   </style>
 </head>
 <body>
@@ -460,6 +421,19 @@
   <div class="corner tr"></div>
   <div class="corner bl"></div>
   <div class="corner br"></div>
+
+  <!-- ── LIVE VOICE OVERLAY ── -->
+  <div id="liveOverlay">
+    <button class="btn-live-close" id="liveCloseBtn">✕ END SESSION</button>
+    <div class="live-orb-wrap">
+      <div class="live-orb" id="liveOrb">🎙️</div>
+    </div>
+    <div class="live-state-label" id="liveStateLabel">TAP ORB TO START</div>
+    <div class="wave-bars" id="waveBars">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="live-transcript" id="liveTranscript">I'm ready when you are, Boss Muhammed Aali.</div>
+  </div>
 
   <header>
     <div class="logo">
@@ -478,51 +452,44 @@
     </div>
   </div>
 
-  <div class="live-status" id="liveStatus">LISTENING</div>
-  <button class="btn-live" id="liveBtn" title="Live voice conversation">🎙️</button>
-
   <footer>
     <div class="input-row">
-      <button class="btn-voice" id="voiceBtn" title="Voice input">🎤</button>
+      <button class="btn-voice" id="voiceBtn" title="Quick voice input">🎤</button>
       <div class="input-wrap">
         <textarea id="userInput" rows="1" placeholder="Enter command..."></textarea>
       </div>
+      <button class="btn-live-trigger" id="liveTriggerBtn" title="Live conversation">💬</button>
       <button class="btn-send" id="sendBtn" title="Send">⚡</button>
     </div>
   </footer>
 
   <script>
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const voiceBtn = document.getElementById('voiceBtn');
+    // ── CONFIG ──
+    const SYSTEM_PROMPT = `You are JARVIS, a highly intelligent AI assistant serving Muhammed Aali, your boss. Always address him as "Boss Muhammed Aali" or "Sir". Greet him warmly by name. You are precise, helpful, and slightly formal but friendly. Keep responses concise and clear — max 3 sentences unless more detail is needed. Speak naturally as if having a real conversation.`;
 
-    const SYSTEM_PROMPT = `You are JARVIS, a highly intelligent AI assistant serving Muhammed Aali, your boss. Always address him as "Boss Muhammed Aali" or "Sir". Greet him warmly by name. You are precise, helpful, and slightly formal but friendly. Keep responses concise and clear. Speak naturally as if having a real conversation.`;
+    // ── ELEMENTS ──
+    const messagesEl   = document.getElementById('messages');
+    const inputEl      = document.getElementById('userInput');
+    const sendBtn      = document.getElementById('sendBtn');
+    const voiceBtn     = document.getElementById('voiceBtn');
+    const liveTrigger  = document.getElementById('liveTriggerBtn');
+    const liveOverlay  = document.getElementById('liveOverlay');
+    const liveCloseBtn = document.getElementById('liveCloseBtn');
+    const liveOrb      = document.getElementById('liveOrb');
+    const liveLabel    = document.getElementById('liveStateLabel');
+    const waveBars     = document.getElementById('waveBars');
+    const liveTranscript = document.getElementById('liveTranscript');
 
     let conversationHistory = [];
-    let isListening = false;
+    let isBusy = false;
 
-    // Auto-resize textarea
-    inputEl.addEventListener('input', () => {
-      inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
-    });
-
-    // Send on Enter (not Shift+Enter)
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    sendBtn.addEventListener('click', sendMessage);
+    // ── HELPERS ──
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
 
     function addMessage(role, text) {
-      // Remove welcome screen on first message
-      const welcome = messagesEl.querySelector('.welcome');
-      if (welcome) welcome.remove();
-
+      document.querySelector('.welcome')?.remove();
       const div = document.createElement('div');
       div.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
       div.innerHTML = `
@@ -531,163 +498,65 @@
       `;
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
-      return div;
     }
 
     function addThinking() {
-      const welcome = messagesEl.querySelector('.welcome');
-      if (welcome) welcome.remove();
-
+      document.querySelector('.welcome')?.remove();
       const div = document.createElement('div');
       div.className = 'msg ai';
-      div.innerHTML = `
-        <div class="msg-label">JARVIS</div>
-        <div class="msg-bubble thinking"><span></span><span></span><span></span></div>
-      `;
+      div.innerHTML = `<div class="msg-label">JARVIS</div>
+        <div class="msg-bubble thinking"><span></span><span></span><span></span></div>`;
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return div;
     }
 
-    function escapeHtml(str) {
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
+    // ── TTS ──
+    function getVoice() {
+      const voices = window.speechSynthesis.getVoices();
+      return voices.find(v => v.name.includes('Google UK English Female'))
+          || voices.find(v => v.name.includes('Samantha'))
+          || voices.find(v => v.name.includes('Zira'))
+          || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+          || voices.find(v => v.lang.startsWith('en'))
+          || voices[0];
     }
 
-    function speak(text) {
+    function speak(text, onEnd) {
       window.speechSynthesis.cancel();
       const clean = text.replace(/[*_`#]/g, '');
-      const utterance = new SpeechSynthesisUtterance(clean);
-      utterance.rate = 0.95;
-      utterance.pitch = 0.85;
-      utterance.volume = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find(v => v.name.includes('Google UK English Female'))
-        || voices.find(v => v.name.includes('Samantha'))
-        || voices.find(v => v.name.includes('Zira'))
-        || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
-        || voices.find(v => v.lang.startsWith('en'))
-        || voices[0];
-      if (preferred) utterance.voice = preferred;
-      window.speechSynthesis.speak(utterance);
+      const utt = new SpeechSynthesisUtterance(clean);
+      utt.rate = 0.95; utt.pitch = 1.1; utt.volume = 1;
+      const v = getVoice();
+      if (v) utt.voice = v;
+      if (onEnd) utt.onend = onEnd;
+      window.speechSynthesis.speak(utt);
     }
 
-    // Load voices
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 
-    async function sendMessage() {
-      const text = inputEl.value.trim();
-      if (!text) return;
+    // ── API CALL ──
+    async function askJarvis(messages) {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, system: SYSTEM_PROMPT })
+      });
+      const data = await res.json();
+      if (!data.reply) throw new Error(data.error || 'Unknown error');
+      return data.reply;
+    }
 
-      inputEl.value = '';
+    // ── TEXT CHAT ──
+    inputEl.addEventListener('input', () => {
       inputEl.style.height = 'auto';
-      sendBtn.disabled = true;
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
+    });
 
-      addMessage('user', text);
-      conversationHistory.push({ role: 'user', content: text });
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
 
-      const thinkingEl = addThinking();
+    sendBtn.addEventListener('click', sendMessage);
 
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: conversationHistory,
-            system: SYSTEM_PROMPT
-          })
-        });
-
-        const data = await res.json();
-        thinkingEl.remove();
-
-        if (data.reply) {
-          addMessage('ai', data.reply);
-          speak(data.reply);
-          conversationHistory.push({ role: 'assistant', content: data.reply });
-        } else {
-          addMessage('ai', 'ERROR: ' + (data.error || 'Unknown error occurred.'));
-        }
-      } catch (err) {
-        thinkingEl.remove();
-        addMessage('ai', 'CONNECTION ERROR: Unable to reach server.');
-      }
-
-      sendBtn.disabled = false;
-      inputEl.focus();
-    }
-
-    // ── LIVE VOICE CONVERSATION ──
-    const liveBtn = document.getElementById('liveBtn');
-    const liveStatus = document.getElementById('liveStatus');
-    let liveMode = false;
-    let liveRecognition = null;
-
-    function setLiveStatus(text, show) {
-      liveStatus.textContent = text;
-      liveStatus.classList.toggle('visible', show);
-    }
-
-    function startLiveListening() {
-      if (!liveMode) return;
-      if (!liveRecognition) return;
-      setLiveStatus('LISTENING', true);
-      liveBtn.classList.add('active');
-      liveBtn.classList.remove('speaking');
-      liveBtn.textContent = '🎙️';
-      try { liveRecognition.start(); } catch(e) {}
-    }
-
-    if (SpeechRecognition) {
-      liveRecognition = new SpeechRecognition();
-      liveRecognition.lang = 'en-US';
-      liveRecognition.interimResults = false;
-      liveRecognition.continuous = false;
-
-      liveRecognition.onresult = async (e) => {
-        const text = e.results[0][0].transcript;
-        if (!text.trim()) { startLiveListening(); return; }
-
-        setLiveStatus('THINKING', true);
-        liveBtn.classList.remove('active');
-        liveBtn.textContent = '⏳';
-
-        addMessage('user', text);
-        conversationHistory.push({ role: 'user', content: text });
-        const thinkingEl = addThinking();
-
-        try {
-          const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: conversationHistory, system: SYSTEM_PROMPT })
-          });
-          const data = await res.json();
-          thinkingEl.remove();
-
-          if (data.reply) {
-            addMessage('ai', data.reply);
-            conversationHistory.push({ role: 'assistant', content: data.reply });
-
-            setLiveStatus('SPEAKING', true);
-            liveBtn.classList.add('speaking');
-            liveBtn.textContent = '🔊';
-
-            window.speechSynthesis.cancel();
-            const clean = data.reply.replace(/[*_`#]/g, '');
-            const utterance = new SpeechSynthesisUtterance(clean);
-            utterance.rate = 0.95;
-            utterance.pitch = 1.1;
-            utterance.volume = 1;
-            const voices = window.speechSynthesis.getVoices();
-            const preferred = voices.find(v => v.name.includes('Google UK English Female'))
-              || voices.find(v => v.name.includes('Samantha'))
-              || voices.find(v => v.name.includes('Zira'))
-              || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
-              || voices.find(v => v.lang.startsWith('en'))
-              || voices[0];
-            if (preferred) utterance.voice = preferred;
-            utterance.onend = () => { if (liveMode) startLiveListening()
+    async function sendMessage() {
