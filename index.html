@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>JARVIS CORE SYSTEM</title>
+<title>JARVIS CORE</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 
@@ -28,6 +28,7 @@ body{
   background:radial-gradient(circle,#071424,#020a14);
   color:var(--text);
   font-family:var(--font-body);
+  height:100vh;
   overflow:hidden;
 }
 
@@ -42,14 +43,14 @@ body{
   border-bottom:1px solid rgba(0,212,255,0.2);
 }
 
-/* MAIN HUD */
+/* MAIN */
 .hud{
   display:flex;
   flex-direction:column;
   height:100vh;
 }
 
-/* CENTER */
+/* CENTER HOLOGRAM */
 .center{
   flex:1;
   display:flex;
@@ -58,7 +59,7 @@ body{
   position:relative;
 }
 
-/* HOLOGRAM ORB */
+/* ORB */
 .orb{
   width:170px;
   height:170px;
@@ -77,7 +78,7 @@ body{
   position:absolute;
   inset:-50px;
   border-radius:50%;
-  border:1px solid rgba(0,212,255,0.25);
+  border:1px solid rgba(0,212,255,0.2);
   animation:spin 8s linear infinite;
 }
 
@@ -90,7 +91,7 @@ body{
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 
-/* SCAN */
+/* SCAN LINE */
 .scan{
   position:absolute;
   width:100%;
@@ -105,7 +106,7 @@ body{
   100%{top:100%;opacity:0}
 }
 
-/* CHAT HUD */
+/* CHAT */
 .chat{
   position:absolute;
   bottom:10px;
@@ -126,15 +127,8 @@ body{
   border:1px solid rgba(0,212,255,0.2);
 }
 
-.user{
-  align-self:flex-end;
-  background:rgba(0,102,255,0.25);
-}
-
-.ai{
-  align-self:flex-start;
-  background:rgba(0,212,255,0.08);
-}
+.user{align-self:flex-end;background:rgba(0,102,255,0.25);}
+.ai{align-self:flex-start;background:rgba(0,212,255,0.08);}
 
 /* INPUT */
 .inputBar{
@@ -151,8 +145,8 @@ input{
   border:1px solid rgba(0,212,255,0.2);
   background:rgba(0,0,0,0.4);
   color:white;
-  font-family:var(--font-body);
   outline:none;
+  font-family:var(--font-body);
 }
 
 button{
@@ -188,7 +182,7 @@ button{
     <div id="status">ONLINE</div>
   </div>
 
-  <div class="center" id="center">
+  <div class="center">
     <div class="scan"></div>
     <div class="orb"></div>
     <div class="chat" id="chat"></div>
@@ -204,56 +198,81 @@ button{
 
 <script>
 
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+
 /* CHAT */
 function addMsg(text,type){
   const d=document.createElement("div");
   d.className="msg "+type;
   d.innerText=text;
-  document.getElementById("chat").appendChild(d);
+  chat.appendChild(d);
+  chat.scrollTop=chat.scrollHeight;
 }
 
-/* SEND */
+/* SEND (FIXED + SAFE) */
 async function send(){
-  const input=document.getElementById("input");
-  const text=input.value;
+  const text=input.value.trim();
   if(!text)return;
 
   addMsg(text,"user");
   input.value="";
 
-  const res=await fetch("/api/chat",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({messages:[{role:"user",content:text}]})
-  });
+  try{
+    const res=await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        messages:[{role:"user",content:text}]
+      })
+    });
 
-  const data=await res.json();
-  addMsg(data.reply,"ai");
+    const data=await res.json();
+
+    const reply =
+      data.reply || data.message || data.content || "No response";
+
+    addMsg(reply,"ai");
+
+  }catch(e){
+    addMsg("SYSTEM OFFLINE","ai");
+  }
 }
 
-/* MIC */
+/* VOICE */
 let rec;
+let listening=false;
 
 function mic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR)return alert("Mic not supported");
+  if(!SR)return alert("No voice support");
+
+  if(listening && rec){
+    rec.stop();
+    return;
+  }
 
   rec=new SR();
   rec.lang="en-US";
 
+  listening=true;
   document.body.classList.add("listening");
 
   rec.onresult=(e)=>{
     const text=e.results[0][0].transcript;
-    document.getElementById("input").value=text;
+    input.value=text;
     send();
   };
 
-  rec.onend=()=>{
-    document.body.classList.remove("listening");
-  };
+  rec.onerror=stop;
+  rec.onend=stop;
 
   rec.start();
+}
+
+function stop(){
+  listening=false;
+  document.body.classList.remove("listening");
 }
 
 </script>
