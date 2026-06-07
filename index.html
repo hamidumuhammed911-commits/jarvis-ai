@@ -1,281 +1,567 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+  <meta charset="UTF-8"/>  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>  
+  <meta name="apple-mobile-web-app-capable" content="yes"/>  
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>  
+  <meta name="apple-mobile-web-app-title" content="JARVIS"/>  
+  <meta name="mobile-web-app-capable" content="yes"/>  
+  <meta name="theme-color" content="#020a14"/>  
+  <title>JARVIS</title>  
+  <link rel="manifest" href="manifest.json"/>  
+  <style>  
+    :root {  
+      --bg:      #020a14;  
+      --surface: #050f1e;  
+      --border:  #0a2040;  
+      --accent:  #00d4ff;  
+      --accent2: #0066cc;  
+      --danger:  #ff3333;  
+      --text:    #c8e8ff;  
+      --dim:     #4a7a9b;  
+      --glow:    0 0 20px rgba(0,212,255,0.3);  
+    }  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }  
 
-<title>JARVIS CORE</title>
+body {  
+  background: var(--bg);  
+  color: var(--text);  
+  font-family: 'Courier New', monospace;  
+  height: 100dvh;  
+  overflow: hidden;  
+  display: flex;  
+  flex-direction: column;  
+}  
 
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+/* ── LOCK SCREEN ── */  
+#lockScreen {  
+  position: fixed; inset: 0; z-index: 999;  
+  background: var(--bg);  
+  display: flex; flex-direction: column;  
+  align-items: center; justify-content: center; gap: 24px;  
+}  
+#lockScreen.hidden { display: none; }  
 
-<style>
-:root{
-  --bg:#020a14;
-  --accent:#00d4ff;
-  --accent2:#0066ff;
-  --text:#c8e8ff;
-  --dim:#4a7a9b;
-  --glow:0 0 25px rgba(0,212,255,0.4);
+.lock-title {  
+  font-size: 13px; letter-spacing: 6px;  
+  color: var(--accent); opacity: 0.8;  
+}  
+.lock-logo {  
+  font-size: 28px; font-weight: bold;  
+  letter-spacing: 4px; color: var(--accent);  
+  text-shadow: var(--glow);  
+}  
+.lock-subtitle {  
+  font-size: 10px; letter-spacing: 3px;  
+  color: var(--dim); margin-top: -18px;  
+}  
+.lock-dots {  
+  display: flex; gap: 12px; margin: 8px 0;  
+}  
+.lock-dot {  
+  width: 14px; height: 14px; border-radius: 50%;  
+  border: 1px solid var(--accent);  
+  background: transparent;  
+  transition: background 0.15s, box-shadow 0.15s;  
+}  
+.lock-dot.filled {  
+  background: var(--accent);  
+  box-shadow: 0 0 10px var(--accent);  
+}  
+.lock-grid {  
+  display: grid; grid-template-columns: repeat(3, 1fr);  
+  gap: 10px; width: 220px;  
+}  
+.lock-key {  
+  background: rgba(0,212,255,0.05);  
+  border: 1px solid var(--border);  
+  border-radius: 10px;  
+  color: var(--text); font-family: inherit;  
+  font-size: 20px; font-weight: bold;  
+  padding: 16px; cursor: pointer;  
+  transition: background 0.1s, border-color 0.1s;  
+  user-select: none;  
+}  
+.lock-key:active, .lock-key:hover {  
+  background: rgba(0,212,255,0.15);  
+  border-color: var(--accent);  
+}  
+.lock-del {  
+  font-size: 14px;  
+}  
+#lockError {  
+  font-size: 11px; letter-spacing: 3px;  
+  color: var(--danger); min-height: 16px;  
+}  
+.lock-voice-btn {  
+  background: transparent;  
+  border: 1px solid var(--border);  
+  border-radius: 24px; padding: 10px 24px;  
+  color: var(--dim); font-family: inherit;  
+  font-size: 11px; letter-spacing: 2px;  
+  cursor: pointer; transition: all 0.2s;  
+}  
+.lock-voice-btn.listening {  
+  border-color: var(--danger);  
+  color: var(--danger);  
+  box-shadow: 0 0 12px rgba(255,51,51,0.3);  
+}  
+#lockVoiceStatus {  
+  font-size: 10px; letter-spacing: 2px;  
+  color: var(--dim); min-height: 14px;  
+}  
 
-  --font-ai:'Orbitron',sans-serif;
-  --font-body:'Rajdhani',sans-serif;
-  --font-mono:'Share Tech Mono',monospace;
-}
+/* ── HEADER ── */  
+#header {  
+  display: flex; align-items: center; justify-content: space-between;  
+  padding: 14px 16px 10px;  
+  border-bottom: 1px solid var(--border);  
+  flex-shrink: 0;  
+}  
+.header-logo {  
+  font-size: 15px; font-weight: bold;  
+  letter-spacing: 4px; color: var(--accent);  
+  text-shadow: var(--glow);  
+}  
+.header-status {  
+  display: flex; align-items: center; gap: 6px;  
+  font-size: 9px; letter-spacing: 2px; color: var(--dim);  
+}  
+.status-dot {  
+  width: 6px; height: 6px; border-radius: 50%;  
+  background: #00ff88;  
+  box-shadow: 0 0 6px #00ff88;  
+  animation: pulse 2s infinite;  
+}  
+@keyframes pulse {  
+  0%,100% { opacity: 1; }  
+  50%      { opacity: 0.4; }  
+}  
+#locationBadge {  
+  font-size: 9px; color: var(--dim);  
+  letter-spacing: 1px; display: none;  
+}  
 
-*{margin:0;padding:0;box-sizing:border-box;}
+/* ── MESSAGES ── */  
+#messages {  
+  flex: 1; overflow-y: auto;  
+  padding: 16px; display: flex;  
+  flex-direction: column; gap: 12px;  
+  scroll-behavior: smooth;  
+}  
+#messages::-webkit-scrollbar { width: 3px; }  
+#messages::-webkit-scrollbar-thumb { background: var(--border); }  
 
-body{
-  background:radial-gradient(circle,#071424,#020a14);
-  color:var(--text);
-  font-family:var(--font-body);
-  height:100vh;
-  overflow:hidden;
-}
+.welcome {  
+  display: flex; flex-direction: column;  
+  align-items: center; justify-content: center;  
+  gap: 8px; padding: 40px 0; color: var(--dim);  
+}  
+.welcome-orb {  
+  width: 80px; height: 80px; border-radius: 50%;  
+  border: 1px solid var(--border);  
+  background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.15), transparent 70%);  
+  display: flex; align-items: center; justify-content: center;  
+  font-size: 28px; margin-bottom: 8px;  
+  box-shadow: 0 0 30px rgba(0,212,255,0.1);  
+  animation: breathe 3s ease-in-out infinite;  
+}  
+@keyframes breathe {  
+  0%,100% { box-shadow: 0 0 20px rgba(0,212,255,0.1); }  
+  50%      { box-shadow: 0 0 40px rgba(0,212,255,0.25); }  
+}  
+.welcome-text { font-size: 11px; letter-spacing: 3px; }  
+.welcome-sub  { font-size: 9px;  letter-spacing: 2px; opacity: 0.5; }  
 
-/* TOP BAR */
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  padding:10px 14px;
-  font-family:var(--font-mono);
-  font-size:11px;
-  color:var(--dim);
-  border-bottom:1px solid rgba(0,212,255,0.2);
-}
+.msg {  
+  display: flex; flex-direction: column; gap: 4px;  
+  max-width: 88%; animation: msgIn 0.25s ease;  
+}  
+@keyframes msgIn {  
+  from { opacity: 0; transform: translateY(8px); }  
+  to   { opacity: 1; transform: none; }  
+}  
+.msg.user  { align-self: flex-end; align-items: flex-end; }  
+.msg.ai    { align-self: flex-start; }  
+.msg-label {  
+  font-size: 9px; letter-spacing: 2px; color: var(--dim);  
+  padding: 0 4px;  
+}  
+.msg-bubble {  
+  padding: 10px 14px; border-radius: 12px;  
+  font-size: 13px; line-height: 1.6;  
+  border: 1px solid var(--border);  
+}  
+.msg.user  .msg-bubble { background: rgba(0,102,204,0.2); border-color: var(--accent2); }  
+.msg.ai    .msg-bubble { background: rgba(0,212,255,0.05); border-color: var(--border); }  
 
-/* MAIN */
-.hud{
-  display:flex;
-  flex-direction:column;
-  height:100vh;
-}
+/* ── THINKING DOTS ── */  
+.thinking-bubble {  
+  display: flex; gap: 5px; padding: 14px 18px;  
+  background: rgba(0,212,255,0.05);  
+  border: 1px solid var(--border);  
+  border-radius: 12px; align-items: center;  
+}  
+.thinking-dot {  
+  width: 6px; height: 6px; border-radius: 50%;  
+  background: var(--accent); opacity: 0.4;  
+  animation: think 1.2s infinite;  
+}  
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }  
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }  
+@keyframes think {  
+  0%,100% { opacity: 0.2; transform: scale(1); }  
+  50%      { opacity: 1;   transform: scale(1.3); }  
+}  
 
-/* CENTER HOLOGRAM */
-.center{
-  flex:1;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  position:relative;
-}
+/* ── INPUT BAR ── */  
+#inputBar {  
+  display: flex; gap: 8px; padding: 10px 12px;  
+  border-top: 1px solid var(--border);  
+  flex-shrink: 0; align-items: center;  
+}  
+#userInput {  
+  flex: 1; background: rgba(0,212,255,0.05);  
+  border: 1px solid var(--border); border-radius: 24px;  
+  color: var(--text); font-family: inherit;  
+  font-size: 13px; padding: 10px 16px;  
+  outline: none; transition: border-color 0.2s;  
+}  
+#userInput:focus { border-color: var(--accent2); }  
+#userInput::placeholder { color: var(--dim); }  
 
-/* ORB */
-.orb{
-  width:170px;
-  height:170px;
-  border-radius:50%;
-  background:radial-gradient(circle at 30% 30%,rgba(0,212,255,0.5),transparent 60%);
-  border:2px solid var(--accent);
-  box-shadow:0 0 60px rgba(0,212,255,0.3);
-  animation:float 3s ease-in-out infinite;
-  position:relative;
-}
+.icon-btn {  
+  width: 42px; height: 42px; border-radius: 50%;  
+  background: rgba(0,212,255,0.08);  
+  border: 1px solid var(--border);  
+  color: var(--accent); font-size: 16px;  
+  display: flex; align-items: center; justify-content: center;  
+  cursor: pointer; flex-shrink: 0;  
+  transition: all 0.2s; user-select: none;  
+}  
+.icon-btn:active, .icon-btn.active {  
+  background: rgba(0,212,255,0.2);  
+  border-color: var(--accent);  
+  box-shadow: var(--glow);  
+}  
+.icon-btn.recording {  
+  background: rgba(255,51,51,0.15);  
+  border-color: var(--danger);  
+  animation: recPulse 1s infinite;  
+}  
+@keyframes recPulse {  
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,51,51,0.4); }  
+  50%      { box-shadow: 0 0 0 8px rgba(255,51,51,0); }  
+}  
 
-/* RINGS */
-.orb::before,
-.orb::after{
-  content:"";
-  position:absolute;
-  inset:-50px;
-  border-radius:50%;
-  border:1px solid rgba(0,212,255,0.2);
-  animation:spin 8s linear infinite;
-}
+#sendBtn {  
+  background: rgba(0,212,255,0.12);  
+  border-color: var(--accent2);  
+}  
 
-.orb::after{
-  inset:-90px;
-  border:1px solid rgba(0,212,255,0.1);
-  animation-duration:12s;
-}
+/* ── TAP-TO-SPEAK BIG BUTTON ── */  
+#tapArea {  
+  padding: 10px 12px 6px;  
+  display: flex; flex-direction: column;  
+  align-items: center; gap: 6px; flex-shrink: 0;  
+}  
+#tapBtn {  
+  width: 64px; height: 64px; border-radius: 50%;  
+  background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.25), rgba(0,50,100,0.4));  
+  border: 2px solid var(--accent);  
+  display: flex; flex-direction: column;  
+  align-items: center; justify-content: center;  
+  cursor: pointer; gap: 3px;  
+  transition: all 0.2s;  
+  box-shadow: 0 0 20px rgba(0,212,255,0.15);  
+  user-select: none;  
+}  
+#tapBtn:active, #tapBtn.speaking { transform: scale(0.93); }  
+#tapBtn.listening {  
+  border-color: var(--danger);  
+  box-shadow: 0 0 30px rgba(255,51,51,0.4);  
+  animation: tapPulse 1s infinite;  
+}  
+@keyframes tapPulse {  
+  0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); }  
+  50%      { box-shadow: 0 0 40px rgba(255,51,51,0.6); }  
+}  
+#tapIcon  { font-size: 22px; }  
+#tapLabel { font-size: 8px; letter-spacing: 2px; color: var(--dim); }  
 
-@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+/* ── LIVE MODE OVERLAY ── */  
+#liveOverlay {  
+  position: fixed; inset: 0; z-index: 100;  
+  background: rgba(2,10,20,0.97);  
+  display: none; flex-direction: column;  
+  align-items: center; justify-content: center; gap: 24px;  
+}  
+#liveOverlay.active { display: flex; }  
 
-/* SCAN LINE */
-.scan{
-  position:absolute;
-  width:100%;
-  height:2px;
-  background:rgba(0,212,255,0.3);
-  animation:scan 3s linear infinite;
-}
+#liveOrb {  
+  width: 140px; height: 140px; border-radius: 50%;  
+  border: 2px solid var(--accent);  
+  background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.2), transparent 70%);  
+  display: flex; align-items: center; justify-content: center;  
+  font-size: 48px;  
+  transition: all 0.3s;  
+}  
+#liveOrb.listening { animation: orbPulse 1s infinite; }  
+#liveOrb.thinking  { animation: orbSpin 2s linear infinite; opacity: 0.7; }  
+#liveOrb.speaking  { box-shadow: 0 0 60px rgba(0,212,255,0.5); }  
+@keyframes orbPulse {  
+  0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); border-color: #ff4444; }  
+  50%      { box-shadow: 0 0 50px rgba(255,51,51,0.6); }  
+}  
+@keyframes orbSpin {  
+  from { border-top-color: var(--accent); border-right-color: transparent; }  
+  to   { transform: rotate(360deg); }  
+}  
 
-@keyframes scan{
-  0%{top:0;opacity:0}
-  50%{opacity:1}
-  100%{top:100%;opacity:0}
-}
+#liveLabel {  
+  font-size: 11px; letter-spacing: 4px; color: var(--dim);  
+}  
+#liveText {  
+  font-size: 13px; color: var(--text);  
+  text-align: center; max-width: 300px;  
+  line-height: 1.6; min-height: 40px;  
+  padding: 0 20px;  
+}  
+#liveMicDead {  
+  font-size: 10px; color: var(--danger);  
+  letter-spacing: 2px; display: none;  
+}  
 
-/* CHAT */
-.chat{
-  position:absolute;
-  bottom:10px;
-  left:10px;
-  right:10px;
-  max-height:180px;
-  overflow:auto;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
+.live-controls { display: flex; gap: 16px; }  
+#muteBtn {  
+  background: rgba(255,51,51,0.1);  
+  border: 1px solid rgba(255,51,51,0.3);  
+  color: #ff8888;  
+}  
+#endBtn {  
+  background: rgba(255,255,255,0.05);  
+  border: 1px solid var(--border);  
+}  
 
-.msg{
-  padding:8px 10px;
-  border-radius:10px;
-  font-size:13px;
-  backdrop-filter:blur(10px);
-  border:1px solid rgba(0,212,255,0.2);
-}
+/* ── SCROLLBAR ── */  
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
-.user{align-self:flex-end;background:rgba(0,102,255,0.25);}
-.ai{align-self:flex-start;background:rgba(0,212,255,0.08);}
-
-/* INPUT */
-.inputBar{
-  display:flex;
-  gap:8px;
-  padding:10px;
-  border-top:1px solid rgba(0,212,255,0.2);
-}
-
-input{
-  flex:1;
-  padding:10px;
-  border-radius:20px;
-  border:1px solid rgba(0,212,255,0.2);
-  background:rgba(0,0,0,0.4);
-  color:white;
-  outline:none;
-  font-family:var(--font-body);
-}
-
-button{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  border:1px solid rgba(0,212,255,0.3);
-  background:rgba(0,212,255,0.1);
-  color:var(--accent);
-  cursor:pointer;
-}
-
-/* LISTENING MODE */
-.listening .orb{
-  border-color:red;
-  box-shadow:0 0 80px rgba(255,0,0,0.4);
-  animation:pulse 1s infinite;
-}
-
-@keyframes pulse{
-  0%,100%{transform:scale(1)}
-  50%{transform:scale(1.08)}
-}
-</style>
-</head>
-
-<body>
-
-<div class="hud">
-
-  <div class="topbar">
-    <div>JARVIS CORE ACTIVE</div>
-    <div id="status">ONLINE</div>
-  </div>
-
-  <div class="center">
-    <div class="scan"></div>
-    <div class="orb"></div>
-    <div class="chat" id="chat"></div>
-  </div>
-
-  <div class="inputBar">
-    <input id="input" placeholder="Ask JARVIS..."/>
-    <button onclick="send()">➤</button>
-    <button onclick="mic()">🎤</button>
-  </div>
-
-</div>
-
-<script>
-
-const chat = document.getElementById("chat");
-const input = document.getElementById("input");
-
-/* CHAT */
-function addMsg(text,type){
-  const d=document.createElement("div");
-  d.className="msg "+type;
-  d.innerText=text;
-  chat.appendChild(d);
-  chat.scrollTop=chat.scrollHeight;
-}
-
-/* SEND (FIXED + SAFE) */
-async function send(){
-  const text=input.value.trim();
-  if(!text)return;
-
-  addMsg(text,"user");
-  input.value="";
-
-  try{
-    const res=await fetch("/api/chat",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        messages:[{role:"user",content:text}]
-      })
-    });
-
-    const data=await res.json();
-
-    const reply =
-      data.reply || data.message || data.content || "No response";
-
-    addMsg(reply,"ai");
-
-  }catch(e){
-    addMsg("SYSTEM OFFLINE","ai");
-  }
-}
-
-/* VOICE */
-let rec;
-let listening=false;
-
-function mic(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR)return alert("No voice support");
-
-  if(listening && rec){
-    rec.stop();
-    return;
-  }
-
-  rec=new SR();
-  rec.lang="en-US";
-
-  listening=true;
-  document.body.classList.add("listening");
-
-  rec.onresult=(e)=>{
-    const text=e.results[0][0].transcript;
-    input.value=text;
-    send();
-  };
-
-  rec.onerror=stop;
-  rec.onend=stop;
-
-  rec.start();
-}
-
-function stop(){
-  listening=false;
-  document.body.classList.remove("listening");
-}
-
-</script>
-
-</body>
-</html>
+  </style>  
+</head>  
+<body>  <!-- ═══════════════ LOCK SCREEN ═══════════════ -->  <div id="lockScreen">  
+  <div class="lock-title">J.A.R.V.I.S</div>  
+  <div class="lock-logo">◈ JARVIS ◈</div>  
+  <div class="lock-subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>  
+  <div class="lock-dots">  
+    <div class="lock-dot" id="d0"></div>  
+    <div class="lock-dot" id="d1"></div>  
+    <div class="lock-dot" id="d2"></div>  
+    <div class="lock-dot" id="d3"></div>  
+    <div class="lock-dot" id="d4"></div>  
+    <div class="lock-dot" id="d5"></div>  
+  </div>  
+  <div id="lockError"></div>  
+  <div class="lock-grid">  
+    <button class="lock-key" onclick="lockKey('1')">1</button>  
+    <button class="lock-key" onclick="lockKey('2')">2</button>  
+    <button class="lock-key" onclick="lockKey('3')">3</button>  
+    <button class="lock-key" onclick="lockKey('4')">4</button>  
+    <button class="lock-key" onclick="lockKey('5')">5</button>  
+    <button class="lock-key" onclick="lockKey('6')">6</button>  
+    <button class="lock-key" onclick="lockKey('7')">7</button>  
+    <button class="lock-key" onclick="lockKey('8')">8</button>  
+    <button class="lock-key" onclick="lockKey('9')">9</button>  
+    <button class="lock-key lock-del" onclick="lockDel()">⌫</button>  
+    <button class="lock-key" onclick="lockKey('0')">0</button>  
+    <button class="lock-key" onclick="lockKey('')"></button>  
+  </div>  
+  <button class="lock-voice-btn" id="lockVoiceBtn" onclick="lockVoiceUnlock()">🎤 SPEAK CODE</button>  
+  <div id="lockVoiceStatus"></div>  
+</div>  <!-- ═══════════════ HEADER ═══════════════ -->  <div id="header">  
+  <div class="header-logo">J.A.R.V.I.S</div>  
+  <div id="locationBadge">📍 <span id="locationCity"></span></div>  
+  <div class="header-status">  
+    <div class="status-dot"></div>  
+    <span>ONLINE</span>  
+  </div>  
+</div>  <!-- ═══════════════ MESSAGES ═══════════════ -->  <div id="messages">  
+  <div class="welcome">  
+    <div class="welcome-orb">🤖</div>  
+    <div class="welcome-text">READY FOR YOUR COMMAND</div>  
+    <div class="welcome-sub">TAP THE ORB OR TYPE BELOW</div>  
+  </div>  
+</div>  <!-- ═══════════════ TAP ORB ═══════════════ -->  <div id="tapArea">  
+  <div id="tapBtn" onclick="tapSpeak()">  
+    <div id="tapIcon">🎙️</div>  
+    <div id="tapLabel">TAP TO SPEAK</div>  
+  </div>  
+</div>  <!-- ═══════════════ INPUT BAR ═══════════════ -->  <div id="inputBar">  
+  <input id="userInput" type="text" placeholder="Ask JARVIS..." autocomplete="off"  
+    onkeydown="if(event.key==='Enter')sendMessage(this.value)"/>  
+  <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>  
+  <div class="icon-btn" id="sendBtn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>  
+  <div class="icon-btn" id="liveBtn" onclick="startLiveMode()" title="Live Mode">⚡</div>  
+</div>  <!-- ═══════════════ LIVE MODE OVERLAY ═══════════════ -->  <div id="liveOverlay">  
+  <div id="liveOrb">🎙️</div>  
+  <div id="liveLabel">LISTENING</div>  
+  <div id="liveText">Ready, Boss Muhammed Aali.</div>  
+  <div id="liveMicDead">⚠ MIC LOST — TAP ORB TO RESTART</div>  
+  <div class="live-controls">  
+    <div class="icon-btn" id="muteBtn" onclick="toggleMute()">🔇</div>  
+    <div class="icon-btn" id="endBtn" onclick="endLiveMode()">✕ END</div>  
+  </div>  
+</div>  <script>  
+// ═══════════════════════════════════════════════════════════════════════════  
+// JARVIS v3 — fully patched frontend  
+// ═══════════════════════════════════════════════════════════════════════════  
+  
+// ── PASSCODE (client side only does UI — server verifies) ───────────────────  
+// The real check is in api/chat.js. Here we just show/hide the lock screen  
+// after a server-verified unlock attempt.  
+let lockInput = '';  
+const LOCK_LEN = 6;  
+  
+function lockKey(d) {  
+  if (lockInput.length >= LOCK_LEN) return;  
+  lockInput += d;  
+  updateDots();  
+  if (lockInput.length === LOCK_LEN) setTimeout(verifyPasscode, 100);  
+}  
+  
+function lockDel() {  
+  lockInput = lockInput.slice(0, -1);  
+  updateDots();  
+  document.getElementById('lockError').textContent = '';  
+}  
+  
+function updateDots() {  
+  for (let i = 0; i < LOCK_LEN; i++) {  
+    document.getElementById('d' + i).classList.toggle('filled', i < lockInput.length);  
+  }  
+}  
+  
+async function verifyPasscode() {  
+  try {  
+    const res = await fetch('/api/chat', {  
+      method: 'POST',  
+      headers: { 'Content-Type': 'application/json' },  
+      body: JSON.stringify({ messages: [], passcode: lockInput }),  
+    });  
+    if (res.ok || res.status === 200) {  
+      // Server accepted (it returns a reply even with empty messages if passcode ok)  
+      document.getElementById('lockScreen').classList.add('hidden');  
+    } else {  
+      showLockError();  
+    }  
+  } catch {  
+    // Network error — fall back to client check (dev mode)  
+    showLockError();  
+  }  
+}  
+  
+function showLockError() {  
+  document.getElementById('lockError').textContent = 'ACCESS DENIED';  
+  for (let i = 0; i < LOCK_LEN; i++) document.getElementById('d' + i).classList.remove('filled');  
+  setTimeout(() => {  
+    lockInput = '';  
+    updateDots();  
+    document.getElementById('lockError').textContent = '';  
+  }, 1000);  
+}  
+  
+// ── VOICE UNLOCK ────────────────────────────────────────────────────────────  
+let lockVoiceRec = null;  
+  
+function lockVoiceUnlock() {  
+  const btn    = document.getElementById('lockVoiceBtn');  
+  const status = document.getElementById('lockVoiceStatus');  
+  const SR2    = window.SpeechRecognition || window.webkitSpeechRecognition;  
+  if (!SR2) { document.getElementById('lockError').textContent = 'VOICE NOT SUPPORTED'; return; }  
+  
+  if (lockVoiceRec) {  
+    lockVoiceRec.stop(); lockVoiceRec = null;  
+    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';  
+    status.textContent = ''; return;  
+  }  
+  
+  lockVoiceRec = new SR2();  
+  lockVoiceRec.lang = 'en-US'; lockVoiceRec.interimResults = false;  
+  
+  lockVoiceRec.onstart = () => {  
+    btn.classList.add('listening'); btn.textContent = '🔴 LISTENING...';  
+    status.textContent = 'SAY YOUR CODE NOW';  
+  };  
+  
+  lockVoiceRec.onresult = (e) => {  
+    const said   = e.results[0][0].transcript.trim();  
+    const digits = said.replace(/\s+/g, '')  
+      .replace(/zero/gi,'0').replace(/one/gi,'1').replace(/two/gi,'2')  
+      .replace(/three/gi,'3').replace(/four/gi,'4').replace(/five/gi,'5')  
+      .replace(/six/gi,'6').replace(/seven/gi,'7').replace(/eight/gi,'8')  
+      .replace(/nine/gi,'9').replace(/[^0-9]/g, '');  
+  
+    lockVoiceRec = null;  
+    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';  
+    status.textContent = '';  
+  
+    // Fill dots and verify via server  
+    lockInput = digits.slice(0, LOCK_LEN);  
+    updateDots();  
+    if (lockInput.length === LOCK_LEN) verifyPasscode();  
+    else showLockError();  
+  };  
+  
+  lockVoiceRec.onerror = () => {  
+    lockVoiceRec = null;  
+    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';  
+    status.textContent = '';  
+    document.getElementById('lockError').textContent = 'MIC ERROR — TRY AGAIN';  
+  };  
+  
+  lockVoiceRec.onend = () => {  
+    if (lockVoiceRec) { lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = ''; }  
+  };  
+  
+  try { lockVoiceRec.start(); } catch(e) { lockVoiceRec = null; }  
+}  
+  
+// ── LOCATION ─────────────────────────────────────────────────────────────────  
+let jarvisLocation = null;  
+  
+function initLocation() {  
+  if (!navigator.geolocation) return;  
+  navigator.geolocation.getCurrentPosition(async (pos) => {  
+    const lat = pos.coords.latitude;  
+    const lon = pos.coords.longitude;  
+    let city  = '';  
+    try {  
+      const r = await fetch(  
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,  
+        { headers: { 'User-Agent': 'JARVIS-AI/3.0' } }  
+      );  
+      const d = await r.json();  
+      city = d.address?.city || d.address?.town || d.address?.village || '';  
+    } catch (_) {}  
+    jarvisLocation = { lat, lon, city };  
+  
+    // Show location badge in header  
+    if (city) {  
+      document.getElementById('locationCity').textContent = city.toUpperCase();  
+      document.getElementById('locationBadge').style.display = 'block';  
+    }  
+  }, () => {}, { enableHighAccuracy: false, timeout: 8000 });  
+}  
+  
+initLocation();  
+  
+// ── TTS — fixed voice loading ─────────────────────────────────────────────────  
+let ttsVoice     = null;  
+let ttsReady     = false;  
+let liveMuted    = false;  
+  
+function loadVoices() {  
+  const voices = speechSynthesis.getVoices();  
+  if (!voices.length) return false;  
+  
+  // Priority: female English voice  
+  ttsVoice = voices.find(v => /female|woman|girl/i.test(v.name) && /en/i.test(v.lang))  
+|| voices.find(v => /zira|samantha|victoria|karen|
