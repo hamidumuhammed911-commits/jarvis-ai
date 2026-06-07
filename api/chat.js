@@ -1,150 +1,85 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// JARVIS FRONTEND PATCH v2
-// Paste this block INSIDE your <script> tag, replacing / augmenting the
-// existing sendMessage() and related helpers.
-// ═══════════════════════════════════════════════════════════════════════════
+// api/chat.js — JARVIS backend
+// Model: compound-beta (Groq) — built-in web search, no extra config needed
+// Features: real-time info, location-aware system prompt
 
-// ── 1. LOCATION — fetch once, keep in memory ────────────────────────────────
-let jarvisLocation = null;
-
-function initLocation() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-
-      // Reverse-geocode city name via free Nominatim API
-      let city = '';
-      try {
-        const r = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-          { headers: { 'User-Agent': 'JARVIS-AI/2.0' } }
-        );
-        const d = await r.json();
-        city = d.address?.city || d.address?.town || d.address?.village || '';
-      } catch (_) {}
-
-      jarvisLocation = { lat, lon, city };
-      console.log('[JARVIS] Location locked:', jarvisLocation);
-    },
-    (err) => console.warn('[JARVIS] Location denied:', err.message),
-    { enableHighAccuracy: false, timeout: 8000 }
-  );
-}
-
-// Call immediately on load
-initLocation();
-
-
-// ── 2. WHATSAPP DEEP-LINK HANDLER ───────────────────────────────────────────
-// Parses [WHATSAPP:+1234567890:message text] from JARVIS reply
-function handleWhatsApp(reply) {
-  const match = reply.match(/\[WHATSAPP:([^:]+):([^\]]+)\]/);
-  if (!match) return reply;
-
-  const number  = match[1].replace(/\s/g, '');
-  const message = encodeURIComponent(match[2]);
-  const url     = `https://wa.me/${number.replace('+', '')}?text=${message}`;
-
-  // Small delay so JARVIS finishes speaking first
-  setTimeout(() => window.open(url, '_blank'), 1800);
-
-  // Strip the token from displayed text
-  return reply.replace(match[0], '').trim();
-}
-
-
-// ── 3. TASKER APP-SWITCH HANDLER ────────────────────────────────────────────
-// Requires: Tasker + HTTP Server plugin running on Redmi 14C (port 1820)
-// Task: receive "app" param → launch app by name
-//
-// HOW TO SET UP TASKER:
-//   • Install "HTTP Server" plugin (by loopj) → create server on port 1820
-//   • Add Task: HTTP Server → On Request "/open"
-//     Action: Launch App → %http_query_app   (URL param)
-//   • Make sure phone & your browsing device are on the same Wi-Fi
-//     OR use Tailscale/ngrok for remote access
-//
-// Set TASKER_IP to your Redmi's local IP (find in Settings → Wi-Fi → IP)
-const TASKER_IP   = '192.168.1.100';  // ← CHANGE THIS to your Redmi's IP
-const TASKER_PORT = 1820;
-
-async function handleOpenApp(reply) {
-  const match = reply.match(/\[OPEN_APP:([^\]]+)\]/);
-  if (!match) return reply;
-
-  const appName = match[1].trim();
+export default async function handler(req, res) {
+  // ── CORS ──
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    await fetch(`http://${TASKER_IP}:${TASKER_PORT}/open?app=${encodeURIComponent(appName)}`, {
-      method: 'GET',
-      mode:   'no-cors',   // Tasker doesn't set CORS headers
+    const { messages, location } = req.body;
+
+    // ── BUILD SYSTEM PROMPT ──
+    // Location injected here server-side so it's always in context
+    const now = new Date();
+    const timeStr = now.toLocaleString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long',
+      day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
     });
-    console.log('[JARVIS] Tasker: open app →', appName);
-  } catch (e) {
-    console.warn('[JARVIS] Tasker unreachable:', e.message);
-    // JARVIS already said "Opening X, Sir" — no extra error needed in UI
-  }
 
-  return reply.replace(match[0], '').trim();
-}
+    let locationStr = 'Location unknown';
+    if (location?.lat && location?.lon) {
+      locationStr = `Lat ${location.lat.toFixed(4)}, Lon ${location.lon.toFixed(4)}`;
+      if (location.city) locationStr = `${location.city}, ${location.country || ''} (${locationStr})`;
+    }
 
+    const SYSTEM = `You are JARVIS, a highly intelligent personal AI assistant. You are speaking DIRECTLY to your boss, Muhammed Aali — he is the one talking to you right now. Greet him as "Boss Muhammed Aali" on the first message, then use "Sir" after that. Never refer to him in third person. Never say things like "speak with him" or "on his behalf" — you are always talking directly TO him. Be precise, helpful, slightly formal but friendly. Keep responses concise — max 3 sentences.
 
-// ── 4. MAIN sendMessage() — drop-in replacement ─────────────────────────────
-// Replace your existing sendMessage function with this one.
-async function sendMessage(text) {
-  if (!text || busy) return;
-  busy = true;
+Current date/time: ${timeStr}
+Boss's current location: ${locationStr}
 
-  // Stop any ongoing speech
-  window.speechSynthesis.cancel();
+You have access to real-time web search. Use it automatically when asked about:
+- Current news, weather, sports scores, stock prices
+- Any information that may have changed recently
+- Local information relevant to the boss's location
+Do NOT mention that you are searching — just answer naturally with up-to-date info.`;
 
-  const userText = text.trim();
-  userInput.value = '';
+    // ── CALL GROQ compound-beta ──
+    // compound-beta-mini: 3x faster, single web search per turn — perfect for voice
+    // compound-beta: slower but can do multiple searches — use for research queries
+    // We auto-select based on whether the query looks research-heavy
+    const lastUserMsg = messages?.findLast?.(m => m.role === 'user')?.content || '';
+    const isResearch = /research|compare|summarize|explain.*detail|list.*all|top \d+/i.test(lastUserMsg);
+    const model = isResearch ? 'compound-beta' : 'compound-beta-mini';
 
-  addMsg('user', userText);
-  history.push({ role: 'user', content: userText });
-
-  // Thinking indicator
-  const thinking = addThinking();   // your existing addThinking() helper
-
-  try {
-    const res = await fetch('/api/chat', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+      },
       body: JSON.stringify({
-        messages: history,
-        location: jarvisLocation,   // ← GPS injected here
-      }),
+        model,
+        max_tokens: 300,   // keep concise for voice
+        messages: [
+          { role: 'system', content: SYSTEM },
+          ...(messages || [])
+        ]
+      })
     });
 
-    const data = await res.json();
-    let reply = data.reply || 'No response, Sir.';
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      console.error('Groq error:', err);
+      return res.status(502).json({ error: 'Groq API error', detail: err });
+    }
 
-    // ── Process special tokens ─────────────────────────────────────────────
-    reply = handleWhatsApp(reply);
-    reply = await handleOpenApp(reply);
+    const data = await groqRes.json();
+    const reply = data.choices?.[0]?.message?.content || 'I encountered an issue, Sir.';
+    const toolsUsed = data.choices?.[0]?.message?.executed_tools || [];
 
-    thinking?.remove();
+    return res.status(200).json({
+      reply,
+      model,                         // so frontend can show "⚡ Live Search" badge
+      searched: toolsUsed.length > 0 // true when compound used web search
+    });
 
-    history.push({ role: 'assistant', content: reply });
-    addMsg('assistant', reply);
-    speak(reply);       // your existing speak() TTS helper
-
-  } catch (e) {
-    thinking?.remove();
-    const errMsg = 'Connection error, Sir. Check your network.';
-    addMsg('assistant', errMsg);
-    speak(errMsg);
-    console.error('[JARVIS] sendMessage error:', e);
-  } finally {
-    busy = false;
+  } catch (err) {
+    console.error('Handler error:', err);
+    return res.status(500).json({ error: 'Internal server error', detail: err.message });
   }
 }
-
-
-// ── 5. LIVE MODE ─────────────────────────────────────────────────────────────
-// Your existing liveSendMessage() just calls sendMessage(text) already,
-// so it automatically gets location + WhatsApp + Tasker support. ✅
-// No changes needed there.
