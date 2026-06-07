@@ -366,6 +366,60 @@
 
     .btn-voice:active { transform: scale(0.95); }
 
+    /* ── LIVE VOICE BUTTON ── */
+    .btn-live {
+      position: fixed;
+      bottom: 100px;
+      right: 20px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: rgba(0,212,255,0.1);
+      color: var(--accent);
+      font-size: 26px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      box-shadow: var(--glow);
+      transition: all 0.2s;
+    }
+
+    .btn-live.active {
+      background: rgba(0,212,255,0.25);
+      box-shadow: var(--glow-strong);
+      animation: live-pulse 1s ease-in-out infinite;
+    }
+
+    .btn-live.speaking {
+      border-color: #00ff88;
+      background: rgba(0,255,136,0.15);
+      box-shadow: 0 0 30px rgba(0,255,136,0.5);
+    }
+
+    @keyframes live-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(0,212,255,0.4); }
+      50% { transform: scale(1.08); box-shadow: 0 0 40px rgba(0,212,255,0.8); }
+    }
+
+    .live-status {
+      position: fixed;
+      bottom: 172px;
+      right: 10px;
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: var(--accent);
+      text-align: center;
+      width: 84px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 50;
+    }
+
+    .live-status.visible { opacity: 1; }
+
     /* Scan line effect */
     .scan-line {
       position: fixed;
@@ -424,6 +478,9 @@
     </div>
   </div>
 
+  <div class="live-status" id="liveStatus">LISTENING</div>
+  <button class="btn-live" id="liveBtn" title="Live voice conversation">🎙️</button>
+
   <footer>
     <div class="input-row">
       <button class="btn-voice" id="voiceBtn" title="Voice input">🎤</button>
@@ -440,7 +497,7 @@
     const sendBtn = document.getElementById('sendBtn');
     const voiceBtn = document.getElementById('voiceBtn');
 
-    const SYSTEM_PROMPT = `You are JARVIS, a highly intelligent AI assistant serving Muhammed Aali, your boss. Always address him as "Boss Muhammed Aali" or "Sir". Greet him warmly by name. You are precise, helpful, and slightly formal but friendly. Keep responses concise and clear.`;
+    const SYSTEM_PROMPT = `You are JARVIS, a highly intelligent AI assistant serving Muhammed Aali, your boss. Always address him as "Boss Muhammed Aali" or "Sir". Greet him warmly by name. You are precise, helpful, and slightly formal but friendly. Keep responses concise and clear. Speak naturally as if having a real conversation.`;
 
     let conversationHistory = [];
     let isListening = false;
@@ -500,6 +557,27 @@
         .replace(/\n/g, '<br>');
     }
 
+    function speak(text) {
+      window.speechSynthesis.cancel();
+      const clean = text.replace(/[*_`#]/g, '');
+      const utterance = new SpeechSynthesisUtterance(clean);
+      utterance.rate = 0.95;
+      utterance.pitch = 0.85;
+      utterance.volume = 1;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v => v.name.includes('Google UK English Female'))
+        || voices.find(v => v.name.includes('Samantha'))
+        || voices.find(v => v.name.includes('Zira'))
+        || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+        || voices.find(v => v.lang.startsWith('en'))
+        || voices[0];
+      if (preferred) utterance.voice = preferred;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Load voices
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
     async function sendMessage() {
       const text = inputEl.value.trim();
       if (!text) return;
@@ -528,6 +606,7 @@
 
         if (data.reply) {
           addMessage('ai', data.reply);
+          speak(data.reply);
           conversationHistory.push({ role: 'assistant', content: data.reply });
         } else {
           addMessage('ai', 'ERROR: ' + (data.error || 'Unknown error occurred.'));
@@ -541,36 +620,74 @@
       inputEl.focus();
     }
 
-    // Voice input
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
+    // ── LIVE VOICE CONVERSATION ──
+    const liveBtn = document.getElementById('liveBtn');
+    const liveStatus = document.getElementById('liveStatus');
+    let liveMode = false;
+    let liveRecognition = null;
 
-      recognition.onresult = (e) => {
-        inputEl.value = e.results[0][0].transcript;
-        inputEl.dispatchEvent(new Event('input'));
-      };
-
-      recognition.onend = () => {
-        isListening = false;
-        voiceBtn.classList.remove('listening');
-      };
-
-      voiceBtn.addEventListener('click', () => {
-        if (isListening) {
-          recognition.stop();
-        } else {
-          recognition.start();
-          isListening = true;
-          voiceBtn.classList.add('listening');
-        }
-      });
-    } else {
-      voiceBtn.style.opacity = '0.3';
-      voiceBtn.title = 'Voice not supported in this browser';
+    function setLiveStatus(text, show) {
+      liveStatus.textContent = text;
+      liveStatus.classList.toggle('visible', show);
     }
-  </script>
-</body>
-</html>
+
+    function startLiveListening() {
+      if (!liveMode) return;
+      if (!liveRecognition) return;
+      setLiveStatus('LISTENING', true);
+      liveBtn.classList.add('active');
+      liveBtn.classList.remove('speaking');
+      liveBtn.textContent = '🎙️';
+      try { liveRecognition.start(); } catch(e) {}
+    }
+
+    if (SpeechRecognition) {
+      liveRecognition = new SpeechRecognition();
+      liveRecognition.lang = 'en-US';
+      liveRecognition.interimResults = false;
+      liveRecognition.continuous = false;
+
+      liveRecognition.onresult = async (e) => {
+        const text = e.results[0][0].transcript;
+        if (!text.trim()) { startLiveListening(); return; }
+
+        setLiveStatus('THINKING', true);
+        liveBtn.classList.remove('active');
+        liveBtn.textContent = '⏳';
+
+        addMessage('user', text);
+        conversationHistory.push({ role: 'user', content: text });
+        const thinkingEl = addThinking();
+
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: conversationHistory, system: SYSTEM_PROMPT })
+          });
+          const data = await res.json();
+          thinkingEl.remove();
+
+          if (data.reply) {
+            addMessage('ai', data.reply);
+            conversationHistory.push({ role: 'assistant', content: data.reply });
+
+            setLiveStatus('SPEAKING', true);
+            liveBtn.classList.add('speaking');
+            liveBtn.textContent = '🔊';
+
+            window.speechSynthesis.cancel();
+            const clean = data.reply.replace(/[*_`#]/g, '');
+            const utterance = new SpeechSynthesisUtterance(clean);
+            utterance.rate = 0.95;
+            utterance.pitch = 1.1;
+            utterance.volume = 1;
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.name.includes('Google UK English Female'))
+              || voices.find(v => v.name.includes('Samantha'))
+              || voices.find(v => v.name.includes('Zira'))
+              || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+              || voices.find(v => v.lang.startsWith('en'))
+              || voices[0];
+            if (preferred) utterance.voice = preferred;
+            utterance.onend = () => { if (liveMode) startLiveListening()
