@@ -6,91 +6,116 @@
 
   <title>JARVIS</title>
 
-  <!-- 🌐 FONTS -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet"/>
+  <!-- 🔥 FONTS -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 
   <style>
     :root {
       --bg:#020a14;
+      --surface:#050f1e;
       --border:#0a2040;
       --accent:#00d4ff;
       --accent2:#0066cc;
       --text:#c8e8ff;
       --dim:#4a7a9b;
       --glow:0 0 20px rgba(0,212,255,0.3);
+
+      /* FONT SYSTEM */
+      --font-ai:'Orbitron', sans-serif;
+      --font-body:'Rajdhani', sans-serif;
+      --font-mono:'Share Tech Mono', monospace;
     }
 
     * {
-      box-sizing:border-box;
       margin:0;
       padding:0;
+      box-sizing:border-box;
     }
 
     body {
       background:var(--bg);
       color:var(--text);
-      font-family:'Orbitron','Rajdhani',sans-serif;
+      font-family:var(--font-body);
       height:100dvh;
-      overflow:hidden;
       display:flex;
       flex-direction:column;
+      overflow:hidden;
     }
 
     /* HEADER */
     #header {
       display:flex;
       justify-content:space-between;
-      padding:12px;
-      border-bottom:1px solid var(--border);
       align-items:center;
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
     }
 
-    .header-logo {
-      font-family:'Orbitron',sans-serif;
-      letter-spacing:4px;
+    .logo {
+      font-family:var(--font-ai);
+      letter-spacing:5px;
+      font-size:16px;
       color:var(--accent);
       text-shadow:var(--glow);
     }
 
-    /* CHAT */
+    .status {
+      font-family:var(--font-mono);
+      font-size:11px;
+      color:var(--dim);
+    }
+
+    /* CHAT AREA */
     #chat {
       flex:1;
       overflow:auto;
       padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
 
     .msg {
-      margin:8px 0;
+      max-width:85%;
+      padding:10px 12px;
+      border-radius:12px;
       font-size:14px;
+      line-height:1.5;
     }
 
     .user {
-      text-align:right;
-      color:white;
+      align-self:flex-end;
+      background:rgba(0,102,204,0.25);
+      border:1px solid var(--accent2);
+      font-family:var(--font-body);
     }
 
     .ai {
-      color:var(--accent);
+      align-self:flex-start;
+      background:rgba(0,212,255,0.05);
+      border:1px solid var(--border);
+      font-family:var(--font-body);
+      text-shadow:0 0 10px rgba(0,212,255,0.15);
     }
 
     /* INPUT */
     #inputBar {
       display:flex;
+      gap:8px;
+      padding:10px;
       border-top:1px solid var(--border);
       align-items:center;
-      padding:8px;
-      gap:8px;
     }
 
     #userInput {
       flex:1;
       padding:12px;
-      border-radius:20px;
+      border-radius:25px;
       border:1px solid var(--border);
-      background:#050f1e;
-      color:white;
+      background:var(--surface);
+      color:var(--text);
       outline:none;
-      font-family:'Rajdhani',sans-serif;
+      font-family:var(--font-body);
       transition:0.2s;
     }
 
@@ -99,7 +124,7 @@
       box-shadow:0 0 15px rgba(0,212,255,0.25);
     }
 
-    .icon-btn {
+    .btn {
       width:42px;
       height:42px;
       border-radius:50%;
@@ -114,7 +139,7 @@
       font-size:16px;
     }
 
-    .icon-btn:hover {
+    .btn:hover {
       box-shadow:var(--glow);
     }
 
@@ -123,6 +148,13 @@
       color:red !important;
       box-shadow:0 0 15px rgba(255,0,0,0.3);
     }
+
+    /* MONO SYSTEM TEXT */
+    .sys {
+      font-family:var(--font-mono);
+      font-size:11px;
+      color:var(--dim);
+    }
   </style>
 </head>
 
@@ -130,7 +162,8 @@
 
 <!-- HEADER -->
 <div id="header">
-  <div class="header-logo">J.A.R.V.I.S</div>
+  <div class="logo">J.A.R.V.I.S</div>
+  <div class="status">ONLINE • READY</div>
 </div>
 
 <!-- CHAT -->
@@ -141,21 +174,21 @@
   <input id="userInput" type="text" placeholder="Ask JARVIS..."
     onkeydown="if(event.key==='Enter') sendMessage(this.value)"/>
 
-  <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>
-
-  <div class="icon-btn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
+  <div class="btn" id="micBtn" onclick="toggleMic()">🎤</div>
+  <div class="btn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
 </div>
 
 <script>
-/* ───────── CHAT FUNCTION ───────── */
+/* ───────── CHAT ───────── */
 function addMsg(text, type) {
   const div = document.createElement("div");
   div.className = "msg " + type;
   div.innerText = text;
   document.getElementById("chat").appendChild(div);
+  document.getElementById("chat").scrollTop = 999999;
 }
 
-/* ───────── SEND MESSAGE ───────── */
+/* ───────── SEND ───────── */
 async function sendMessage(text) {
   if (!text) return;
 
@@ -175,48 +208,41 @@ async function sendMessage(text) {
 }
 
 /* ───────── VOICE SYSTEM ───────── */
-let recognition;
+let rec;
 let listening = false;
 
-function startVoice() {
+function toggleMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    alert("Voice not supported");
+  if (!SR) return alert("Voice not supported");
+
+  if (listening) {
+    rec.stop();
     return;
   }
 
-  recognition = new SR();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
+  rec = new SR();
+  rec.lang = "en-US";
 
-  recognition.onstart = () => {
+  rec.onstart = () => {
     listening = true;
     document.getElementById("micBtn").classList.add("recording");
   };
 
-  recognition.onresult = (e) => {
+  rec.onresult = (e) => {
     const text = e.results[0][0].transcript;
     document.getElementById("userInput").value = text;
     sendMessage(text);
   };
 
-  recognition.onerror = stopVoice;
-  recognition.onend = stopVoice;
+  rec.onerror = stopMic;
+  rec.onend = stopMic;
 
-  recognition.start();
+  rec.start();
 }
 
-function stopVoice() {
+function stopMic() {
   listening = false;
   document.getElementById("micBtn").classList.remove("recording");
-}
-
-function toggleMic() {
-  if (listening) {
-    recognition.stop();
-  } else {
-    startVoice();
-  }
 }
 </script>
 
