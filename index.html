@@ -326,54 +326,60 @@
     /* ── INPUT AREA ── */
     footer {
       position: relative; z-index: 10;
-      padding: 12px 16px 20px;
+      padding: 14px 16px 28px;
       border-top: 1px solid rgba(0,212,255,0.15);
       background: rgba(2,10,20,0.97);
       backdrop-filter: blur(10px);
     }
 
-    .input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .input-row { display: flex; gap: 10px; align-items: center; }
     .input-wrap { flex: 1; position: relative; }
 
     #userInput {
       width: 100%;
       background: rgba(0,212,255,0.04);
       border: 1px solid rgba(0,212,255,0.2);
-      border-radius: 2px;
+      border-radius: 4px;
       color: var(--text);
       font-family: 'Share Tech Mono', monospace;
-      font-size: 14px;
-      padding: 11px 14px;
+      font-size: 15px;
+      padding: 14px 16px;
       resize: none; outline: none;
       line-height: 1.5;
-      max-height: 100px; min-height: 44px;
+      max-height: 120px; min-height: 52px;
       transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
     }
     #userInput:focus { border-color: rgba(0,212,255,0.5); box-shadow: 0 0 12px rgba(0,212,255,0.1); }
     #userInput::placeholder { color: var(--text-dim); }
 
     .btn-send {
-      width: 44px; height: 44px; border-radius: 2px;
+      width: 52px; height: 52px; border-radius: 4px;
       border: 1px solid var(--accent);
       background: rgba(0,212,255,0.08);
-      color: var(--accent); font-size: 18px;
+      color: var(--accent); font-size: 22px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s; flex-shrink: 0;
+      transition: all 0.15s; flex-shrink: 0;
       box-shadow: 0 0 10px rgba(0,212,255,0.15);
+      -webkit-tap-highlight-color: rgba(0,212,255,0.2);
+      touch-action: manipulation;
     }
-    .btn-send:active { background: rgba(0,212,255,0.2); box-shadow: var(--glow); transform: scale(0.95); }
+    .btn-send:active { background: rgba(0,212,255,0.3); box-shadow: var(--glow); transform: scale(0.93); }
     .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .btn-voice {
-      width: 44px; height: 44px; border-radius: 2px;
+      width: 52px; height: 52px; border-radius: 4px;
       border: 1px solid rgba(255,107,0,0.4);
       background: rgba(255,107,0,0.06);
-      color: var(--accent3); font-size: 18px;
+      color: var(--accent3); font-size: 22px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s; flex-shrink: 0;
+      transition: all 0.15s; flex-shrink: 0;
+      -webkit-tap-highlight-color: rgba(255,107,0,0.2);
+      touch-action: manipulation;
     }
+    .btn-voice:active { background: rgba(255,107,0,0.2); transform: scale(0.93); }
     .btn-voice.listening {
       border-color: var(--accent3);
       background: rgba(255,107,0,0.15);
@@ -387,15 +393,17 @@
 
     /* Live conversation button in footer */
     .btn-live-trigger {
-      width: 44px; height: 44px; border-radius: 2px;
+      width: 52px; height: 52px; border-radius: 4px;
       border: 1px solid rgba(0,255,136,0.4);
       background: rgba(0,255,136,0.06);
-      color: var(--green); font-size: 18px;
+      color: var(--green); font-size: 22px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s; flex-shrink: 0;
+      transition: all 0.15s; flex-shrink: 0;
+      -webkit-tap-highlight-color: rgba(0,255,136,0.2);
+      touch-action: manipulation;
     }
-    .btn-live-trigger:active { background: rgba(0,255,136,0.15); transform: scale(0.95); }
+    .btn-live-trigger:active { background: rgba(0,255,136,0.2); transform: scale(0.93); }
 
     /* corner decorations */
     .corner { position: fixed; width: 20px; height: 20px; opacity: 0.4; z-index: 5; }
@@ -548,15 +556,4 @@
     }
 
     // ── TEXT CHAT ──
-    inputEl.addEventListener('input', () => {
-      inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
-    });
-
-    inputEl.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    });
-
-    sendBtn.addEventListener('click', sendMessage);
-
-    async function sendMessage() {
+    in
