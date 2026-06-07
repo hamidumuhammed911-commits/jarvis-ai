@@ -3,228 +3,221 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="JARVIS"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#020a14"/>
+
   <title>JARVIS</title>
-  <link rel="manifest" href="manifest.json"/>
+
+  <!-- 🌐 FONTS -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet"/>
 
   <style>
     :root {
       --bg:#020a14;
-      --surface:#050f1e;
       --border:#0a2040;
       --accent:#00d4ff;
       --accent2:#0066cc;
-      --danger:#ff3333;
       --text:#c8e8ff;
       --dim:#4a7a9b;
       --glow:0 0 20px rgba(0,212,255,0.3);
     }
 
-    *{box-sizing:border-box;margin:0;padding:0}
+    * {
+      box-sizing:border-box;
+      margin:0;
+      padding:0;
+    }
 
-    body{
+    body {
       background:var(--bg);
       color:var(--text);
-      font-family:monospace;
+      font-family:'Orbitron','Rajdhani',sans-serif;
       height:100dvh;
       overflow:hidden;
       display:flex;
       flex-direction:column;
     }
 
-    /* BOOT */
-    #boot{
-      position:fixed;inset:0;
-      background:var(--bg);
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      align-items:center;
-      z-index:9999;
-    }
-
-    #bootLog{
-      font-size:11px;
-      color:var(--dim);
-      height:120px;
-      overflow:hidden;
-    }
-
     /* HEADER */
-    #header{
+    #header {
       display:flex;
       justify-content:space-between;
       padding:12px;
       border-bottom:1px solid var(--border);
+      align-items:center;
     }
 
-    #locationBadge{display:none;font-size:10px;color:var(--dim)}
+    .header-logo {
+      font-family:'Orbitron',sans-serif;
+      letter-spacing:4px;
+      color:var(--accent);
+      text-shadow:var(--glow);
+    }
 
     /* CHAT */
-    #chat{
+    #chat {
       flex:1;
       overflow:auto;
-      padding:10px;
-    }
-
-    .msg{margin:8px 0}
-    .user{text-align:right;color:#fff}
-    .ai{color:var(--accent)}
-
-    /* INPUT */
-    #inputBar{
-      display:flex;
-      border-top:1px solid var(--border);
-    }
-
-    input{
-      flex:1;
       padding:12px;
-      background:#050f1e;
-      border:none;
+    }
+
+    .msg {
+      margin:8px 0;
+      font-size:14px;
+    }
+
+    .user {
+      text-align:right;
       color:white;
     }
 
-    button{
-      background:var(--accent);
-      border:none;
+    .ai {
+      color:var(--accent);
+    }
+
+    /* INPUT */
+    #inputBar {
+      display:flex;
+      border-top:1px solid var(--border);
+      align-items:center;
+      padding:8px;
+      gap:8px;
+    }
+
+    #userInput {
+      flex:1;
       padding:12px;
+      border-radius:20px;
+      border:1px solid var(--border);
+      background:#050f1e;
+      color:white;
+      outline:none;
+      font-family:'Rajdhani',sans-serif;
+      transition:0.2s;
+    }
+
+    #userInput:focus {
+      border-color:var(--accent);
+      box-shadow:0 0 15px rgba(0,212,255,0.25);
+    }
+
+    .icon-btn {
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      border:1px solid var(--border);
+      background:rgba(0,212,255,0.08);
+      color:var(--accent);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      cursor:pointer;
+      transition:0.2s;
+      font-size:16px;
+    }
+
+    .icon-btn:hover {
+      box-shadow:var(--glow);
+    }
+
+    .recording {
+      border-color:red !important;
+      color:red !important;
+      box-shadow:0 0 15px rgba(255,0,0,0.3);
     }
   </style>
 </head>
 
 <body>
 
-<!-- BOOT -->
-<div id="boot">
-  <div style="font-size:16px;letter-spacing:4px;margin-bottom:10px">
-    JARVIS: ROOT INITIALIZING
-  </div>
-  <div id="bootLog"></div>
+<!-- HEADER -->
+<div id="header">
+  <div class="header-logo">J.A.R.V.I.S</div>
 </div>
 
-<!-- APP -->
-<div id="app" style="display:none;flex:1;flex-direction:column">
+<!-- CHAT -->
+<div id="chat"></div>
 
-  <div id="header">
-    <div>JARVIS CORE</div>
-    <div id="locationBadge">📍 <span id="locationCity"></span></div>
-  </div>
+<!-- INPUT -->
+<div id="inputBar">
+  <input id="userInput" type="text" placeholder="Ask JARVIS..."
+    onkeydown="if(event.key==='Enter') sendMessage(this.value)"/>
 
-  <div id="chat"></div>
+  <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>
 
-  <div id="inputBar">
-    <input id="input" placeholder="Ask JARVIS..."/>
-    <button onclick="send()">➤</button>
-  </div>
-
+  <div class="icon-btn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
 </div>
 
 <script>
-/* ───────── ROOT BOOT SYSTEM ───────── */
-const bootLog = document.getElementById("bootLog");
-
-function log(msg, t=400){
-  return new Promise(res=>{
-    setTimeout(()=>{
-      bootLog.innerHTML += msg+"<br>";
-      res();
-    },t);
-  });
+/* ───────── CHAT FUNCTION ───────── */
+function addMsg(text, type) {
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.innerText = text;
+  document.getElementById("chat").appendChild(div);
 }
 
-async function boot(){
-  await log("→ Loading kernel...");
-  await log("→ Syncing timezone...");
-  await log("→ Starting location module...");
-  await log("→ Activating AI brain...");
-  await log("SYSTEM ONLINE");
+/* ───────── SEND MESSAGE ───────── */
+async function sendMessage(text) {
+  if (!text) return;
 
-  setTimeout(()=>{
-    document.getElementById("boot").style.display="none";
-    document.getElementById("app").style.display="flex";
-  },800);
-}
+  addMsg(text, "user");
+  document.getElementById("userInput").value = "";
 
-/* ───────── LOCATION (FIX 2 APPLIED) ───────── */
-let jarvisLocation = null;
-
-function initLocation() {
-
-  jarvisLocation = {
-    lat:null,
-    lon:null,
-    city:'',
-    timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
-  };
-
-  if (!navigator.geolocation) return;
-
-  navigator.geolocation.getCurrentPosition(async (pos)=>{
-
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    let city = '';
-
-    try{
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-      );
-      const d = await r.json();
-      city = d.address?.city || d.address?.town || d.address?.village || '';
-    }catch(e){}
-
-    jarvisLocation = {
-      lat,
-      lon,
-      city,
-      timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
-    };
-
-    if(city){
-      document.getElementById("locationCity").textContent = city.toUpperCase();
-      document.getElementById("locationBadge").style.display = "block";
-    }
-
-  },()=>{},{timeout:8000});
-}
-
-/* ───────── CHAT ───────── */
-async function send(){
-  const input = document.getElementById("input");
-  const text = input.value;
-  if(!text) return;
-
-  add(text,"user");
-  input.value="";
-
-  const res = await fetch("/api/chat",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      messages:[{role:"user",content:text}],
-      location:jarvisLocation
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: [{ role: "user", content: text }]
     })
   });
 
   const data = await res.json();
-  add(data.reply,"ai");
+  addMsg(data.reply, "ai");
 }
 
-function add(text,type){
-  const div=document.createElement("div");
-  div.className="msg "+type;
-  div.innerText=text;
-  document.getElementById("chat").appendChild(div);
+/* ───────── VOICE SYSTEM ───────── */
+let recognition;
+let listening = false;
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert("Voice not supported");
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    document.getElementById("micBtn").classList.add("recording");
+  };
+
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    document.getElementById("userInput").value = text;
+    sendMessage(text);
+  };
+
+  recognition.onerror = stopVoice;
+  recognition.onend = stopVoice;
+
+  recognition.start();
 }
 
-/* ───────── START SYSTEM ───────── */
-boot();
-initLocation();
+function stopVoice() {
+  listening = false;
+  document.getElementById("micBtn").classList.remove("recording");
+}
+
+function toggleMic() {
+  if (listening) {
+    recognition.stop();
+  } else {
+    startVoice();
+  }
+}
 </script>
 
 </body>
