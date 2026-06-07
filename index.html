@@ -463,8 +463,8 @@ async function lvProcess(userText) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: userText,
-        history: histArr.slice(-10) // last 10 for context
+        messages: histArr.slice(-10),
+        system: `You are JARVIS. Speaking DIRECTLY to Boss Muhammed Aali. Use "Sir" after first message. Never third person. Concise — max 3 sentences.`
       })
     });
 
