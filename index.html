@@ -586,3 +586,409 @@ function loadVoices() {
 
   // Priority: female English voice
   ttsVoice = voices.find(v => /female|woman|girl/i.test(v.name) && /en/i.test(v.lang))
+|| voices.find(v => /zira|samantha|victoria|karen|moira|fiona|susan|joanna|salli|kendra/i.test(v.name))
+    || voices.find(v => /en/i.test(v.lang) && v.name.toLowerCase().includes('female'))
+    || voices.find(v => /en/i.test(v.lang))
+    || voices[0];
+
+  ttsReady = true;
+  return true;
+}
+
+if (!loadVoices()) {
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function speak(text) {
+  if (liveMuted) return;
+  speechSynthesis.cancel();
+
+  const clean = text.replace(/\[WHATSAPP:[^\]]+\]/g, '').replace(/\[OPEN_APP:[^\]]+\]/g, '').trim();
+  if (!clean) return;
+
+  const utt = new SpeechSynthesisUtterance(clean);
+  if (ttsVoice) utt.voice = ttsVoice;
+  utt.rate   = 1.0;
+  utt.pitch  = 1.05;
+  utt.volume = 1.0;
+
+  let ttsWatchdog = setTimeout(() => {
+    speechSynthesis.cancel();
+    if (liveMode) liveListenLoop();
+  }, (clean.length * 80) + 4000);
+
+  utt.onend = () => {
+    clearTimeout(ttsWatchdog);
+    if (liveMode) liveListenLoop();
+  };
+
+  utt.onerror = () => {
+    clearTimeout(ttsWatchdog);
+    if (liveMode) liveListenLoop();
+  };
+
+  speechSynthesis.speak(utt);
+}
+
+// ── WHATSAPP TOKEN ──────────────────────────────────────────────────────────
+function handleWhatsApp(reply) {
+  const match = reply.match(/\[WHATSAPP:([^:]+):([^\]]+)\]/);
+  if (!match) return reply;
+  const number  = match[1].replace(/\s/g, '').replace('+', '');
+  const message = encodeURIComponent(match[2]);
+  setTimeout(() => window.open(`https://wa.me/${number}?text=${message}`, '_blank'), 1800);
+  return reply.replace(match[0], '').trim();
+}
+
+// ── TASKER TOKEN ────────────────────────────────────────────────────────────
+const TASKER_IP   = '192.168.1.100'; // ← change to your Redmi IP
+const TASKER_PORT = 1820;
+
+async function handleOpenApp(reply) {
+  const match = reply.match(/\[OPEN_APP:([^\]]+)\]/);
+  if (!match) return reply;
+  try {
+    await fetch(`http://${TASKER_IP}:${TASKER_PORT}/open?app=${encodeURIComponent(match[1])}`, {
+      method: 'GET', mode: 'no-cors'
+    });
+  } catch (_) {}
+  return reply.replace(match[0], '').trim();
+}
+
+// ── CORE STATE ──────────────────────────────────────────────────────────────
+const messagesEl = document.getElementById('messages');
+const userInput  = document.getElementById('userInput');
+const SR         = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let history  = [];
+let busy     = false;
+let liveMode = false;
+let liveRec  = null;
+let micRec   = null;
+
+try {
+  const saved = localStorage.getItem('jarvis_history');
+  if (saved) {
+    history = JSON.parse(saved).slice(-20);
+    if (history.length) {
+      document.querySelector('.welcome')?.remove();
+      history.forEach(m => addMsgRaw(m.role === 'user' ? 'user' : 'ai', m.content));
+    }
+  }
+} catch (_) {}
+
+function saveHistory() {
+  try { localStorage.setItem('jarvis_history', JSON.stringify(history.slice(-20))); } catch (_) {}
+}
+
+// ── MESSAGE RENDERING ───────────────────────────────────────────────────────
+function clearWelcome() { document.querySelector('.welcome')?.remove(); }
+
+function addMsgRaw(role, text) {
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  d.innerHTML = `
+    <div class="msg-label">${role === 'user' ? 'YOU' : 'JARVIS'}</div>
+    <div class="msg-bubble">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+  messagesEl.appendChild(d);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addMsg(role, text) {
+  clearWelcome();
+  addMsgRaw(role, text);
+}
+
+function addThinking() {
+  clearWelcome();
+  const d = document.createElement('div');
+  d.className = 'msg ai';
+  d.id = 'thinking';
+  d.innerHTML = `
+    <div class="msg-label">JARVIS</div>
+    <div class="thinking-bubble">
+      <div class="thinking-dot"></div>
+      <div class="thinking-dot"></div>
+      <div class="thinking-dot"></div>
+    </div>`;
+  messagesEl.appendChild(d);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return d;
+}
+
+// ── SEND MESSAGE ────────────────────────────────────────────────────────────
+async function sendMessage(text) {
+  text = (text || '').trim();
+  if (!text || busy) return;
+  busy = true;
+  speechSynthesis.cancel();
+  userInput.value = '';
+
+  addMsg('user', text);
+  history.push({ role: 'user', content: text });
+
+  const thinking = addThinking();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: history.slice(-20),
+        location: jarvisLocation,
+      }),
+    });
+
+    const data = await res.json();
+    let reply = data.reply || 'No response, Sir.';
+
+    reply = handleWhatsApp(reply);
+    reply = await handleOpenApp(reply);
+
+    thinking.remove();
+    history.push({ role: 'assistant', content: reply });
+    saveHistory();
+    addMsg('ai', reply);
+    speak(reply);
+
+  } catch (e) {
+    thinking.remove();
+    const err = 'Connection error, Sir. Please check your network.';
+    addMsg('ai', err);
+    speak(err);
+  } finally {
+    busy = false;
+  }
+}
+
+// ── MIC BUTTON ──────────────────────────────────────────────────────────────
+function toggleMic() {
+  if (!SR) { alert('Speech recognition not supported.'); return; }
+
+  if (micRec) {
+    micRec.stop(); micRec = null;
+    document.getElementById('micBtn').classList.remove('recording');
+    return;
+  }
+
+  micRec = new SR();
+  micRec.lang = 'en-US'; micRec.interimResults = true; micRec.continuous = false;
+
+  micRec.onstart = () => document.getElementById('micBtn').classList.add('recording');
+
+  micRec.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    userInput.value  = transcript;
+    if (e.results[e.results.length - 1].isFinal) {
+      micRec = null;
+      document.getElementById('micBtn').classList.remove('recording');
+    }
+  };
+
+  micRec.onerror = micRec.onend = () => {
+    micRec = null;
+    document.getElementById('micBtn').classList.remove('recording');
+  };
+
+  try { micRec.start(); } catch(e) { micRec = null; }
+}
+
+// ── TAP ORB ─────────────────────────────────────────────────────────────────
+let tapRec = null;
+
+function tapSpeak() {
+  if (liveMode || !SR) return;
+
+  if (tapRec) {
+    tapRec.stop(); tapRec = null;
+    resetTapBtn(); return;
+  }
+
+  if (busy) return;
+
+  tapRec = new SR();
+  tapRec.lang = 'en-US'; tapRec.interimResults = false;
+
+  tapRec.onstart = () => {
+    document.getElementById('tapBtn').classList.add('listening');
+    document.getElementById('tapLabel').textContent = 'LISTENING...';
+    document.getElementById('tapIcon').textContent  = '🔴';
+  };
+
+  tapRec.onresult = (e) => {
+    const text = e.results[0][0].transcript.trim();
+    tapRec = null;
+    resetTapBtn();
+    if (text) sendMessage(text);
+  };
+
+  tapRec.onerror = tapRec.onend = () => {
+    tapRec = null;
+    resetTapBtn();
+  };
+
+  try { tapRec.start(); } catch(e) { tapRec = null; }
+}
+
+function resetTapBtn() {
+  document.getElementById('tapBtn').classList.remove('listening', 'speaking');
+  document.getElementById('tapLabel').textContent = 'TAP TO SPEAK';
+  document.getElementById('tapIcon').textContent  = '🎙️';
+}
+
+// ── LIVE MODE ────────────────────────────────────────────────────────────────
+const liveOverlay = document.getElementById('liveOverlay');
+const liveOrb     = document.getElementById('liveOrb');
+const liveLabel   = document.getElementById('liveLabel');
+const liveText    = document.getElementById('liveText');
+const liveMicDead = document.getElementById('liveMicDead');
+
+let liveRecRestartTimer = null;
+let liveMicFailCount    = 0;
+
+function startLiveMode() {
+  liveMode = true;
+  liveMicFailCount = 0;
+  liveOverlay.classList.add('active');
+  setLiveState('listening');
+  liveListenLoop();
+}
+
+function endLiveMode() {
+  liveMode = false;
+  if (liveRec) { try { liveRec.stop(); } catch(_) {} liveRec = null; }
+  clearTimeout(liveRecRestartTimer);
+  speechSynthesis.cancel();
+  liveOverlay.classList.remove('active');
+}
+
+function toggleMute() {
+  liveMuted = !liveMuted;
+  document.getElementById('muteBtn').textContent = liveMuted ? '🔊' : '🔇';
+  if (liveMuted) speechSynthesis.cancel();
+}
+
+function setLiveState(state) {
+  liveOrb.className = state;
+  liveMicDead.style.display = 'none';
+  const labels = { listening: '🔴 LISTENING', thinking: '⚡ THINKING', speaking: '🔊 SPEAKING' };
+  const icons  = { listening: '🔴', thinking: '⚡', speaking: '🔊' };
+  liveLabel.textContent = labels[state] || state.toUpperCase();
+  liveOrb.textContent   = icons[state]  || '🤖';
+}
+
+function liveListenLoop() {
+  if (!liveMode || !SR) return;
+  if (busy) return;
+
+  liveRecRestartTimer = setTimeout(() => {
+    if (!liveMode || busy) return;
+    if (liveRec) { try { liveRec.stop(); } catch(_) {} liveRec = null; }
+
+    liveRec = new SR();
+    liveRec.lang = 'en-US'; liveRec.interimResults = false; liveRec.continuous = false;
+
+    let gotResult = false;
+
+    liveRec.onstart = () => {
+      liveMicFailCount = 0;
+      liveMicDead.style.display = 'none';
+      setLiveState('listening');
+    };
+
+    liveRec.onresult = (e) => {
+      gotResult = true;
+      const text = e.results[0][0].transcript.trim();
+      liveText.textContent = text;
+      if (text) liveSend(text);
+    };
+
+    liveRec.onerror = (e) => {
+      if (e.error === 'no-speech') {
+        liveRec = null;
+        if (liveMode && !busy) liveListenLoop();
+        return;
+      }
+      liveMicFailCount++;
+      liveRec = null;
+      if (liveMicFailCount >= 3) {
+        liveMicDead.style.display = 'block';
+        liveOrb.textContent = '⚠️';
+        liveLabel.textContent = 'MIC LOST';
+        liveOrb.onclick = () => {
+          liveMicFailCount = 0;
+          liveListenLoop();
+          liveOrb.onclick = null;
+        };
+      } else if (liveMode) {
+        liveListenLoop();
+      }
+    };
+
+    liveRec.onend = () => {
+      liveRec = null;
+      if (!gotResult && liveMode && !busy) liveListenLoop();
+    };
+
+    try { liveRec.start(); }
+    catch(e) {
+      liveRec = null;
+      liveMicFailCount++;
+      if (liveMode) liveListenLoop();
+    }
+  }, 600);
+}
+
+async function liveSend(text) {
+  if (busy) return;
+  busy = true;
+  speechSynthesis.cancel();
+
+  addMsg('user', text);
+  history.push({ role: 'user', content: text });
+
+  setLiveState('thinking');
+  liveText.textContent = '...';
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: history.slice(-20),
+        location: jarvisLocation,
+      }),
+    });
+
+    const data = await res.json();
+    let reply  = data.reply || 'No response, Sir.';
+
+    reply = handleWhatsApp(reply);
+    reply = await handleOpenApp(reply);
+
+    history.push({ role: 'assistant', content: reply });
+    saveHistory();
+    addMsg('ai', reply);
+
+    setLiveState('speaking');
+    liveText.textContent = reply.slice(0, 120) + (reply.length > 120 ? '…' : '');
+    speak(reply);
+
+  } catch (e) {
+    const err = 'Connection error, Sir.';
+    addMsg('ai', err);
+    setLiveState('speaking');
+    liveText.textContent = err;
+    speak(err);
+  } finally {
+    busy = false;
+  }
+}
+
+// ── SERVICE WORKER ───────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
