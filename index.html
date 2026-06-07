@@ -693,3 +693,153 @@
 
         function resetVoiceBars() {
             domElements.voiceBars.forEach(bar => bar.style.height = '8
+px');
+        }
+
+        // --- Native Web Speech AI API Implementations ---
+        function initializeWebSpeechEngines() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onstart = () => setCoreInterfaceState('LISTENING');
+                
+                recognition.onresult = (event) => {
+                    const speechToText = event.results[0][0].transcript;
+                    logTerminalLine(speechToText, 'user');
+                    executeSystemQuery(speechToText);
+                };
+
+                recognition.onerror = (e) => {
+                    if (e.error !== 'no-speech') {
+                        logTerminalLine(`Voice Engine Error: ${e.error}`, 'system');
+                    }
+                    if (isLiveVoiceActive) restartVoiceListeningLoop();
+                };
+
+                recognition.onend = () => {
+                    if (!domElements.reactorCore.classList.contains('thinking') && !domElements.reactorCore.classList.contains('speaking')) {
+                        setCoreInterfaceState('STANDBY');
+                    }
+                    if (isLiveVoiceActive && !domElements.reactorCore.classList.contains('speaking')) {
+                        restartVoiceListeningLoop();
+                    }
+                };
+            } else {
+                logTerminalLine("Voice input hardware access missing or unsupported.", "system");
+                domElements.btnLiveVoice.style.display = "none";
+            }
+
+            window.speechSynthesis.onvoiceschanged = () => {
+                const voices = window.speechSynthesis.getVoices();
+                globalTtsVoice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Great Britain') || v.lang === 'en-GB') || voices[0];
+            };
+        }
+
+        function speakPhrase(phrase) {
+            if (isMuted) return;
+
+            window.speechSynthesis.cancel();
+            currentTtsUtterance = new SpeechSynthesisUtterance(phrase);
+            if (globalTtsVoice) currentTtsUtterance.voice = globalTtsVoice;
+            
+            currentTtsUtterance.rate = 1.05;
+            currentTtsUtterance.pitch = 0.95;
+
+            currentTtsUtterance.onstart = () => setCoreInterfaceState('SPEAKING');
+            currentTtsUtterance.onend = () => {
+                setCoreInterfaceState('STANDBY');
+                if (isLiveVoiceActive) startVoiceListeningSequence();
+            };
+
+            window.speechSynthesis.speak(currentTtsUtterance);
+        }
+
+        function startVoiceListeningSequence() {
+            if (!recognition) return;
+            window.speechSynthesis.cancel();
+            try { recognition.start(); } catch(e) {}
+        }
+
+        function restartVoiceListeningLoop() {
+            setTimeout(() => {
+                if (isLiveVoiceActive && !window.speechSynthesis.speaking) startVoiceListeningSequence();
+            }, 400);
+        }
+
+        // --- System Matrix Processing Core ---
+        async function executeSystemQuery(queryText) {
+            if (!queryText.trim()) return;
+
+            setCoreInterfaceState('THINKING');
+            logTerminalLine("Processing logic matrix...", "system");
+
+            // Local response matrix mock
+            setTimeout(() => {
+                let systemReply = `Sir, I've logged your request regarding "${queryText}". Standing by for API integration.`;
+                
+                const dynamicCheck = queryText.toLowerCase();
+                if (dynamicCheck.includes('status') || dynamicCheck.includes('system')) {
+                    systemReply = `${USER_NAME}, all system arrays are green. Power core stability stands at 100%. Security grid is locked down.`;
+                } else if (dynamicCheck.includes('hello') || dynamicCheck.includes('hey jarvis')) {
+                    systemReply = `At your service, Sir. What structural sequence are we breaking down today?`;
+                }
+
+                logTerminalLine(systemReply, 'jarvis');
+                speakPhrase(systemReply);
+            }, 1200);
+        }
+
+        // --- Hardware User Controls / Event Interfaces ---
+        domElements.btnSubmit.addEventListener('click', () => {
+            const rawText = domElements.textInput.value.trim();
+            if (rawText) {
+                logTerminalLine(rawText, 'user');
+                executeSystemQuery(rawText);
+                domElements.textInput.value = "";
+            }
+        });
+
+        domElements.textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') domElements.btnSubmit.click();
+        });
+
+        domElements.reactorCore.addEventListener('click', () => {
+            if (domElements.lockScreen.classList.contains('hidden')) {
+                startVoiceListeningSequence();
+            }
+        });
+
+        domElements.btnLiveVoice.addEventListener('click', () => {
+            isLiveVoiceActive = !isLiveVoiceActive;
+            domElements.btnLiveVoice.classList.toggle('active', isLiveVoiceActive);
+
+            if (isLiveVoiceActive) {
+                logTerminalLine("Live voice automation loop enabled.", "system");
+                startVoiceListeningSequence();
+            } else {
+                logTerminalLine("Live voice loop terminated.", "system");
+                recognition?.stop();
+                setCoreInterfaceState('STANDBY');
+            }
+        });
+
+        domElements.btnMuteToggle.addEventListener('click', () => {
+            isMuted = !isMuted;
+            domElements.btnMuteToggle.classList.toggle('active', isMuted);
+            domElements.btnMuteToggle.textContent = isMuted ? "🔇" : "🔊";
+
+            if (isMuted) {
+                window.speechSynthesis.cancel();
+                logTerminalLine("Acoustic output muted.", "system");
+                if (domElements.reactorCore.classList.contains('speaking')) setCoreInterfaceState('STANDBY');
+            } else {
+                logTerminalLine("Acoustic output active.", "system");
+            }
+        });
+    </script>
+</body>
+</html>
