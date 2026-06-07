@@ -10,985 +10,222 @@
   <meta name="theme-color" content="#020a14"/>
   <title>JARVIS</title>
   <link rel="manifest" href="manifest.json"/>
+
   <style>
     :root {
-      --bg:      #020a14;
-      --surface: #050f1e;
-      --border:  #0a2040;
-      --accent:  #00d4ff;
-      --accent2: #0066cc;
-      --danger:  #ff3333;
-      --text:    #c8e8ff;
-      --dim:     #4a7a9b;
-      --glow:    0 0 20px rgba(0,212,255,0.3);
+      --bg:#020a14;
+      --surface:#050f1e;
+      --border:#0a2040;
+      --accent:#00d4ff;
+      --accent2:#0066cc;
+      --danger:#ff3333;
+      --text:#c8e8ff;
+      --dim:#4a7a9b;
+      --glow:0 0 20px rgba(0,212,255,0.3);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    *{box-sizing:border-box;margin:0;padding:0}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Courier New', monospace;
-      height: 100dvh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ── LOCK SCREEN ── */
-    #lockScreen {
-      position: fixed; inset: 0; z-index: 999;
-      background: var(--bg);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 24px;
-    }
-    #lockScreen.hidden { display: none; }
-
-    .lock-title {
-      font-size: 13px; letter-spacing: 6px;
-      color: var(--accent); opacity: 0.8;
-    }
-    .lock-logo {
-      font-size: 28px; font-weight: bold;
-      letter-spacing: 4px; color: var(--accent);
-      text-shadow: var(--glow);
-    }
-    .lock-subtitle {
-      font-size: 10px; letter-spacing: 3px;
-      color: var(--dim); margin-top: -18px;
-    }
-    .lock-dots {
-      display: flex; gap: 12px; margin: 8px 0;
-    }
-    .lock-dot {
-      width: 14px; height: 14px; border-radius: 50%;
-      border: 1px solid var(--accent);
-      background: transparent;
-      transition: background 0.15s, box-shadow 0.15s;
-    }
-    .lock-dot.filled {
-      background: var(--accent);
-      box-shadow: 0 0 10px var(--accent);
-    }
-    .lock-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 10px; width: 220px;
-    }
-    .lock-key {
-      background: rgba(0,212,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text); font-family: inherit;
-      font-size: 20px; font-weight: bold;
-      padding: 16px; cursor: pointer;
-      transition: background 0.1s, border-color 0.1s;
-      user-select: none;
-    }
-    .lock-key:active, .lock-key:hover {
-      background: rgba(0,212,255,0.15);
-      border-color: var(--accent);
-    }
-    .lock-del {
-      font-size: 14px;
-    }
-    #lockError {
-      font-size: 11px; letter-spacing: 3px;
-      color: var(--danger); min-height: 16px;
-    }
-    .lock-voice-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 24px; padding: 10px 24px;
-      color: var(--dim); font-family: inherit;
-      font-size: 11px; letter-spacing: 2px;
-      cursor: pointer; transition: all 0.2s;
-    }
-    .lock-voice-btn.listening {
-      border-color: var(--danger);
-      color: var(--danger);
-      box-shadow: 0 0 12px rgba(255,51,51,0.3);
-    }
-    #lockVoiceStatus {
-      font-size: 10px; letter-spacing: 2px;
-      color: var(--dim); min-height: 14px;
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:monospace;
+      height:100dvh;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
     }
 
-    /* ── HEADER ── */
-    #header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px 10px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .header-logo {
-      font-size: 15px; font-weight: bold;
-      letter-spacing: 4px; color: var(--accent);
-      text-shadow: var(--glow);
-    }
-    .header-status {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 9px; letter-spacing: 2px; color: var(--dim);
-    }
-    .status-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: #00ff88;
-      box-shadow: 0 0 6px #00ff88;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%,100% { opacity: 1; }
-      50%      { opacity: 0.4; }
-    }
-    #locationBadge {
-      font-size: 9px; color: var(--dim);
-      letter-spacing: 1px; display: none;
+    /* BOOT */
+    #boot{
+      position:fixed;inset:0;
+      background:var(--bg);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      z-index:9999;
     }
 
-    /* ── MESSAGES ── */
-    #messages {
-      flex: 1; overflow-y: auto;
-      padding: 16px; display: flex;
-      flex-direction: column; gap: 12px;
-      scroll-behavior: smooth;
-    }
-    #messages::-webkit-scrollbar { width: 3px; }
-    #messages::-webkit-scrollbar-thumb { background: var(--border); }
-
-    .welcome {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px; padding: 40px 0; color: var(--dim);
-    }
-    .welcome-orb {
-      width: 80px; height: 80px; border-radius: 50%;
-      border: 1px solid var(--border);
-      background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.15), transparent 70%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px; margin-bottom: 8px;
-      box-shadow: 0 0 30px rgba(0,212,255,0.1);
-      animation: breathe 3s ease-in-out infinite;
-    }
-    @keyframes breathe {
-      0%,100% { box-shadow: 0 0 20px rgba(0,212,255,0.1); }
-      50%      { box-shadow: 0 0 40px rgba(0,212,255,0.25); }
-    }
-    .welcome-text { font-size: 11px; letter-spacing: 3px; }
-    .welcome-sub  { font-size: 9px;  letter-spacing: 2px; opacity: 0.5; }
-
-    .msg {
-      display: flex; flex-direction: column; gap: 4px;
-      max-width: 88%; animation: msgIn 0.25s ease;
-    }
-    @keyframes msgIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: none; }
-    }
-    .msg.user  { align-self: flex-end; align-items: flex-end; }
-    .msg.ai    { align-self: flex-start; }
-    .msg-label {
-      font-size: 9px; letter-spacing: 2px; color: var(--dim);
-      padding: 0 4px;
-    }
-    .msg-bubble {
-      padding: 10px 14px; border-radius: 12px;
-      font-size: 13px; line-height: 1.6;
-      border: 1px solid var(--border);
-    }
-    .msg.user  .msg-bubble { background: rgba(0,102,204,0.2); border-color: var(--accent2); }
-    .msg.ai    .msg-bubble { background: rgba(0,212,255,0.05); border-color: var(--border); }
-
-    /* ── THINKING DOTS ── */
-    .thinking-bubble {
-      display: flex; gap: 5px; padding: 14px 18px;
-      background: rgba(0,212,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 12px; align-items: center;
-    }
-    .thinking-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--accent); opacity: 0.4;
-      animation: think 1.2s infinite;
-    }
-    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes think {
-      0%,100% { opacity: 0.2; transform: scale(1); }
-      50%      { opacity: 1;   transform: scale(1.3); }
+    #bootLog{
+      font-size:11px;
+      color:var(--dim);
+      height:120px;
+      overflow:hidden;
     }
 
-    /* ── INPUT BAR ── */
-    #inputBar {
-      display: flex; gap: 8px; padding: 10px 12px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0; align-items: center;
-    }
-    #userInput {
-      flex: 1; background: rgba(0,212,255,0.05);
-      border: 1px solid var(--border); border-radius: 24px;
-      color: var(--text); font-family: inherit;
-      font-size: 13px; padding: 10px 16px;
-      outline: none; transition: border-color 0.2s;
-    }
-    #userInput:focus { border-color: var(--accent2); }
-    #userInput::placeholder { color: var(--dim); }
-
-    .icon-btn {
-      width: 42px; height: 42px; border-radius: 50%;
-      background: rgba(0,212,255,0.08);
-      border: 1px solid var(--border);
-      color: var(--accent); font-size: 16px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; flex-shrink: 0;
-      transition: all 0.2s; user-select: none;
-    }
-    .icon-btn:active, .icon-btn.active {
-      background: rgba(0,212,255,0.2);
-      border-color: var(--accent);
-      box-shadow: var(--glow);
-    }
-    .icon-btn.recording {
-      background: rgba(255,51,51,0.15);
-      border-color: var(--danger);
-      animation: recPulse 1s infinite;
-    }
-    @keyframes recPulse {
-      0%,100% { box-shadow: 0 0 0 0 rgba(255,51,51,0.4); }
-      50%      { box-shadow: 0 0 0 8px rgba(255,51,51,0); }
+    /* HEADER */
+    #header{
+      display:flex;
+      justify-content:space-between;
+      padding:12px;
+      border-bottom:1px solid var(--border);
     }
 
-    #sendBtn {
-      background: rgba(0,212,255,0.12);
-      border-color: var(--accent2);
+    #locationBadge{display:none;font-size:10px;color:var(--dim)}
+
+    /* CHAT */
+    #chat{
+      flex:1;
+      overflow:auto;
+      padding:10px;
     }
 
-    /* ── TAP-TO-SPEAK BIG BUTTON ── */
-    #tapArea {
-      padding: 10px 12px 6px;
-      display: flex; flex-direction: column;
-      align-items: center; gap: 6px; flex-shrink: 0;
-    }
-    #tapBtn {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.25), rgba(0,50,100,0.4));
-      border: 2px solid var(--accent);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      cursor: pointer; gap: 3px;
-      transition: all 0.2s;
-      box-shadow: 0 0 20px rgba(0,212,255,0.15);
-      user-select: none;
-    }
-    #tapBtn:active, #tapBtn.speaking { transform: scale(0.93); }
-    #tapBtn.listening {
-      border-color: var(--danger);
-      box-shadow: 0 0 30px rgba(255,51,51,0.4);
-      animation: tapPulse 1s infinite;
-    }
-    @keyframes tapPulse {
-      0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); }
-      50%      { box-shadow: 0 0 40px rgba(255,51,51,0.6); }
-    }
-    #tapIcon  { font-size: 22px; }
-    #tapLabel { font-size: 8px; letter-spacing: 2px; color: var(--dim); }
+    .msg{margin:8px 0}
+    .user{text-align:right;color:#fff}
+    .ai{color:var(--accent)}
 
-    /* ── LIVE MODE OVERLAY ── */
-    #liveOverlay {
-      position: fixed; inset: 0; z-index: 100;
-      background: rgba(2,10,20,0.97);
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center; gap: 24px;
-    }
-    #liveOverlay.active { display: flex; }
-
-    #liveOrb {
-      width: 140px; height: 140px; border-radius: 50%;
-      border: 2px solid var(--accent);
-      background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.2), transparent 70%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 48px;
-      transition: all 0.3s;
-    }
-    #liveOrb.listening { animation: orbPulse 1s infinite; }
-    #liveOrb.thinking  { animation: orbSpin 2s linear infinite; opacity: 0.7; }
-    #liveOrb.speaking  { box-shadow: 0 0 60px rgba(0,212,255,0.5); }
-    @keyframes orbPulse {
-      0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); border-color: #ff4444; }
-      50%      { box-shadow: 0 0 50px rgba(255,51,51,0.6); }
-    }
-    @keyframes orbSpin {
-      from { border-top-color: var(--accent); border-right-color: transparent; }
-      to   { transform: rotate(360deg); }
+    /* INPUT */
+    #inputBar{
+      display:flex;
+      border-top:1px solid var(--border);
     }
 
-    #liveLabel {
-      font-size: 11px; letter-spacing: 4px; color: var(--dim);
-    }
-    #liveText {
-      font-size: 13px; color: var(--text);
-      text-align: center; max-width: 300px;
-      line-height: 1.6; min-height: 40px;
-      padding: 0 20px;
-    }
-    #liveMicDead {
-      font-size: 10px; color: var(--danger);
-      letter-spacing: 2px; display: none;
+    input{
+      flex:1;
+      padding:12px;
+      background:#050f1e;
+      border:none;
+      color:white;
     }
 
-    .live-controls { display: flex; gap: 16px; }
-    #muteBtn {
-      background: rgba(255,51,51,0.1);
-      border: 1px solid rgba(255,51,51,0.3);
-      color: #ff8888;
+    button{
+      background:var(--accent);
+      border:none;
+      padding:12px;
     }
-    #endBtn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-    }
-
-    /* ── SCROLLBAR ── */
-    * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   </style>
 </head>
+
 <body>
 
-<!-- ═══════════════ LOCK SCREEN ═══════════════ -->
-<div id="lockScreen">
-  <div class="lock-title">J.A.R.V.I.S</div>
-  <div class="lock-logo">◈ JARVIS ◈</div>
-  <div class="lock-subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-  <div class="lock-dots">
-    <div class="lock-dot" id="d0"></div>
-    <div class="lock-dot" id="d1"></div>
-    <div class="lock-dot" id="d2"></div>
-    <div class="lock-dot" id="d3"></div>
-    <div class="lock-dot" id="d4"></div>
-    <div class="lock-dot" id="d5"></div>
+<!-- BOOT -->
+<div id="boot">
+  <div style="font-size:16px;letter-spacing:4px;margin-bottom:10px">
+    JARVIS: ROOT INITIALIZING
   </div>
-  <div id="lockError"></div>
-  <div class="lock-grid">
-    <button class="lock-key" onclick="lockKey('1')">1</button>
-    <button class="lock-key" onclick="lockKey('2')">2</button>
-    <button class="lock-key" onclick="lockKey('3')">3</button>
-    <button class="lock-key" onclick="lockKey('4')">4</button>
-    <button class="lock-key" onclick="lockKey('5')">5</button>
-    <button class="lock-key" onclick="lockKey('6')">6</button>
-    <button class="lock-key" onclick="lockKey('7')">7</button>
-    <button class="lock-key" onclick="lockKey('8')">8</button>
-    <button class="lock-key" onclick="lockKey('9')">9</button>
-    <button class="lock-key lock-del" onclick="lockDel()">⌫</button>
-    <button class="lock-key" onclick="lockKey('0')">0</button>
-    <button class="lock-key" onclick="lockKey('')"></button>
-  </div>
-  <button class="lock-voice-btn" id="lockVoiceBtn" onclick="lockVoiceUnlock()">🎤 SPEAK CODE</button>
-  <div id="lockVoiceStatus"></div>
+  <div id="bootLog"></div>
 </div>
 
-<!-- ═══════════════ HEADER ═══════════════ -->
-<div id="header">
-  <div class="header-logo">J.A.R.V.I.S</div>
-  <div id="locationBadge">📍 <span id="locationCity"></span></div>
-  <div class="header-status">
-    <div class="status-dot"></div>
-    <span>ONLINE</span>
-  </div>
-</div>
+<!-- APP -->
+<div id="app" style="display:none;flex:1;flex-direction:column">
 
-<!-- ═══════════════ MESSAGES ═══════════════ -->
-<div id="messages">
-  <div class="welcome">
-    <div class="welcome-orb">🤖</div>
-    <div class="welcome-text">READY FOR YOUR COMMAND</div>
-    <div class="welcome-sub">TAP THE ORB OR TYPE BELOW</div>
+  <div id="header">
+    <div>JARVIS CORE</div>
+    <div id="locationBadge">📍 <span id="locationCity"></span></div>
   </div>
-</div>
 
-<!-- ═══════════════ TAP ORB ═══════════════ -->
-<div id="tapArea">
-  <div id="tapBtn" onclick="tapSpeak()">
-    <div id="tapIcon">🎙️</div>
-    <div id="tapLabel">TAP TO SPEAK</div>
+  <div id="chat"></div>
+
+  <div id="inputBar">
+    <input id="input" placeholder="Ask JARVIS..."/>
+    <button onclick="send()">➤</button>
   </div>
-</div>
 
-<!-- ═══════════════ INPUT BAR ═══════════════ -->
-<div id="inputBar">
-  <input id="userInput" type="text" placeholder="Ask JARVIS..." autocomplete="off"
-    onkeydown="if(event.key==='Enter')sendMessage(this.value)"/>
-  <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>
-  <div class="icon-btn" id="sendBtn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
-  <div class="icon-btn" id="liveBtn" onclick="startLiveMode()" title="Live Mode">⚡</div>
-</div>
-
-<!-- ═══════════════ LIVE MODE OVERLAY ═══════════════ -->
-<div id="liveOverlay">
-  <div id="liveOrb">🎙️</div>
-  <div id="liveLabel">LISTENING</div>
-  <div id="liveText">Ready, Boss Muhammed Aali.</div>
-  <div id="liveMicDead">⚠ MIC LOST — TAP ORB TO RESTART</div>
-  <div class="live-controls">
-    <div class="icon-btn" id="muteBtn" onclick="toggleMute()">🔇</div>
-    <div class="icon-btn" id="endBtn" onclick="endLiveMode()">✕ END</div>
-  </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════════════
-// JARVIS v3 — fully patched frontend
-// ═══════════════════════════════════════════════════════════════════════════
+/* ───────── ROOT BOOT SYSTEM ───────── */
+const bootLog = document.getElementById("bootLog");
 
-// ── PASSCODE (client side only does UI — server verifies) ───────────────────
-// The real check is in api/chat.js. Here we just show/hide the lock screen
-// after a server-verified unlock attempt.
-let lockInput = '';
-const LOCK_LEN = 6;
-
-function lockKey(d) {
-  if (lockInput.length >= LOCK_LEN) return;
-  lockInput += d;
-  updateDots();
-  if (lockInput.length === LOCK_LEN) setTimeout(verifyPasscode, 100);
+function log(msg, t=400){
+  return new Promise(res=>{
+    setTimeout(()=>{
+      bootLog.innerHTML += msg+"<br>";
+      res();
+    },t);
+  });
 }
 
-function lockDel() {
-  lockInput = lockInput.slice(0, -1);
-  updateDots();
-  document.getElementById('lockError').textContent = '';
+async function boot(){
+  await log("→ Loading kernel...");
+  await log("→ Syncing timezone...");
+  await log("→ Starting location module...");
+  await log("→ Activating AI brain...");
+  await log("SYSTEM ONLINE");
+
+  setTimeout(()=>{
+    document.getElementById("boot").style.display="none";
+    document.getElementById("app").style.display="flex";
+  },800);
 }
 
-function updateDots() {
-  for (let i = 0; i < LOCK_LEN; i++) {
-    document.getElementById('d' + i).classList.toggle('filled', i < lockInput.length);
-  }
-}
-
-async function verifyPasscode() {
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [], passcode: lockInput }),
-    });
-    if (res.ok || res.status === 200) {
-      // Server accepted (it returns a reply even with empty messages if passcode ok)
-      document.getElementById('lockScreen').classList.add('hidden');
-    } else {
-      showLockError();
-    }
-  } catch {
-    // Network error — fall back to client check (dev mode)
-    showLockError();
-  }
-}
-
-function showLockError() {
-  document.getElementById('lockError').textContent = 'ACCESS DENIED';
-  for (let i = 0; i < LOCK_LEN; i++) document.getElementById('d' + i).classList.remove('filled');
-  setTimeout(() => {
-    lockInput = '';
-    updateDots();
-    document.getElementById('lockError').textContent = '';
-  }, 1000);
-}
-
-// ── VOICE UNLOCK ────────────────────────────────────────────────────────────
-let lockVoiceRec = null;
-
-function lockVoiceUnlock() {
-  const btn    = document.getElementById('lockVoiceBtn');
-  const status = document.getElementById('lockVoiceStatus');
-  const SR2    = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR2) { document.getElementById('lockError').textContent = 'VOICE NOT SUPPORTED'; return; }
-
-  if (lockVoiceRec) {
-    lockVoiceRec.stop(); lockVoiceRec = null;
-    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';
-    status.textContent = ''; return;
-  }
-
-  lockVoiceRec = new SR2();
-  lockVoiceRec.lang = 'en-US'; lockVoiceRec.interimResults = false;
-
-  lockVoiceRec.onstart = () => {
-    btn.classList.add('listening'); btn.textContent = '🔴 LISTENING...';
-    status.textContent = 'SAY YOUR CODE NOW';
-  };
-
-  lockVoiceRec.onresult = (e) => {
-    const said   = e.results[0][0].transcript.trim();
-    const digits = said.replace(/\s+/g, '')
-      .replace(/zero/gi,'0').replace(/one/gi,'1').replace(/two/gi,'2')
-      .replace(/three/gi,'3').replace(/four/gi,'4').replace(/five/gi,'5')
-      .replace(/six/gi,'6').replace(/seven/gi,'7').replace(/eight/gi,'8')
-      .replace(/nine/gi,'9').replace(/[^0-9]/g, '');
-
-    lockVoiceRec = null;
-    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';
-    status.textContent = '';
-
-    // Fill dots and verify via server
-    lockInput = digits.slice(0, LOCK_LEN);
-    updateDots();
-    if (lockInput.length === LOCK_LEN) verifyPasscode();
-    else showLockError();
-  };
-
-  lockVoiceRec.onerror = () => {
-    lockVoiceRec = null;
-    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';
-    status.textContent = '';
-    document.getElementById('lockError').textContent = 'MIC ERROR — TRY AGAIN';
-  };
-
-  lockVoiceRec.onend = () => {
-    if (lockVoiceRec) { lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = ''; }
-  };
-
-  try { lockVoiceRec.start(); } catch(e) { lockVoiceRec = null; }
-}
-
-// ── LOCATION ─────────────────────────────────────────────────────────────────
+/* ───────── LOCATION (FIX 2 APPLIED) ───────── */
 let jarvisLocation = null;
 
 function initLocation() {
+
+  jarvisLocation = {
+    lat:null,
+    lon:null,
+    city:'',
+    timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
+  };
+
   if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(async (pos) => {
+
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    let city  = '';
-    try {
+    let city = '';
+
+    try{
       const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-        { headers: { 'User-Agent': 'JARVIS-AI/3.0' } }
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
       );
       const d = await r.json();
       city = d.address?.city || d.address?.town || d.address?.village || '';
-    } catch (_) {}
-    jarvisLocation = { lat, lon, city };
+    }catch(e){}
 
-    // Show location badge in header
-    if (city) {
-      document.getElementById('locationCity').textContent = city.toUpperCase();
-      document.getElementById('locationBadge').style.display = 'block';
+    jarvisLocation = {
+      lat,
+      lon,
+      city,
+      timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
+    if(city){
+      document.getElementById("locationCity").textContent = city.toUpperCase();
+      document.getElementById("locationBadge").style.display = "block";
     }
-  }, () => {}, { enableHighAccuracy: false, timeout: 8000 });
+
+  },()=>{},{timeout:8000});
 }
 
+/* ───────── CHAT ───────── */
+async function send(){
+  const input = document.getElementById("input");
+  const text = input.value;
+  if(!text) return;
+
+  add(text,"user");
+  input.value="";
+
+  const res = await fetch("/api/chat",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      messages:[{role:"user",content:text}],
+      location:jarvisLocation
+    })
+  });
+
+  const data = await res.json();
+  add(data.reply,"ai");
+}
+
+function add(text,type){
+  const div=document.createElement("div");
+  div.className="msg "+type;
+  div.innerText=text;
+  document.getElementById("chat").appendChild(div);
+}
+
+/* ───────── START SYSTEM ───────── */
+boot();
 initLocation();
-
-// ── TTS — fixed voice loading ─────────────────────────────────────────────────
-let ttsVoice     = null;
-let ttsReady     = false;
-let liveMuted    = false;
-
-function loadVoices() {
-  const voices = speechSynthesis.getVoices();
-  if (!voices.length) return false;
-
-  // Priority: female English voice
-  ttsVoice = voices.find(v => /female|woman|girl/i.test(v.name) && /en/i.test(v.lang))
-|| voices.find(v => /zira|samantha|victoria|karen|moira|fiona|susan|joanna|salli|kendra/i.test(v.name))
-    || voices.find(v => /en/i.test(v.lang) && v.name.toLowerCase().includes('female'))
-    || voices.find(v => /en/i.test(v.lang))
-    || voices[0];
-
-  ttsReady = true;
-  return true;
-}
-
-if (!loadVoices()) {
-  speechSynthesis.onvoiceschanged = loadVoices;
-}
-
-function speak(text) {
-  if (liveMuted) return;
-  speechSynthesis.cancel();
-
-  const clean = text.replace(/\[WHATSAPP:[^\]]+\]/g, '').replace(/\[OPEN_APP:[^\]]+\]/g, '').trim();
-  if (!clean) return;
-
-  const utt = new SpeechSynthesisUtterance(clean);
-  if (ttsVoice) utt.voice = ttsVoice;
-  utt.rate   = 1.0;
-  utt.pitch  = 1.05;
-  utt.volume = 1.0;
-
-  let ttsWatchdog = setTimeout(() => {
-    speechSynthesis.cancel();
-    if (liveMode) liveListenLoop();
-  }, (clean.length * 80) + 4000);
-
-  utt.onend = () => {
-    clearTimeout(ttsWatchdog);
-    if (liveMode) liveListenLoop();
-  };
-
-  utt.onerror = () => {
-    clearTimeout(ttsWatchdog);
-    if (liveMode) liveListenLoop();
-  };
-
-  speechSynthesis.speak(utt);
-}
-
-// ── WHATSAPP TOKEN ──────────────────────────────────────────────────────────
-function handleWhatsApp(reply) {
-  const match = reply.match(/\[WHATSAPP:([^:]+):([^\]]+)\]/);
-  if (!match) return reply;
-  const number  = match[1].replace(/\s/g, '').replace('+', '');
-  const message = encodeURIComponent(match[2]);
-  setTimeout(() => window.open(`https://wa.me/${number}?text=${message}`, '_blank'), 1800);
-  return reply.replace(match[0], '').trim();
-}
-
-// ── TASKER TOKEN ────────────────────────────────────────────────────────────
-const TASKER_IP   = '192.168.1.100'; // ← change to your Redmi IP
-const TASKER_PORT = 1820;
-
-async function handleOpenApp(reply) {
-  const match = reply.match(/\[OPEN_APP:([^\]]+)\]/);
-  if (!match) return reply;
-  try {
-    await fetch(`http://${TASKER_IP}:${TASKER_PORT}/open?app=${encodeURIComponent(match[1])}`, {
-      method: 'GET', mode: 'no-cors'
-    });
-  } catch (_) {}
-  return reply.replace(match[0], '').trim();
-}
-
-// ── CORE STATE ──────────────────────────────────────────────────────────────
-const messagesEl = document.getElementById('messages');
-const userInput  = document.getElementById('userInput');
-const SR         = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-let history  = [];
-let busy     = false;
-let liveMode = false;
-let liveRec  = null;
-let micRec   = null;
-
-try {
-  const saved = localStorage.getItem('jarvis_history');
-  if (saved) {
-    history = JSON.parse(saved).slice(-20);
-    if (history.length) {
-      document.querySelector('.welcome')?.remove();
-      history.forEach(m => addMsgRaw(m.role === 'user' ? 'user' : 'ai', m.content));
-    }
-  }
-} catch (_) {}
-
-function saveHistory() {
-  try { localStorage.setItem('jarvis_history', JSON.stringify(history.slice(-20))); } catch (_) {}
-}
-
-// ── MESSAGE RENDERING ───────────────────────────────────────────────────────
-function clearWelcome() { document.querySelector('.welcome')?.remove(); }
-
-function addMsgRaw(role, text) {
-  const d = document.createElement('div');
-  d.className = `msg ${role}`;
-  d.innerHTML = `
-    <div class="msg-label">${role === 'user' ? 'YOU' : 'JARVIS'}</div>
-    <div class="msg-bubble">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
-  messagesEl.appendChild(d);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-function addMsg(role, text) {
-  clearWelcome();
-  addMsgRaw(role, text);
-}
-
-function addThinking() {
-  clearWelcome();
-  const d = document.createElement('div');
-  d.className = 'msg ai';
-  d.id = 'thinking';
-  d.innerHTML = `
-    <div class="msg-label">JARVIS</div>
-    <div class="thinking-bubble">
-      <div class="thinking-dot"></div>
-      <div class="thinking-dot"></div>
-      <div class="thinking-dot"></div>
-    </div>`;
-  messagesEl.appendChild(d);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  return d;
-}
-
-// ── SEND MESSAGE ────────────────────────────────────────────────────────────
-async function sendMessage(text) {
-  text = (text || '').trim();
-  if (!text || busy) return;
-  busy = true;
-  speechSynthesis.cancel();
-  userInput.value = '';
-
-  addMsg('user', text);
-  history.push({ role: 'user', content: text });
-
-  const thinking = addThinking();
-
-  try {
-    const res = await fetch('/api/chat', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: history.slice(-20),
-        location: jarvisLocation,
-      }),
-    });
-
-    const data = await res.json();
-    let reply = data.reply || 'No response, Sir.';
-
-    reply = handleWhatsApp(reply);
-    reply = await handleOpenApp(reply);
-
-    thinking.remove();
-    history.push({ role: 'assistant', content: reply });
-    saveHistory();
-    addMsg('ai', reply);
-    speak(reply);
-
-  } catch (e) {
-    thinking.remove();
-    const err = 'Connection error, Sir. Please check your network.';
-    addMsg('ai', err);
-    speak(err);
-  } finally {
-    busy = false;
-  }
-}
-
-// ── MIC BUTTON ──────────────────────────────────────────────────────────────
-function toggleMic() {
-  if (!SR) { alert('Speech recognition not supported.'); return; }
-
-  if (micRec) {
-    micRec.stop(); micRec = null;
-    document.getElementById('micBtn').classList.remove('recording');
-    return;
-  }
-
-  micRec = new SR();
-  micRec.lang = 'en-US'; micRec.interimResults = true; micRec.continuous = false;
-
-  micRec.onstart = () => document.getElementById('micBtn').classList.add('recording');
-
-  micRec.onresult = (e) => {
-    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
-    userInput.value  = transcript;
-    if (e.results[e.results.length - 1].isFinal) {
-      micRec = null;
-      document.getElementById('micBtn').classList.remove('recording');
-    }
-  };
-
-  micRec.onerror = micRec.onend = () => {
-    micRec = null;
-    document.getElementById('micBtn').classList.remove('recording');
-  };
-
-  try { micRec.start(); } catch(e) { micRec = null; }
-}
-
-// ── TAP ORB ─────────────────────────────────────────────────────────────────
-let tapRec = null;
-
-function tapSpeak() {
-  if (liveMode || !SR) return;
-
-  if (tapRec) {
-    tapRec.stop(); tapRec = null;
-    resetTapBtn(); return;
-  }
-
-  if (busy) return;
-
-  tapRec = new SR();
-  tapRec.lang = 'en-US'; tapRec.interimResults = false;
-
-  tapRec.onstart = () => {
-    document.getElementById('tapBtn').classList.add('listening');
-    document.getElementById('tapLabel').textContent = 'LISTENING...';
-    document.getElementById('tapIcon').textContent  = '🔴';
-  };
-
-  tapRec.onresult = (e) => {
-    const text = e.results[0][0].transcript.trim();
-    tapRec = null;
-    resetTapBtn();
-    if (text) sendMessage(text);
-  };
-
-  tapRec.onerror = tapRec.onend = () => {
-    tapRec = null;
-    resetTapBtn();
-  };
-
-  try { tapRec.start(); } catch(e) { tapRec = null; }
-}
-
-function resetTapBtn() {
-  document.getElementById('tapBtn').classList.remove('listening', 'speaking');
-  document.getElementById('tapLabel').textContent = 'TAP TO SPEAK';
-  document.getElementById('tapIcon').textContent  = '🎙️';
-}
-
-// ── LIVE MODE ────────────────────────────────────────────────────────────────
-const liveOverlay = document.getElementById('liveOverlay');
-const liveOrb     = document.getElementById('liveOrb');
-const liveLabel   = document.getElementById('liveLabel');
-const liveText    = document.getElementById('liveText');
-const liveMicDead = document.getElementById('liveMicDead');
-
-let liveRecRestartTimer = null;
-let liveMicFailCount    = 0;
-
-function startLiveMode() {
-  liveMode = true;
-  liveMicFailCount = 0;
-  liveOverlay.classList.add('active');
-  setLiveState('listening');
-  liveListenLoop();
-}
-
-function endLiveMode() {
-  liveMode = false;
-  if (liveRec) { try { liveRec.stop(); } catch(_) {} liveRec = null; }
-  clearTimeout(liveRecRestartTimer);
-  speechSynthesis.cancel();
-  liveOverlay.classList.remove('active');
-}
-
-function toggleMute() {
-  liveMuted = !liveMuted;
-  document.getElementById('muteBtn').textContent = liveMuted ? '🔊' : '🔇';
-  if (liveMuted) speechSynthesis.cancel();
-}
-
-function setLiveState(state) {
-  liveOrb.className = state;
-  liveMicDead.style.display = 'none';
-  const labels = { listening: '🔴 LISTENING', thinking: '⚡ THINKING', speaking: '🔊 SPEAKING' };
-  const icons  = { listening: '🔴', thinking: '⚡', speaking: '🔊' };
-  liveLabel.textContent = labels[state] || state.toUpperCase();
-  liveOrb.textContent   = icons[state]  || '🤖';
-}
-
-function liveListenLoop() {
-  if (!liveMode || !SR) return;
-  if (busy) return;
-
-  liveRecRestartTimer = setTimeout(() => {
-    if (!liveMode || busy) return;
-    if (liveRec) { try { liveRec.stop(); } catch(_) {} liveRec = null; }
-
-    liveRec = new SR();
-    liveRec.lang = 'en-US'; liveRec.interimResults = false; liveRec.continuous = false;
-
-    let gotResult = false;
-
-    liveRec.onstart = () => {
-      liveMicFailCount = 0;
-      liveMicDead.style.display = 'none';
-      setLiveState('listening');
-    };
-
-    liveRec.onresult = (e) => {
-      gotResult = true;
-      const text = e.results[0][0].transcript.trim();
-      liveText.textContent = text;
-      if (text) liveSend(text);
-    };
-
-    liveRec.onerror = (e) => {
-      if (e.error === 'no-speech') {
-        liveRec = null;
-        if (liveMode && !busy) liveListenLoop();
-        return;
-      }
-      liveMicFailCount++;
-      liveRec = null;
-      if (liveMicFailCount >= 3) {
-        liveMicDead.style.display = 'block';
-        liveOrb.textContent = '⚠️';
-        liveLabel.textContent = 'MIC LOST';
-        liveOrb.onclick = () => {
-          liveMicFailCount = 0;
-          liveListenLoop();
-          liveOrb.onclick = null;
-        };
-      } else if (liveMode) {
-        liveListenLoop();
-      }
-    };
-
-    liveRec.onend = () => {
-      liveRec = null;
-      if (!gotResult && liveMode && !busy) liveListenLoop();
-    };
-
-    try { liveRec.start(); }
-    catch(e) {
-      liveRec = null;
-      liveMicFailCount++;
-      if (liveMode) liveListenLoop();
-    }
-  }, 600);
-}
-
-async function liveSend(text) {
-  if (busy) return;
-  busy = true;
-  speechSynthesis.cancel();
-
-  addMsg('user', text);
-  history.push({ role: 'user', content: text });
-
-  setLiveState('thinking');
-  liveText.textContent = '...';
-
-  try {
-    const res = await fetch('/api/chat', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: history.slice(-20),
-        location: jarvisLocation,
-      }),
-    });
-
-    const data = await res.json();
-    let reply  = data.reply || 'No response, Sir.';
-
-    reply = handleWhatsApp(reply);
-    reply = await handleOpenApp(reply);
-
-    history.push({ role: 'assistant', content: reply });
-    saveHistory();
-    addMsg('ai', reply);
-
-    setLiveState('speaking');
-    liveText.textContent = reply.slice(0, 120) + (reply.length > 120 ? '…' : '');
-    speak(reply);
-
-  } catch (e) {
-    const err = 'Connection error, Sir.';
-    addMsg('ai', err);
-    setLiveState('speaking');
-    liveText.textContent = err;
-    speak(err);
-  } finally {
-    busy = false;
-  }
-}
-
-// ── SERVICE WORKER ───────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
 </script>
+
 </body>
 </html>
