@@ -1,526 +1,537 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#020a14" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="JARVIS" />
-  <link rel="manifest" href="/manifest.json" />
-  <title>JARVIS</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #020a14;
-      --accent: #00d4ff;
-      --accent3: #ff6b00;
-      --green: #00ff88;
-      --text: #c8e8ff;
-      --text-dim: #4a7a99;
-      --glow: 0 0 20px rgba(0,212,255,0.4);
-    }
-    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Share Tech Mono', monospace;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* grid bg */
-    body::before {
-      content:'';
-      position:fixed; inset:0;
-      background-image:
-        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);
-      background-size:40px 40px;
-      pointer-events:none; z-index:0;
-    }
-
-    header {
-      z-index:10;
-      padding:14px 20px;
-      border-bottom:1px solid rgba(0,212,255,0.15);
-      background:rgba(2,10,20,0.98);
-      display:flex; align-items:center; justify-content:space-between;
-      flex-shrink:0;
-    }
-    .logo { display:flex; align-items:center; gap:10px; }
-    .logo-ring {
-      width:34px; height:34px; border-radius:50%;
-      border:2px solid var(--accent);
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:var(--glow);
-      animation:spin-ring 8s linear infinite;
-    }
-    .logo-dot {
-      width:8px; height:8px; border-radius:50%;
-      background:var(--accent); box-shadow:var(--glow);
-      animation:pulse-dot 2s ease-in-out infinite;
-    }
-    @keyframes spin-ring { to { transform:rotate(360deg); } }
-    @keyframes pulse-dot { 50% { opacity:0.5; transform:scale(0.8); } }
-    .logo-text {
-      font-family:'Orbitron',monospace; font-weight:900;
-      font-size:20px; letter-spacing:4px;
-      color:var(--accent); text-shadow:var(--glow);
-    }
-    .status-badge {
-      font-size:10px; color:var(--accent);
-      border:1px solid rgba(0,212,255,0.4);
-      padding:4px 10px; border-radius:20px; letter-spacing:1px;
-    }
-
-    /* messages */
-    #messages {
-      flex:1; overflow-y:auto;
-      padding:16px; display:flex; flex-direction:column; gap:12px;
-      z-index:1; scroll-behavior:smooth;
-    }
-    #messages::-webkit-scrollbar { width:3px; }
-    #messages::-webkit-scrollbar-thumb { background:rgba(0,212,255,0.3); }
-
-    .msg { max-width:88%; animation:msg-in 0.3s ease-out; }
-    @keyframes msg-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-    .msg.user { align-self:flex-end; }
-    .msg.ai   { align-self:flex-start; }
-    .msg-label { font-size:9px; letter-spacing:2px; margin-bottom:4px; opacity:0.5; }
-    .msg.user .msg-label { text-align:right; color:var(--accent3); }
-    .msg.ai .msg-label   { color:var(--accent); }
-    .msg-bubble {
-      padding:12px 16px; line-height:1.6; font-size:14px;
-    }
-    .msg.user .msg-bubble {
-      background:rgba(255,107,0,0.1);
-      border:1px solid rgba(255,107,0,0.3);
-      border-right:3px solid var(--accent3);
-      color:#ffd4a8; border-radius:2px;
-    }
-    .msg.ai .msg-bubble {
-      background:rgba(0,212,255,0.05);
-      border:1px solid rgba(0,212,255,0.2);
-      border-left:3px solid var(--accent);
-      color:var(--text); border-radius:2px;
-    }
-    .thinking { display:flex; gap:6px; align-items:center; padding:14px 16px; }
-    .thinking span {
-      width:7px; height:7px; border-radius:50%; background:var(--accent);
-      animation:think 1.2s ease-in-out infinite;
-    }
-    .thinking span:nth-child(2) { animation-delay:0.2s; }
-    .thinking span:nth-child(3) { animation-delay:0.4s; }
-    @keyframes think {
-      0%,100% { opacity:0.2; transform:scale(0.8); }
-      50% { opacity:1; transform:scale(1.3); box-shadow:0 0 8px var(--accent); }
-    }
-
-    .welcome { text-align:center; padding:50px 20px; }
-    .welcome-title {
-      font-family:'Orbitron',monospace; font-weight:900;
-      font-size:26px; letter-spacing:6px;
-      color:var(--accent); text-shadow:var(--glow); margin-bottom:8px;
-    }
-    .welcome-sub { font-size:11px; letter-spacing:2px; color:var(--text-dim); }
-    .welcome-line {
-      width:80px; height:1px; margin:16px auto;
-      background:linear-gradient(90deg,transparent,var(--accent),transparent);
-    }
-    .welcome-hint { font-size:12px; color:var(--text-dim); letter-spacing:1px; margin-top:30px; opacity:0.7; }
-
-    /* ── FOOTER ── */
-    footer {
-      z-index:10; flex-shrink:0;
-      border-top:1px solid rgba(0,212,255,0.15);
-      background:rgba(2,10,20,0.98);
-      padding:12px 12px 24px;
-    }
-
-    /* BIG TAP-TO-SPEAK BUTTON */
-    #tapBtn {
-      width:100%; padding:18px;
-      background:rgba(0,212,255,0.08);
-      border:2px solid var(--accent);
-      border-radius:6px;
-      color:var(--accent);
-      font-family:'Orbitron',monospace;
-      font-size:15px; letter-spacing:3px;
-      cursor:pointer;
-      display:flex; align-items:center; justify-content:center; gap:12px;
-      box-shadow:0 0 20px rgba(0,212,255,0.15);
-      transition:all 0.15s;
-      touch-action:manipulation;
-      user-select:none;
-      margin-bottom:10px;
-    }
-    #tapBtn:active, #tapBtn.active {
-      background:rgba(0,212,255,0.2);
-      box-shadow:0 0 40px rgba(0,212,255,0.4);
-      transform:scale(0.98);
-    }
-    #tapBtn.listening {
-      border-color:var(--accent3);
-      color:var(--accent3);
-      background:rgba(255,107,0,0.1);
-      animation:tap-pulse 1s ease-in-out infinite;
-    }
-    #tapBtn.speaking {
-      border-color:var(--green);
-      color:var(--green);
-      background:rgba(0,255,136,0.08);
-    }
-    @keyframes tap-pulse {
-      0%,100% { box-shadow:0 0 20px rgba(255,107,0,0.3); }
-      50%      { box-shadow:0 0 40px rgba(255,107,0,0.7); }
-    }
-
-    /* text row */
-    .text-row {
-      display:flex; gap:8px; align-items:center;
-    }
-    #userInput {
-      flex:1; background:rgba(0,212,255,0.04);
-      border:1px solid rgba(0,212,255,0.25);
-      border-radius:4px; color:var(--text);
-      font-family:'Share Tech Mono',monospace;
-      font-size:15px; padding:14px 14px;
-      outline:none; resize:none;
-      min-height:50px; max-height:100px;
-      touch-action:manipulation;
-      -webkit-appearance:none;
-    }
-    #userInput::placeholder { color:var(--text-dim); }
-    #userInput:focus { border-color:rgba(0,212,255,0.6); }
-
-    #sendBtn {
-      width:56px; height:50px; flex-shrink:0;
-      background:rgba(0,212,255,0.1);
-      border:2px solid var(--accent);
-      border-radius:4px; color:var(--accent);
-      font-size:24px; cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-      touch-action:manipulation;
-    }
-    #sendBtn:active { background:rgba(0,212,255,0.3); transform:scale(0.95); }
-
-    /* live overlay */
-    #liveOverlay {
-      display:none; position:fixed; inset:0; z-index:200;
-      background:rgba(2,10,20,0.97);
-      flex-direction:column; align-items:center; justify-content:center; gap:24px;
-    }
-    #liveOverlay.active { display:flex; }
-    .live-orb {
-      width:160px; height:160px; border-radius:50%;
-      border:2px solid var(--accent);
-      background:radial-gradient(circle at 40% 35%,rgba(0,212,255,0.2),rgba(0,212,255,0.03));
-      display:flex; align-items:center; justify-content:center;
-      font-size:60px;
-      box-shadow:0 0 40px rgba(0,212,255,0.3);
-      transition:all 0.3s;
-      cursor:pointer; touch-action:manipulation;
-    }
-    .live-orb.listening { border-color:var(--accent); animation:orb-listen 1.4s ease-in-out infinite; }
-    .live-orb.thinking  { border-color:#ffd700; box-shadow:0 0 40px rgba(255,215,0,0.4); }
-    .live-orb.speaking  { border-color:var(--green); animation:orb-speak 0.5s ease-in-out infinite; }
-    @keyframes orb-listen { 50% { transform:scale(1.06); box-shadow:0 0 70px rgba(0,212,255,0.6); } }
-    @keyframes orb-speak  { 50% { transform:scale(1.08); box-shadow:0 0 60px rgba(0,255,136,0.6); } }
-    .live-label {
-      font-family:'Orbitron',monospace; font-size:13px;
-      letter-spacing:4px; color:var(--accent);
-    }
-    .live-text { font-size:13px; color:var(--text-dim); text-align:center; max-width:80%; line-height:1.6; }
-    .btn-end {
-      margin-top:10px; padding:12px 28px;
-      border:1px solid rgba(0,212,255,0.3); background:none;
-      color:var(--text-dim); font-family:'Share Tech Mono',monospace;
-      font-size:12px; letter-spacing:2px; border-radius:4px;
-      cursor:pointer; touch-action:manipulation;
-    }
-    .btn-end:active { border-color:var(--accent); color:var(--accent); }
-
-    .scan-line {
-      position:fixed; top:0; left:0; right:0; height:2px;
-      background:linear-gradient(90deg,transparent,var(--accent),transparent);
-      opacity:0.3; animation:scan 4s linear infinite; pointer-events:none; z-index:100;
-    }
-    @keyframes scan { from{top:0;opacity:0.3;} to{top:100%;opacity:0;} }
-
-    /* ── LOCK SCREEN ── */
-    #lockScreen {
-      position:fixed; inset:0; z-index:999;
-      background:#020a14;
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center; gap:20px;
-    }
-    #lockScreen.hidden { display:none; }
-    .lock-title {
-      font-family:'Orbitron',monospace; font-weight:900;
-      font-size:22px; letter-spacing:5px;
-      color:#00d4ff; text-shadow:0 0 20px rgba(0,212,255,0.5);
-    }
-    .lock-sub { font-size:11px; letter-spacing:2px; color:#4a7a99; }
-    .lock-dots {
-      display:flex; gap:12px; margin:10px 0;
-    }
-    .lock-dot {
-      width:16px; height:16px; border-radius:50%;
-      border:2px solid rgba(0,212,255,0.4);
-      background:transparent; transition:all 0.2s;
-    }
-    .lock-dot.filled { background:#00d4ff; border-color:#00d4ff; box-shadow:0 0 10px rgba(0,212,255,0.6); }
-    .lock-dot.error  { background:#ff4444; border-color:#ff4444; }
-    .lock-pad {
-      display:grid; grid-template-columns:repeat(3,1fr);
-      gap:12px; width:240px;
-    }
-    .lock-key {
-      height:64px; border-radius:6px;
-      border:1px solid rgba(0,212,255,0.25);
-      background:rgba(0,212,255,0.05);
-      color:#c8e8ff; font-family:'Orbitron',monospace;
-      font-size:20px; font-weight:700;
-      cursor:pointer; display:flex;
-      align-items:center; justify-content:center;
-      touch-action:manipulation;
-      transition:all 0.15s;
-    }
-    .lock-key:active { background:rgba(0,212,255,0.2); transform:scale(0.93); box-shadow:0 0 15px rgba(0,212,255,0.3); }
-    .lock-key.del { font-size:18px; color:#ff6b00; border-color:rgba(255,107,0,0.25); }
-    .lock-error { font-size:11px; color:#ff4444; letter-spacing:2px; min-height:16px; }
-    .lock-voice-btn {
-      margin-top:6px; padding:14px 32px;
-      border:1px solid rgba(0,212,255,0.35);
-      background:rgba(0,212,255,0.06);
-      border-radius:6px; color:#00d4ff;
-      font-family:'Share Tech Mono',monospace;
-      font-size:13px; letter-spacing:2px;
-      cursor:pointer; touch-action:manipulation;
-      transition:all 0.15s;
-    }
-    .lock-voice-btn:active { background:rgba(0,212,255,0.2); transform:scale(0.96); }
-    .lock-voice-btn.listening {
-      border-color:#ff6b00; color:#ff6b00;
-      background:rgba(255,107,0,0.1);
-      animation:voice-pulse 1s ease-in-out infinite;
-    }
-    .lock-voice-status { font-size:10px; letter-spacing:2px; color:#4a7a99; min-height:14px; }
-  </style>
-</head>
-<body>
-<div class="scan-line"></div>
-
-<!-- LOCK SCREEN -->
-<div id="lockScreen">
-  <div class="lock-title">J.A.R.V.I.S</div>
-  <div class="lock-sub">ENTER ACCESS CODE</div>
-  <div class="lock-dots">
-    <div class="lock-dot" id="d0"></div>
-    <div class="lock-dot" id="d1"></div>
-    <div class="lock-dot" id="d2"></div>
-    <div class="lock-dot" id="d3"></div>
-    <div class="lock-dot" id="d4"></div>
-    <div class="lock-dot" id="d5"></div>
-  </div>
-  <div class="lock-pad">
-    <button class="lock-key" onclick="lockKey('1')">1</button>
-    <button class="lock-key" onclick="lockKey('2')">2</button>
-    <button class="lock-key" onclick="lockKey('3')">3</button>
-    <button class="lock-key" onclick="lockKey('4')">4</button>
-    <button class="lock-key" onclick="lockKey('5')">5</button>
-    <button class="lock-key" onclick="lockKey('6')">6</button>
-    <button class="lock-key" onclick="lockKey('7')">7</button>
-    <button class="lock-key" onclick="lockKey('8')">8</button>
-    <button class="lock-key" onclick="lockKey('9')">9</button>
-    <button class="lock-key" onclick="lockKey('0')" style="grid-column:2">0</button>
-    <button class="lock-key del" onclick="lockDel()">⌫</button>
-  </div>
-  <div class="lock-error" id="lockError"></div>
-  <button class="lock-voice-btn" id="lockVoiceBtn" onclick="lockVoiceUnlock()">🎤 SPEAK CODE</button>
-  <div class="lock-voice-status" id="lockVoiceStatus"></div>
-</div>
+<!--
+══════════════════════════════════════════════════════════
+  JARVIS PHONE ACCESS PATCH v1.0
+  Adds: Location · Camera · Contacts · Dialer
+  
+  Add the <script> block to your index.html
+  Add the <style> block to your existing CSS
+  Wire voice commands into your existing onresult handler
+══════════════════════════════════════════════════════════
+-->
 
 
-<!-- LIVE OVERLAY -->
-<div id="liveOverlay">
-  <div class="live-orb" id="liveOrb">🎙️</div>
-  <div class="live-label" id="liveLabel">TAP ORB TO SPEAK</div>
-  <div class="live-text" id="liveText">Ready, Boss Muhammed Aali.</div>
-  <button class="btn-end" id="endBtn">✕ END SESSION</button>
-</div>
+<!-- ─────────────────────────────────────────────────────
+  SECTION 1 — CSS (add inside your <style> tag)
+───────────────────────────────────────────────────────── -->
+<style>
+/* ── Camera overlay ── */
+#jarvis-camera {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#jarvis-camera.active { display: flex; }
 
-<header>
-  <div class="logo">
-    <div class="logo-ring"><div class="logo-dot"></div></div>
-    <span class="logo-text">JARVIS</span>
-  </div>
-  <div class="status-badge">ONLINE</div>
-</header>
+#jarvis-camera video {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: cover;
+}
 
-<div id="messages">
-  <div class="welcome">
-    <div class="welcome-title">J.A.R.V.I.S</div>
-    <div class="welcome-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-    <div class="welcome-line"></div>
-    <div style="font-size:11px;color:var(--text-dim);letter-spacing:1px;">READY FOR YOUR COMMAND</div>
-    <div class="welcome-hint">🎤 TAP THE BIG BUTTON BELOW TO SPEAK</div>
+#jarvis-camera canvas { display: none; }
+
+.cam-controls {
+  display: flex;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.cam-btn {
+  background: #00d4ff22;
+  border: 1px solid #00d4ff;
+  color: #00d4ff;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 2px;
+  padding: 12px 24px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.cam-btn:active { background: #00d4ff44; }
+.cam-btn.capture { background: #00d4ff; color: #020a14; font-weight: bold; }
+
+/* ── Captured image preview ── */
+#jarvis-photo-preview {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #020a14ee;
+  z-index: 10000;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+#jarvis-photo-preview.active { display: flex; }
+#jarvis-photo-preview img {
+  max-width: 90vw;
+  max-height: 60vh;
+  border: 1px solid #00d4ff44;
+}
+#jarvis-photo-preview p {
+  color: #00d4ff;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+  max-width: 80vw;
+  line-height: 1.6;
+}
+
+/* ── Location badge ── */
+#jarvis-location-badge {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #020a14;
+  border: 1px solid #00d4ff44;
+  color: #00d4ff;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  z-index: 500;
+  white-space: nowrap;
+}
+</style>
+
+
+<!-- ─────────────────────────────────────────────────────
+  SECTION 2 — HTML (add just before </body>)
+───────────────────────────────────────────────────────── -->
+
+<!-- Camera overlay -->
+<div id="jarvis-camera">
+  <video id="jarvis-video" autoplay playsinline muted></video>
+  <canvas id="jarvis-canvas"></canvas>
+  <div class="cam-controls">
+    <button class="cam-btn" onclick="closeCamera()">✕ CLOSE</button>
+    <button class="cam-btn capture" onclick="capturePhoto()">📸 CAPTURE</button>
+    <button class="cam-btn" onclick="switchCamera()">🔄 FLIP</button>
   </div>
 </div>
 
-<footer>
-  <!-- BIG VOICE BUTTON -->
-  <button id="tapBtn" ontouchstart="handleTapStart(event)" ontouchend="handleTapEnd(event)" onclick="handleTapClick()">
-    <span id="tapIcon">🎤</span>
-    <span id="tapLabel">TAP TO SPEAK</span>
-  </button>
-
-  <!-- text input row -->
-  <div class="text-row">
-    <textarea id="userInput" placeholder="Or type here..." rows="1"></textarea>
-    <button id="sendBtn" ontouchstart="" onclick="sendText()">⚡</button>
+<!-- Photo preview + JARVIS analysis -->
+<div id="jarvis-photo-preview">
+  <img id="jarvis-captured-img" src="" alt="Captured">
+  <p id="jarvis-photo-analysis">Analyzing, Sir…</p>
+  <div class="cam-controls">
+    <button class="cam-btn" onclick="closePhotoPreview()">✕ CLOSE</button>
+    <button class="cam-btn capture" onclick="analyzePhoto()">🔍 ANALYZE AGAIN</button>
   </div>
-</footer>
+</div>
 
+<!-- Location badge -->
+<div id="jarvis-location-badge">📍 <span id="jarvis-location-text">Locating…</span></div>
+
+
+<!-- ─────────────────────────────────────────────────────
+  SECTION 3 — JavaScript (add inside your <script> tag
+  or as a new <script> block before </body>)
+───────────────────────────────────────────────────────── -->
 <script>
+/*
+  ╔══════════════════════════════════════════════════════╗
+  ║  JARVIS PHONE ACCESS MODULE                          ║
+  ║  1. Location   2. Camera + Vision   3. Contacts      ║
+  ║  4. Dialer     5. Voice command router               ║
+  ╚══════════════════════════════════════════════════════╝
+*/
 
-  // ── PASSCODE LOCK ──
-  const PASSCODE = '615113';
-  let lockInput = '';
+// ════════════════════════════════════════════════════════
+// 1. LOCATION
+// ════════════════════════════════════════════════════════
 
-  function lockKey(digit) {
-    if(lockInput.length >= PASSCODE.length) return;
-    lockInput += digit;
-    updateDots();
-    if(lockInput.length === PASSCODE.length) {
-      setTimeout(checkCode, 100);
+let jarvisLocation = null;  // { lat, lng, city, country }
+
+async function getLocation(announce = true) {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      if (announce) speak('Geolocation is not supported on this device, Sir.');
+      resolve(null); return;
     }
-  }
 
-  function lockDel() {
-    lockInput = lockInput.slice(0,-1);
-    updateDots();
-    document.getElementById('lockError').textContent = '';
-  }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        jarvisLocation = { lat, lng };
 
-  function updateDots() {
-    for(let i=0;i<PASSCODE.length;i++){
-      const d = document.getElementById('d'+i);
-      d.className = 'lock-dot' + (i < lockInput.length ? ' filled' : '');
-    }
-  }
+        // Reverse geocode using free API
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+          );
+          const data = await res.json();
+          const city    = data.address?.city || data.address?.town || data.address?.village || 'Unknown city';
+          const country = data.address?.country || '';
+          jarvisLocation = { lat, lng, city, country };
 
-  function checkCode() {
-    if(lockInput === PASSCODE) {
-      // correct
-      document.getElementById('lockScreen').classList.add('hidden');
-    } else {
-      // wrong
-      for(let i=0;i<PASSCODE.length;i++){
-        document.getElementById('d'+i).className='lock-dot error';
+          const badge = document.getElementById('jarvis-location-badge');
+          const text  = document.getElementById('jarvis-location-text');
+          if (badge && text) {
+            text.textContent = `${city}, ${country}`;
+            badge.style.display = 'block';
+            setTimeout(() => badge.style.display = 'none', 6000);
+          }
+
+          if (announce) {
+            speak(`Your current location is ${city}, ${country}, Sir.`);
+            addMsg('assistant', `📍 Location: ${city}, ${country}`);
+          }
+        } catch {
+          if (announce) speak(`I found your coordinates, Sir. Latitude ${lat.toFixed(3)}, Longitude ${lng.toFixed(3)}.`);
+        }
+
+        resolve(jarvisLocation);
+      },
+      (err) => {
+        const msgs = {
+          1: 'Location permission was denied, Sir. Please allow it in your browser settings.',
+          2: 'Could not determine your location, Sir. GPS signal may be weak.',
+          3: 'Location request timed out, Sir.'
+        };
+        if (announce) speak(msgs[err.code] || 'Location unavailable, Sir.');
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  });
+}
+
+function trackLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(
+    async (pos) => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      if (jarvisLocation) {
+        jarvisLocation.lat = lat;
+        jarvisLocation.lng = lng;
       }
-      document.getElementById('lockError').textContent = 'ACCESS DENIED';
-      setTimeout(()=>{
-        lockInput='';
-        updateDots();
-        document.getElementById('lockError').textContent='';
-      }, 1000);
-    }
+    },
+    null,
+    { enableHighAccuracy: true, maximumAge: 30000 }
+  );
+}
+
+
+// ════════════════════════════════════════════════════════
+// 2. CAMERA + VISION ANALYSIS
+// ════════════════════════════════════════════════════════
+
+let cameraStream = null;
+let cameraFacing = 'environment';  // 'environment' = back, 'user' = front
+let capturedImageBase64 = null;
+
+async function openCamera() {
+  const overlay = document.getElementById('jarvis-camera');
+  const video   = document.getElementById('jarvis-video');
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    speak('Camera is not supported on this browser, Sir.');
+    return;
   }
 
-  // ── VOICE UNLOCK ──
-  let lockVoiceRec = null;
-
-  function lockVoiceUnlock() {
-    const btn = document.getElementById('lockVoiceBtn');
-    const status = document.getElementById('lockVoiceStatus');
-    const SR2 = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR2) { document.getElementById('lockError').textContent='VOICE NOT SUPPORTED'; return; }
-
-    if(lockVoiceRec) {
-      lockVoiceRec.stop(); lockVoiceRec=null;
-      btn.className='lock-voice-btn'; btn.textContent='🎤 SPEAK CODE';
-      status.textContent=''; return;
+  try {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
     }
 
-    lockVoiceRec = new SR2();
-    lockVoiceRec.lang='en-US'; lockVoiceRec.interimResults=false; lockVoiceRec.continuous=false;
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: cameraFacing, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
 
-    lockVoiceRec.onstart = ()=>{
-      btn.classList.add('listening'); btn.textContent='🔴 LISTENING...';
-      status.textContent='SAY YOUR CODE NOW';
-    };
+    video.srcObject = cameraStream;
+    overlay.classList.add('active');
+    speak('Camera ready, Sir. Tap capture when ready.');
+  } catch (err) {
+    speak('Could not access camera, Sir. Please check permissions.');
+    console.warn('Camera error:', err);
+  }
+}
 
-    lockVoiceRec.onresult = (e)=>{
-      const said = e.results[0][0].transcript.trim();
-      // extract digits only from what was said e.g. "six one five one one three" or "615113"
-      const digits = said.replace(/\s+/g,'')
-        .replace(/zero/gi,'0').replace(/one/gi,'1').replace(/two/gi,'2')
-        .replace(/three/gi,'3').replace(/four/gi,'4').replace(/five/gi,'5')
-        .replace(/six/gi,'6').replace(/seven/gi,'7').replace(/eight/gi,'8')
-        .replace(/nine/gi,'9').replace(/[^0-9]/g,'');
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('jarvis-camera').classList.remove('active');
+}
 
-      lockVoiceRec=null;
-      btn.className='lock-voice-btn'; btn.textContent='🎤 SPEAK CODE';
-      status.textContent='';
+function switchCamera() {
+  cameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
+  openCamera();
+}
 
-      if(digits === PASSCODE) {
-        document.getElementById('lockScreen').classList.add('hidden');
-      } else {
-        document.getElementById('lockError').textContent='ACCESS DENIED';
-        for(let i=0;i<PASSCODE.length;i++) document.getElementById('d'+i).className='lock-dot error';
-        setTimeout(()=>{
-          lockInput=''; updateDots();
-          document.getElementById('lockError').textContent='';
-        },1200);
-      }
-    };
+function capturePhoto() {
+  const video  = document.getElementById('jarvis-video');
+  const canvas = document.getElementById('jarvis-canvas');
+  const img    = document.getElementById('jarvis-captured-img');
+  const preview = document.getElementById('jarvis-photo-preview');
 
-    lockVoiceRec.onerror = ()=>{
-      lockVoiceRec=null;
-      btn.className='lock-voice-btn'; btn.textContent='🎤 SPEAK CODE';
-      status.textContent=''; document.getElementById('lockError').textContent='MIC ERROR - TRY AGAIN';
-    };
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
 
-    lockVoiceRec.onend = ()=>{
-      if(lockVoiceRec){ lockVoiceRec=null; btn.className='lock-voice-btn'; btn.textContent='🎤 SPEAK CODE'; status.textContent=''; }
-    };
+  capturedImageBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+  img.src = canvas.toDataURL('image/jpeg', 0.85);
 
-    try { lockVoiceRec.start(); } catch(e){ lockVoiceRec=null; }
+  closeCamera();
+  preview.classList.add('active');
+  document.getElementById('jarvis-photo-analysis').textContent = 'Analyzing image, Sir…';
+
+  analyzePhoto();
+}
+
+async function analyzePhoto() {
+  if (!capturedImageBase64) return;
+
+  document.getElementById('jarvis-photo-analysis').textContent = 'Analyzing, Sir…';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: capturedImageBase64 }
+            },
+            {
+              type: 'text',
+              text: 'You are JARVIS, an AI assistant. Describe what you see in this image concisely in 2-3 sentences. Be helpful and specific. Address the user as "Sir".'
+            }
+          ]
+        }]
+      })
+    });
+
+    const data = await res.json();
+    const analysis = data.content?.[0]?.text || 'I could not analyze the image, Sir.';
+    document.getElementById('jarvis-photo-analysis').textContent = analysis;
+    speak(analysis);
+    addMsg('assistant', `📸 ${analysis}`);
+  } catch (err) {
+    const fallback = 'Image captured, Sir. Vision analysis unavailable right now.';
+    document.getElementById('jarvis-photo-analysis').textContent = fallback;
+    speak(fallback);
+  }
+}
+
+function closePhotoPreview() {
+  document.getElementById('jarvis-photo-preview').classList.remove('active');
+  capturedImageBase64 = null;
+}
+
+
+// ════════════════════════════════════════════════════════
+// 3. CONTACTS
+// ════════════════════════════════════════════════════════
+
+async function openContacts() {
+  // Contact Picker API — supported in Chrome Android 80+
+  if (!('contacts' in navigator && 'ContactsManager' in window)) {
+    speak('Contact picker is not supported on this browser, Sir. Try Chrome on Android.');
+    return;
   }
 
+  try {
+    const contacts = await navigator.contacts.select(
+      ['name', 'tel', 'email'],
+      { multiple: false }
+    );
 
-  const SYSTEM = `You are JARVIS, a highly intelligent personal AI assistant. You are speaking DIRECTLY to your boss, Muhammed Aali — he is the one talking to you right now. Greet him as "Boss Muhammed Aali" on the first message, then use "Sir" after that. Never refer to him in third person. Never say things like "speak with him" or "on his behalf" — you are always talking directly TO him. Be precise, helpful, slightly formal but friendly. Keep responses concise — max 3 sentences.`;
+    if (!contacts || contacts.length === 0) {
+      speak('No contact selected, Sir.');
+      return;
+    }
 
-  const messagesEl = document.getElementById('messages');
-  const userInput  = document.getElementById('userInput');
-  const tapBtn     = document.getElementById('tapBtn');
-  const tapIcon    = document.getElementById('tapIcon');
-  const tapLabel   = document.getElementById('tapLabel');
-  const liveOverlay= document.getElementById('liveOverlay');
-  const liveOrb    = document.getElementById('liveOrb');
-  const liveLabel  = document.getElementById('liveLabel');
-  const liveText   = document.getElementById('liveText');
-  const endBtn     = document.getElementById('endBtn');
+    const contact = contacts[0];
+    const name  = contact.name?.[0]  || 'Unknown';
+    const phone = contact.tel?.[0]   || null;
+    const email = contact.email?.[0] || null;
 
-  let history = [];
-  let busy = false;
-  let liveMode = false;
-  let liveRec = null;
+    let info = `Contact selected: ${name}`;
+    if (phone) info += `, number ${phone}`;
+    if (email) info += `, email ${email}`;
 
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    speak(`${name} selected, Sir.${phone ? ` Number is ${phone}.` : ''} Would you like me to call?`);
+    addMsg('assistant', `👤 ${info}`);
 
-  // ── MESSAGES ──
-  function clearWelcome() { document.querySelector('.welcome')?.remove(); }
+    // Store for potential follow-up "call them" command
+    window._lastContact = { name, phone, email };
 
-  function addMsg(role, text) {
-    clearWelcome();
-    const d = document.createElement('div');
-    d.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
-    d.innerHTML = `<div class="msg-label">${role==='user'?'YOU':'JARVIS'}</div>
-      <di
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      speak('Could not access contacts, Sir.');
+      console.warn('Contacts error:', err);
+    }
+  }
+}
+
+
+// ════════════════════════════════════════════════════════
+// 4. DIALER
+// ════════════════════════════════════════════════════════
+
+function callNumber(number) {
+  if (!number) {
+    speak('No number provided, Sir.');
+    return;
+  }
+  // Clean number
+  const clean = number.replace(/[^\d+]/g, '');
+  speak(`Calling ${number}, Sir.`);
+  addMsg('assistant', `📞 Calling ${number}…`);
+  setTimeout(() => { window.location.href = `tel:${clean}`; }, 1200);
+}
+
+function callLastContact() {
+  if (!window._lastContact?.phone) {
+    speak('No recent contact to call, Sir. Please select one first.');
+    return;
+  }
+  callNumber(window._lastContact.phone);
+}
+
+
+// ════════════════════════════════════════════════════════
+// 5. VOICE COMMAND ROUTER
+// ════════════════════════════════════════════════════════
+/*
+  Call processPhoneCommand(transcript) from your existing
+  speech recognition onresult handler BEFORE sending to
+  the Groq API. If it returns true, the command was handled
+  locally and you should skip the API call.
+*/
+
+async function processPhoneCommand(text) {
+  const t = text.toLowerCase().trim();
+
+  // ── Location ──
+  if (/(where am i|my location|current location|where are we)/.test(t)) {
+    await getLocation(true);
+    return true;
+  }
+
+  // ── Camera ──
+  if (/(open camera|take photo|take a photo|take picture|capture|show camera)/.test(t)) {
+    await openCamera();
+    return true;
+  }
+
+  if (/(close camera|stop camera)/.test(t)) {
+    closeCamera();
+    return true;
+  }
+
+  if (/(analyze|what do you see|describe this|what is this)/.test(t) && capturedImageBase64) {
+    analyzePhoto();
+    return true;
+  }
+
+  // ── Contacts ──
+  if (/(open contacts|find contact|search contact|pick contact|select contact)/.test(t)) {
+    await openContacts();
+    return true;
+  }
+
+  // ── Dialer ──
+  if (/(call them|call him|call her|call the contact|dial them)/.test(t)) {
+    callLastContact();
+    return true;
+  }
+
+  // "call 03001234567" or "call Ahmed on 0300..."
+  const callMatch = t.match(/call\s+(?:.*?\s+on\s+)?([\d\s\+\-]{7,})/);
+  if (callMatch) {
+    callNumber(callMatch[1].trim());
+    return true;
+  }
+
+  return false;  // not a phone command, send to Groq as normal
+}
+
+// ════════════════════════════════════════════════════════
+// 6. AUTO-INIT
+// ════════════════════════════════════════════════════════
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Start passive location tracking silently
+  trackLocation();
+});
+
+// Expose all functions globally
+window.getLocation       = getLocation;
+window.openCamera        = openCamera;
+window.closeCamera       = closeCamera;
+window.switchCamera      = switchCamera;
+window.capturePhoto      = capturePhoto;
+window.analyzePhoto      = analyzePhoto;
+window.closePhotoPreview = closePhotoPreview;
+window.openContacts      = openContacts;
+window.callNumber        = callNumber;
+window.callLastContact   = callLastContact;
+window.processPhoneCommand = processPhoneCommand;
+
+</script>
+
+
+<!--
+══════════════════════════════════════════════════════════
+  HOW TO WIRE INTO YOUR EXISTING SPEECH RECOGNITION
+══════════════════════════════════════════════════════════
+
+In your existing liveRec.onresult (or regular mic onresult),
+find where you call sendToJarvis(transcript) and wrap it:
+
+  BEFORE:
+    sendToJarvis(transcript);
+
+  AFTER:
+    const handled = await processPhoneCommand(transcript);
+    if (!handled) sendToJarvis(transcript);
+
+That's it. JARVIS will intercept phone commands locally
+and only hit the Groq API for everything else.
+
+══════════════════════════════════════════════════════════
+  VOICE COMMANDS JARVIS NOW UNDERSTANDS
+══════════════════════════════════════════════════════════
+
+  "Where am I"              → GPS location + city name
+  "My location"             → same
+  "Open camera"             → opens rear camera
+  "Take a photo"            → opens camera
+  "Flip camera"             → switches front/rear
+  "Capture"                 → takes photo + analyzes it
+  "What do you see"         → re-analyzes last photo
+  "Open contacts"           → opens contact picker
+  "Find a contact"          → same
+  "Call them"               → calls last selected contact
+  "Call 03001234567"        → opens dialer with that number
+
+══════════════════════════════════════════════════════════
+  NOTE ON CAMERA VISION ANALYSIS
+══════════════════════════════════════════════════════════
+
+  The photo analysis uses the Anthropic Claude API directly
+  from the browser. This means the API key is exposed in
+  the frontend — fine for personal use, but if you make
+  JARVIS public, route the vision call through your
+  api/chat.js backend instead.
+
+══════════════════════════════════════════════════════════
+-->
