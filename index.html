@@ -1,862 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JARVIS HUD — UI Upgrade Preview</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="JARVIS"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="theme-color" content="#020a14"/>
+  <title>JARVIS</title>
+  <link rel="manifest" href="manifest.json"/>
+  <style>
+    :root {
+      --bg:      #020a14;
+      --surface: #050f1e;
+      --border:  #0a2040;
+      --accent:  #00d4ff;
+      --accent2: #0066cc;
+      --danger:  #ff3333;
+      --text:    #c8e8ff;
+      --dim:     #4a7a9b;
+      --glow:    0 0 20px rgba(0,212,255,0.3);
+      --mem:     #00ffaa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-<!-- ═══════════════════════════════════════════════════════════════
-     JARVIS HOLOGRAPHIC HUD UPGRADE
-     Drop the <style> block into your existing <head>
-     Drop the <body> structure & <script> into your index.html
-     ═══════════════════════════════════════════════════════════════ -->
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
 
-<style>
-/* ─── FONTS ─────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Rajdhani:wght@300;400;600&display=swap');
+    /* ── LOCK SCREEN ── */
+    #lockScreen {
+      position: fixed; inset: 0; z-index: 999;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 24px;
+    }
+    #lockScreen.hidden { display: none; }
+    .lock-title  { font-size: 13px; letter-spacing: 6px; color: var(--accent); opacity: 0.8; }
+    .lock-logo   { font-size: 28px; font-weight: bold; letter-spacing: 4px; color: var(--accent); text-shadow: var(--glow); }
+    .lock-subtitle { font-size: 10px; letter-spacing: 3px; color: var(--dim); margin-top: -18px; }
+    .lock-dots   { display: flex; gap: 12px; margin: 8px 0; }
+    .lock-dot    { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--accent); background: transparent; transition: background 0.15s, box-shadow 0.15s; }
+    .lock-dot.filled { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+    .lock-grid   { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 220px; }
+    .lock-key    { background: rgba(0,212,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 20px; font-weight: bold; padding: 16px; cursor: pointer; transition: background 0.1s, border-color 0.1s; user-select: none; }
+    .lock-key:active, .lock-key:hover { background: rgba(0,212,255,0.15); border-color: var(--accent); }
+    .lock-del    { font-size: 14px; }
+    #lockError   { font-size: 11px; letter-spacing: 3px; color: var(--danger); min-height: 16px; }
+    .lock-voice-btn { background: transparent; border: 1px solid var(--border); border-radius: 24px; padding: 10px 24px; color: var(--dim); font-family: inherit; font-size: 11px; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; }
+    .lock-voice-btn.listening { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px rgba(255,51,51,0.3); }
+    #lockVoiceStatus { font-size: 10px; letter-spacing: 2px; color: var(--dim); min-height: 14px; }
 
-/* ─── TOKENS ─────────────────────────────────────────────────────── */
-:root {
-  --hud-cyan:    #00e5ff;
-  --hud-blue:    #0077ff;
-  --hud-gold:    #ffc107;
-  --hud-red:     #ff1744;
-  --hud-bg:      #020b18;
-  --hud-panel:   rgba(0, 20, 50, 0.72);
-  --hud-border:  rgba(0, 229, 255, 0.25);
-  --hud-glow:    0 0 12px rgba(0, 229, 255, 0.6), 0 0 40px rgba(0, 119, 255, 0.25);
-  --scan-speed:  6s;
-}
+    /* ── HEADER ── */
+    #header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .header-logo { font-size: 15px; font-weight: bold; letter-spacing: 4px; color: var(--accent); text-shadow: var(--glow); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .header-status { display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: 2px; color: var(--dim); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 6px #00ff88; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    #locationBadge { font-size: 9px; color: var(--dim); letter-spacing: 1px; display: none; }
+    /* Memory count badge in header */
+    #memBadge { font-size: 9px; color: var(--mem); letter-spacing: 1px; cursor: pointer; opacity: 0.8; display: none; border: 1px solid rgba(0,255,170,0.3); border-radius: 10px; padding: 2px 8px; }
+    #memBadge:hover { opacity: 1; background: rgba(0,255,170,0.08); }
 
-/* ─── RESET / BASE ───────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── MESSAGES ── */
+    #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+    #messages::-webkit-scrollbar { width: 3px; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); }
+    .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: var(--dim); }
+    .welcome-orb { width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--border); background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.15), transparent 70%); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px; box-shadow: 0 0 30px rgba(0,212,255,0.1); animation: breathe 3s ease-in-out infinite; }
+    @keyframes breathe { 0%,100% { box-shadow: 0 0 20px rgba(0,212,255,0.1); } 50% { box-shadow: 0 0 40px rgba(0,212,255,0.25); } }
+    .welcome-text { font-size: 11px; letter-spacing: 3px; }
+    .welcome-sub  { font-size: 9px; letter-spacing: 2px; opacity: 0.5; }
+    .msg { display: flex; flex-direction: column; gap: 4px; max-width: 88%; animation: msgIn 0.25s ease; }
+    @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.ai   { align-self: flex-start; }
+    .msg-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); padding: 0 4px; display: flex; align-items: center; gap: 6px; }
+    .live-badge     { font-size: 8px; color: #ff4444; letter-spacing: 1px; opacity: 0.8; }
+    .wa-badge       { font-size: 8px; color: #25D366; letter-spacing: 1px; opacity: 0.8; }
+    .app-badge      { font-size: 8px; color: var(--accent); letter-spacing: 1px; opacity: 0.8; }
+    .mem-save-badge { font-size: 8px; color: var(--mem); letter-spacing: 1px; opacity: 0.8; }
+    .briefing-badge { font-size: 8px; color: #ffd700; letter-spacing: 1px; opacity: 0.9; }
+    .msg-bubble { padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.6; border: 1px solid var(--border); }
+    .msg.user .msg-bubble { background: rgba(0,102,204,0.2); border-color: var(--accent2); }
+    .msg.ai   .msg-bubble { background: rgba(0,212,255,0.05); border-color: var(--border); }
 
-body {
-  background: var(--hud-bg);
-  color: var(--hud-cyan);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
-  min-height: 100vh;
-  overflow-x: hidden;
-  position: relative;
-}
+    /* Memory save button on AI messages */
+    .mem-save-btn {
+      font-size: 9px; letter-spacing: 1px; color: var(--dim); background: transparent;
+      border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px;
+      cursor: pointer; font-family: inherit; margin-top: 4px; transition: all 0.2s;
+      align-self: flex-start;
+    }
+    .mem-save-btn:hover { color: var(--mem); border-color: var(--mem); background: rgba(0,255,170,0.06); }
+    .mem-save-btn.saved { color: var(--mem); border-color: var(--mem); }
 
-/* ─── GLOBAL SCANLINES (overlay the entire page) ─────────────────── */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 9999;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 229, 255, 0.025) 3px,
-    rgba(0, 229, 255, 0.025) 4px
-  );
-  animation: flicker 8s infinite;
-}
+    /* ── THINKING DOTS ── */
+    .thinking-bubble { display: flex; gap: 5px; padding: 14px 18px; background: rgba(0,212,255,0.05); border: 1px solid var(--border); border-radius: 12px; align-items: center; }
+    .thinking-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.4; animation: think 1.2s infinite; }
+    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes think { 0%,100% { opacity: 0.2; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
 
-/* ─── MOVING HORIZONTAL SCAN BEAM ───────────────────────────────── */
-body::after {
-  content: '';
-  position: fixed; left: 0; right: 0; z-index: 9998;
-  height: 3px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(0, 229, 255, 0.08) 20%,
-    rgba(0, 229, 255, 0.55) 50%,
-    rgba(0, 229, 255, 0.08) 80%,
-    transparent 100%
-  );
-  pointer-events: none;
-  animation: scanbeam var(--scan-speed) linear infinite;
-}
+    /* ── INPUT BAR ── */
+    #inputBar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; align-items: center; }
+    #userInput { flex: 1; background: rgba(0,212,255,0.05); border: 1px solid var(--border); border-radius: 24px; color: var(--text); font-family: inherit; font-size: 13px; padding: 10px 16px; outline: none; transition: border-color 0.2s; }
+    #userInput:focus { border-color: var(--accent2); }
+    #userInput::placeholder { color: var(--dim); }
+    .icon-btn { width: 42px; height: 42px; border-radius: 50%; background: rgba(0,212,255,0.08); border: 1px solid var(--border); color: var(--accent); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; user-select: none; }
+    .icon-btn:active, .icon-btn.active { background: rgba(0,212,255,0.2); border-color: var(--accent); box-shadow: var(--glow); }
+    .icon-btn.recording { background: rgba(255,51,51,0.15); border-color: var(--danger); animation: recPulse 1s infinite; }
+    #sendBtn { background: rgba(0,212,255,0.12); border-color: var(--accent2); }
+    /* Briefing button - gold tint */
+    #briefingBtn { background: rgba(255,215,0,0.08); border-color: rgba(255,215,0,0.3); color: #ffd700; font-size: 14px; }
+    #briefingBtn:active { background: rgba(255,215,0,0.2); border-color: #ffd700; }
 
-@keyframes scanbeam {
-  0%   { top: -4px; opacity: 0; }
-  5%   { opacity: 1; }
-  95%  { opacity: 1; }
-  100% { top: 100vh; opacity: 0; }
-}
+    /* ── TAP ORB ── */
+    #tapArea { padding: 10px 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+    #tapBtn { width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.25), rgba(0,50,100,0.4)); border: 2px solid var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; gap: 3px; transition: all 0.2s; box-shadow: 0 0 20px rgba(0,212,255,0.15); user-select: none; }
+    #tapBtn:active, #tapBtn.speaking { transform: scale(0.93); }
+    #tapBtn.listening { border-color: var(--danger); box-shadow: 0 0 30px rgba(255,51,51,0.4); animation: tapPulse 1s infinite; }
+    @keyframes tapPulse { 0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); } 50% { box-shadow: 0 0 40px rgba(255,51,51,0.6); } }
+    #tapIcon  { font-size: 22px; }
+    #tapLabel { font-size: 8px; letter-spacing: 2px; color: var(--dim); }
 
-@keyframes flicker {
-  0%, 97%, 100% { opacity: 1; }
-  98%            { opacity: 0.92; }
-  99%            { opacity: 0.97; }
-}
+    /* ── LIVE MODE OVERLAY ── */
+    #liveOverlay { position: fixed; inset: 0; z-index: 100; background: rgba(2,10,20,0.97); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+    #liveOverlay.active { display: flex; }
+    #liveOrb { width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--accent); background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.2), transparent 70%); display: flex; align-items: center; justify-content: center; font-size: 48px; transition: all 0.3s; }
+    #liveOrb.listening { animation: orbPulse 1s infinite; }
+    #liveOrb.thinking  { animation: orbSpin 2s linear infinite; opacity: 0.7; }
+    #liveOrb.speaking  { box-shadow: 0 0 60px rgba(0,212,255,0.5); }
+    @keyframes orbPulse { 0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); border-color: #ff4444; } 50% { box-shadow: 0 0 50px rgba(255,51,51,0.6); } }
+    @keyframes orbSpin  { from { border-top-color: var(--accent); border-right-color: transparent; } to { transform: rotate(360deg); } }
+    #liveLabel { font-size: 11px; letter-spacing: 4px; color: var(--dim); }
+    #liveText  { font-size: 13px; color: var(--text); text-align: center; max-width: 300px; line-height: 1.6; min-height: 40px; padding: 0 20px; }
+    #liveMicDead { font-size: 10px; color: var(--danger); letter-spacing: 2px; display: none; }
+    .live-controls { display: flex; gap: 16px; }
+    #muteBtn { background: rgba(255,51,51,0.1); border: 1px solid rgba(255,51,51,0.3); color: #ff8888; }
+    #endBtn  { background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
 
-/* ─── CORNER BRACKETS (HUD frame) ────────────────────────────────── */
-.hud-frame {
-  position: fixed; inset: 12px; z-index: 200;
-  pointer-events: none;
-}
-.hud-frame::before,
-.hud-frame::after,
-.hud-frame .corner-br,
-.hud-frame .corner-bl {
-  content: '';
-  position: absolute;
-  width: 40px; height: 40px;
-  border-color: var(--hud-cyan);
-  border-style: solid;
-  opacity: 0.7;
-}
-.hud-frame::before  { top: 0;    left: 0;  border-width: 2px 0 0 2px; }
-.hud-frame::after   { top: 0;    right: 0; border-width: 2px 2px 0 0; }
-.hud-frame .corner-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
-.hud-frame .corner-bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+    /* ── MEMORY PANEL ── */
+    #memPanel {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(2,10,20,0.97);
+      display: none; flex-direction: column;
+      padding: 24px 20px; gap: 16px;
+    }
+    #memPanel.open { display: flex; }
+    .mem-panel-header { display: flex; align-items: center; justify-content: space-between; }
+    .mem-panel-title { font-size: 12px; letter-spacing: 4px; color: var(--mem); }
+    .mem-panel-close { background: transparent; border: 1px solid var(--border); color: var(--dim); font-family: inherit; font-size: 12px; padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+    .mem-panel-close:hover { border-color: var(--accent); color: var(--accent); }
+    .mem-panel-sub { font-size: 9px; letter-spacing: 2px; color: var(--dim); }
+    #memList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    #memList::-webkit-scrollbar { width: 3px; }
+    #memList::-webkit-scrollbar-thumb { background: var(--border); }
+    .mem-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(0,255,170,0.04); border: 1px solid rgba(0,255,170,0.15);
+      border-radius: 10px; padding: 10px 12px;
+      font-size: 12px; line-height: 1.5; color: var(--text);
+    }
+    .mem-item-text { flex: 1; }
+    .mem-item-del { background: transparent; border: none; color: var(--dim); font-size: 14px; cursor: pointer; padding: 0 4px; flex-shrink: 0; transition: color 0.2s; }
+    .mem-item-del:hover { color: var(--danger); }
+    .mem-empty { color: var(--dim); font-size: 11px; letter-spacing: 2px; text-align: center; padding: 40px 0; }
+    .mem-add-row { display: flex; gap: 8px; }
+    #memInput { flex: 1; background: rgba(0,255,170,0.04); border: 1px solid rgba(0,255,170,0.2); border-radius: 20px; color: var(--text); font-family: inherit; font-size: 12px; padding: 10px 14px; outline: none; }
+    #memInput:focus { border-color: var(--mem); }
+    #memInput::placeholder { color: var(--dim); }
+    #memAddBtn { background: rgba(0,255,170,0.1); border: 1px solid rgba(0,255,170,0.3); border-radius: 20px; color: var(--mem); font-family: inherit; font-size: 11px; letter-spacing: 1px; padding: 10px 16px; cursor: pointer; white-space: nowrap; }
+    #memAddBtn:hover { background: rgba(0,255,170,0.18); }
+    .mem-hint { font-size: 9px; letter-spacing: 1px; color: var(--dim); line-height: 1.6; }
 
-/* ─── STATUS BAR (top) ───────────────────────────────────────────── */
-.hud-statusbar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
-  height: 42px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px;
-  background: linear-gradient(180deg, rgba(0,20,50,0.95) 0%, transparent 100%);
-  border-bottom: 1px solid var(--hud-border);
-  font-family: 'Orbitron', monospace;
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(0,229,255,0.75);
-}
-.hud-statusbar .sb-left,
-.hud-statusbar .sb-right {
-  display: flex; align-items: center; gap: 20px;
-}
-.hud-statusbar .sb-center {
-  font-size: 13px; font-weight: 900;
-  color: var(--hud-cyan);
-  text-shadow: var(--hud-glow);
-  letter-spacing: 0.35em;
-}
-.status-dot {
-  display: inline-block;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--hud-cyan);
-  box-shadow: 0 0 8px var(--hud-cyan);
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-  0%,100% { transform: scale(1); opacity: 1; }
-  50%      { transform: scale(1.5); opacity: 0.5; }
-}
+    /* ── BRIEFING OVERLAY ── */
+    #briefingOverlay {
+      position: fixed; inset: 0; z-index: 150;
+      background: rgba(2,10,20,0.98);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      padding: 32px 24px;
+    }
+    #briefingOverlay.active { display: flex; }
+    .briefing-icon { font-size: 48px; animation: breathe 3s ease-in-out infinite; }
+    .briefing-title { font-size: 11px; letter-spacing: 5px; color: #ffd700; }
+    #briefingText { font-size: 14px; color: var(--text); text-align: center; max-width: 340px; line-height: 1.8; min-height: 60px; }
+    #briefingClose { background: transparent; border: 1px solid var(--border); color: var(--dim); font-family: inherit; font-size: 11px; letter-spacing: 2px; padding: 10px 28px; border-radius: 24px; cursor: pointer; margin-top: 8px; }
+    #briefingClose:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ─── SIDE TELEMETRY STRIPS ──────────────────────────────────────── */
-.hud-telemetry {
-  position: fixed; top: 80px; bottom: 80px;
-  width: 160px; z-index: 150;
-  display: flex; flex-direction: column; gap: 12px;
-  padding: 0 8px;
-  pointer-events: none;
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  letter-spacing: 0.1em;
-  color: rgba(0,229,255,0.5);
-}
-.hud-telemetry.left  { left: 0; }
-.hud-telemetry.right { right: 0; text-align: right; }
+    * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
-.tele-block { display: flex; flex-direction: column; gap: 4px; }
-.tele-label { text-transform: uppercase; font-size: 7px; opacity: 0.6; }
-.tele-value {
-  font-size: 11px; font-weight: 600;
-  color: var(--hud-cyan);
-  text-shadow: 0 0 8px rgba(0,229,255,0.8);
-}
-.tele-bar {
-  height: 2px;
-  background: rgba(0,229,255,0.15);
-  position: relative; overflow: hidden;
-  border-radius: 1px;
-}
-.tele-bar-fill {
-  position: absolute; left: 0; top: 0; height: 100%;
-  background: linear-gradient(90deg, var(--hud-blue), var(--hud-cyan));
-  animation: bar-anim 3s ease-in-out infinite alternate;
-  box-shadow: 0 0 6px var(--hud-cyan);
-}
-@keyframes bar-anim {
-  0%   { width: 40%; }
-  100% { width: 85%; }
-}
+    /* ── PHOTO UPLOAD ── */
+    #photoBtn { background: rgba(0,212,255,0.08); border-color: var(--border); font-size: 17px; }
+    #photoBtn:active { background: rgba(0,212,255,0.2); border-color: var(--accent); }
+    #photoInput { display: none; }
 
-/* ─── MAIN CHAT PANEL ────────────────────────────────────────────── */
-.jarvis-app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  margin: 0 170px; /* make room for side telemetry */
-  padding-top: 50px;
-  padding-bottom: 0;
-}
+    /* Image preview bubble */
+    .img-preview-wrap { display: flex; flex-direction: column; gap: 6px; align-self: flex-end; max-width: 88%; }
+    .img-preview-wrap .msg-label { align-self: flex-end; }
+    .img-preview { max-width: 220px; max-height: 180px; border-radius: 10px; border: 1px solid var(--accent2); object-fit: cover; display: block; cursor: pointer; }
+    .img-preview:hover { border-color: var(--accent); box-shadow: var(--glow); }
 
-/* ─── CHAT WINDOW ────────────────────────────────────────────────── */
-#chat-window {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--hud-border) transparent;
-}
-
-/* ─── MESSAGE BUBBLES ────────────────────────────────────────────── */
-.msg {
-  max-width: 78%;
-  padding: 10px 16px;
-  border-radius: 2px;
-  position: relative;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
-  line-height: 1.55;
-  animation: msg-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes msg-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to   { opacity: 1; transform: none; }
-}
-
-/* JARVIS messages */
-.msg.jarvis {
-  align-self: flex-start;
-  background: var(--hud-panel);
-  border: 1px solid var(--hud-border);
-  border-left: 3px solid var(--hud-cyan);
-  color: #d0f4ff;
-  box-shadow: var(--hud-glow);
-}
-.msg.jarvis::before {
-  content: 'JARVIS';
-  display: block;
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  color: var(--hud-cyan);
-  margin-bottom: 5px;
-  opacity: 0.8;
-}
-
-/* User messages */
-.msg.user {
-  align-self: flex-end;
-  background: rgba(0, 119, 255, 0.12);
-  border: 1px solid rgba(0, 119, 255, 0.35);
-  border-right: 3px solid var(--hud-blue);
-  color: #cce8ff;
-}
-.msg.user::before {
-  content: 'BOSS MUHAMMED AALI';
-  display: block;
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  color: var(--hud-blue);
-  margin-bottom: 5px;
-  opacity: 0.8;
-  text-align: right;
-}
-
-/* Clip corners on bubbles */
-.msg.jarvis { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
-.msg.user   { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
-
-/* ─── TYPING INDICATOR ───────────────────────────────────────────── */
-.msg.typing {
-  align-self: flex-start;
-  background: var(--hud-panel);
-  border: 1px solid var(--hud-border);
-  border-left: 3px solid var(--hud-cyan);
-  box-shadow: var(--hud-glow);
-  padding: 12px 20px;
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-}
-.typing-dots {
-  display: flex; gap: 6px; align-items: center;
-}
-.typing-dots span {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--hud-cyan);
-  box-shadow: 0 0 6px var(--hud-cyan);
-  animation: dot-bounce 1.2s ease-in-out infinite;
-}
-.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dot-bounce {
-  0%,80%,100% { transform: scale(1);   opacity: 0.5; }
-  40%          { transform: scale(1.5); opacity: 1;   }
-}
-
-/* ─── INPUT BAR ──────────────────────────────────────────────────── */
-.hud-inputbar {
-  padding: 14px 20px 18px;
-  background: linear-gradient(0deg, rgba(0,20,50,0.95) 0%, transparent 100%);
-  border-top: 1px solid var(--hud-border);
-  display: flex; gap: 10px; align-items: center;
-}
-
-.hud-inputbar input {
-  flex: 1;
-  background: rgba(0,20,50,0.8);
-  border: 1px solid var(--hud-border);
-  border-bottom: 2px solid var(--hud-cyan);
-  color: var(--hud-cyan);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
-  padding: 10px 16px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-}
-.hud-inputbar input::placeholder { color: rgba(0,229,255,0.3); }
-.hud-inputbar input:focus {
-  border-color: var(--hud-cyan);
-  box-shadow: var(--hud-glow);
-}
-
-/* HUD buttons */
-.hud-btn {
-  width: 44px; height: 44px;
-  background: var(--hud-panel);
-  border: 1px solid var(--hud-border);
-  color: var(--hud-cyan);
-  font-family: 'Orbitron', monospace;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.18s;
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-.hud-btn:hover {
-  background: rgba(0,229,255,0.15);
-  border-color: var(--hud-cyan);
-  box-shadow: var(--hud-glow);
-  color: #fff;
-}
-.hud-btn.active,
-.hud-btn:active {
-  background: rgba(0,229,255,0.25);
-  box-shadow: inset 0 0 12px rgba(0,229,255,0.3), var(--hud-glow);
-}
-
-/* Send button accent */
-.hud-btn.send {
-  width: auto; padding: 0 18px;
-  font-size: 9px; letter-spacing: 0.2em;
-  text-transform: uppercase;
-  border-color: var(--hud-cyan);
-}
-
-/* ─── LIVE VOICE MODE OVERLAY ────────────────────────────────────── */
-.voice-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(2, 11, 24, 0.97);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-}
-.voice-overlay.active { display: flex; }
-
-/* Radar rings */
-.voice-radar {
-  position: relative;
-  width: 220px; height: 220px;
-}
-.radar-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(0,229,255,0.3);
-  top: 50%; left: 50%;
-  transform: translate(-50%,-50%);
-  animation: radar-expand 2.5s ease-out infinite;
-}
-.radar-ring:nth-child(1) { width: 80px;  height: 80px;  animation-delay: 0s; }
-.radar-ring:nth-child(2) { width: 140px; height: 140px; animation-delay: 0.6s; }
-.radar-ring:nth-child(3) { width: 200px; height: 200px; animation-delay: 1.2s; }
-@keyframes radar-expand {
-  0%   { opacity: 0.8; transform: translate(-50%,-50%) scale(0.8); }
-  100% { opacity: 0;   transform: translate(-50%,-50%) scale(1.3); }
-}
-
-.voice-core {
-  position: absolute;
-  width: 70px; height: 70px;
-  border-radius: 50%;
-  top: 50%; left: 50%;
-  transform: translate(-50%,-50%);
-  background: radial-gradient(circle, rgba(0,229,255,0.4) 0%, rgba(0,119,255,0.15) 70%, transparent 100%);
-  border: 2px solid var(--hud-cyan);
-  box-shadow: 0 0 30px rgba(0,229,255,0.6), 0 0 80px rgba(0,119,255,0.3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px;
-}
-.voice-core.listening { animation: core-pulse 1s ease-in-out infinite alternate; }
-.voice-core.thinking  { animation: core-spin 1.5s linear infinite; }
-.voice-core.speaking  { animation: core-speak 0.3s ease-in-out infinite alternate; }
-
-@keyframes core-pulse {
-  from { box-shadow: 0 0 20px rgba(0,229,255,0.4); transform: translate(-50%,-50%) scale(1);   }
-  to   { box-shadow: 0 0 50px rgba(0,229,255,0.9); transform: translate(-50%,-50%) scale(1.08); }
-}
-@keyframes core-spin {
-  from { transform: translate(-50%,-50%) rotate(0deg); }
-  to   { transform: translate(-50%,-50%) rotate(360deg); }
-}
-@keyframes core-speak {
-  from { transform: translate(-50%,-50%) scale(1);    }
-  to   { transform: translate(-50%,-50%) scale(1.12); }
-}
-
-.voice-status {
-  font-family: 'Orbitron', monospace;
-  font-size: 11px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--hud-cyan);
-  text-shadow: var(--hud-glow);
-}
-
-/* ─── BOTTOM STATUS BAR ──────────────────────────────────────────── */
-.hud-footer {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
-  height: 28px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px;
-  background: linear-gradient(0deg, rgba(0,20,50,0.95) 0%, transparent 100%);
-  border-top: 1px solid var(--hud-border);
-  font-family: 'Orbitron', monospace;
-  font-size: 8px;
-  letter-spacing: 0.12em;
-  color: rgba(0,229,255,0.4);
-  text-transform: uppercase;
-}
-
-/* ─── SCROLLBAR ──────────────────────────────────────────────────── */
-#chat-window::-webkit-scrollbar       { width: 4px; }
-#chat-window::-webkit-scrollbar-track { background: transparent; }
-#chat-window::-webkit-scrollbar-thumb { background: var(--hud-border); border-radius: 2px; }
-
-/* ─── PASSCODE SCREEN ────────────────────────────────────────────── */
-#passcode-screen {
-  position: fixed; inset: 0; z-index: 2000;
-  background: var(--hud-bg);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 28px;
-}
-.passcode-title {
-  font-family: 'Orbitron', monospace;
-  font-size: 22px; font-weight: 900;
-  letter-spacing: 0.4em;
-  text-transform: uppercase;
-  color: var(--hud-cyan);
-  text-shadow: var(--hud-glow);
-}
-.passcode-dots {
-  display: flex; gap: 14px;
-}
-.pd {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--hud-cyan);
-  background: transparent;
-  transition: all 0.15s;
-}
-.pd.filled {
-  background: var(--hud-cyan);
-  box-shadow: 0 0 14px var(--hud-cyan);
-}
-.passcode-grid {
-  display: grid; grid-template-columns: repeat(3, 70px); gap: 10px;
-}
-.pk {
-  height: 56px;
-  background: var(--hud-panel);
-  border: 1px solid var(--hud-border);
-  color: var(--hud-cyan);
-  font-family: 'Orbitron', monospace;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.15s;
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-.pk:hover { background: rgba(0,229,255,0.15); box-shadow: var(--hud-glow); }
-.pk:active { transform: scale(0.94); }
-.passcode-msg {
-  font-family: 'Orbitron', monospace;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: rgba(0,229,255,0.5);
-  min-height: 16px;
-}
-.passcode-msg.error { color: var(--hud-red); text-shadow: 0 0 8px var(--hud-red); }
-
-/* ─── MOBILE ─────────────────────────────────────────────────────── */
-@media (max-width: 700px) {
-  .hud-telemetry { display: none; }
-  .jarvis-app { margin: 0; }
-}
-</style>
+    /* Photo question bar — appears after image is sent */
+    #photoBar {
+      display: none; gap: 8px; padding: 8px 12px;
+      border-top: 1px solid rgba(0,212,255,0.15);
+      background: rgba(0,212,255,0.03);
+      flex-shrink: 0; align-items: center;
+    }
+    #photoBar.visible { display: flex; }
+    #photoThumb { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; border: 1px solid var(--accent2); flex-shrink: 0; }
+    #photoQuestion { flex: 1; background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.2); border-radius: 20px; color: var(--text); font-family: inherit; font-size: 12px; padding: 8px 14px; outline: none; }
+    #photoQuestion:focus { border-color: var(--accent); }
+    #photoQuestion::placeholder { color: var(--dim); }
+    #photoAskBtn { background: rgba(0,212,255,0.12); border: 1px solid var(--accent2); border-radius: 20px; color: var(--accent); font-family: inherit; font-size: 11px; letter-spacing: 1px; padding: 8px 14px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    #photoAskBtn:active { background: rgba(0,212,255,0.25); }
+    #photoClearBtn { background: transparent; border: none; color: var(--dim); font-size: 16px; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
+    #photoClearBtn:hover { color: var(--danger); }
+  </style>
 </head>
 <body>
 
-<!-- ═══════════════════════ HUD CHROME ═══════════════════════════ -->
-<div class="hud-frame">
-  <div class="corner-br"></div>
-  <div class="corner-bl"></div>
+<!-- ═══════════════ LOCK SCREEN ═══════════════ -->
+<div id="lockScreen">
+  <div class="lock-title">J.A.R.V.I.S</div>
+  <div class="lock-logo">◈ JARVIS ◈</div>
+  <div class="lock-subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  <div class="lock-dots">
+    <div class="lock-dot" id="d0"></div>
+    <div class="lock-dot" id="d1"></div>
+    <div class="lock-dot" id="d2"></div>
+    <div class="lock-dot" id="d3"></div>
+    <div class="lock-dot" id="d4"></div>
+    <div class="lock-dot" id="d5"></div>
+  </div>
+  <div id="lockError"></div>
+  <div class="lock-grid">
+    <button class="lock-key" onclick="lockKey('1')">1</button>
+    <button class="lock-key" onclick="lockKey('2')">2</button>
+    <button class="lock-key" onclick="lockKey('3')">3</button>
+    <button class="lock-key" onclick="lockKey('4')">4</button>
+    <button class="lock-key" onclick="lockKey('5')">5</button>
+    <button class="lock-key" onclick="lockKey('6')">6</button>
+    <button class="lock-key" onclick="lockKey('7')">7</button>
+    <button class="lock-key" onclick="lockKey('8')">8</button>
+    <button class="lock-key" onclick="lockKey('9')">9</button>
+    <button class="lock-key lock-del" onclick="lockDel()">⌫</button>
+    <button class="lock-key" onclick="lockKey('0')">0</button>
+    <button class="lock-key" onclick="lockKey('')"></button>
+  </div>
+  <button class="lock-voice-btn" id="lockVoiceBtn" onclick="lockVoiceUnlock()">🎤 SPEAK CODE</button>
+  <div id="lockVoiceStatus"></div>
 </div>
 
-<div class="hud-statusbar">
-  <div class="sb-left">
-    <span class="status-dot"></span>
-    <span>SYS ONLINE</span>
-    <span id="sb-time">00:00:00</span>
-  </div>
-  <div class="sb-center">J · A · R · V · I · S</div>
-  <div class="sb-right">
-    <span id="sb-date">--</span>
-    <span>v4.1.0</span>
-  </div>
-</div>
-
-<!-- Left telemetry -->
-<div class="hud-telemetry left">
-  <div class="tele-block">
-    <div class="tele-label">Neural Core</div>
-    <div class="tele-value" id="tele-neural">94%</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:94%"></div></div>
-  </div>
-  <div class="tele-block">
-    <div class="tele-label">Voice Engine</div>
-    <div class="tele-value" id="tele-voice">READY</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:72%; animation-delay:.8s"></div></div>
-  </div>
-  <div class="tele-block">
-    <div class="tele-label">API Latency</div>
-    <div class="tele-value" id="tele-latency">42ms</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:30%; animation-delay:1.4s"></div></div>
-  </div>
-  <div class="tele-block">
-    <div class="tele-label">Context Len</div>
-    <div class="tele-value" id="tele-ctx">0</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:5%; animation-delay:0.3s" id="ctx-bar"></div></div>
-  </div>
-</div>
-
-<!-- Right telemetry -->
-<div class="hud-telemetry right">
-  <div class="tele-block" style="align-items:flex-end">
-    <div class="tele-label">Model</div>
-    <div class="tele-value" style="font-size:8px">LLAMA-3.3-70B</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:100%"></div></div>
-  </div>
-  <div class="tele-block" style="align-items:flex-end">
-    <div class="tele-label">Provider</div>
-    <div class="tele-value">GROQ</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:88%; animation-delay:0.5s"></div></div>
-  </div>
-  <div class="tele-block" style="align-items:flex-end">
-    <div class="tele-label">Session Msgs</div>
-    <div class="tele-value" id="tele-msgs">0</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:8%; animation-delay:1s" id="msgs-bar"></div></div>
-  </div>
-  <div class="tele-block" style="align-items:flex-end">
-    <div class="tele-label">Uptime</div>
-    <div class="tele-value" id="tele-uptime">0:00</div>
-    <div class="tele-bar"><div class="tele-bar-fill" style="width:20%; animation-delay:1.8s"></div></div>
+<!-- ═══════════════ HEADER ═══════════════ -->
+<div id="header">
+  <div class="header-logo">J.A.R.V.I.S</div>
+  <div class="header-right">
+    <div id="locationBadge">📍 <span id="locationCity"></span></div>
+    <div id="memBadge" onclick="openMemPanel()">🧠 <span id="memCount">0</span></div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span>ONLINE</span>
+    </div>
   </div>
 </div>
 
-<div class="hud-footer">
-  <span>© STARK INDUSTRIES — RESTRICTED ACCESS</span>
-  <span id="footer-loc">LOCATION: CLASSIFIED</span>
-  <span>ENCRYPTION: AES-256 ACTIVE</span>
-</div>
-
-<!-- ═══════════════════ PASSCODE SCREEN ══════════════════════════ -->
-<div id="passcode-screen">
-  <div class="passcode-title">IDENTIFY</div>
-  <div class="passcode-dots" id="pc-dots">
-    <div class="pd" id="d0"></div>
-    <div class="pd" id="d1"></div>
-    <div class="pd" id="d2"></div>
-    <div class="pd" id="d3"></div>
-    <div class="pd" id="d4"></div>
-    <div class="pd" id="d5"></div>
-  </div>
-  <div class="passcode-grid">
-    <button class="pk" onclick="pcKey(1)">1</button>
-    <button class="pk" onclick="pcKey(2)">2</button>
-    <button class="pk" onclick="pcKey(3)">3</button>
-    <button class="pk" onclick="pcKey(4)">4</button>
-    <button class="pk" onclick="pcKey(5)">5</button>
-    <button class="pk" onclick="pcKey(6)">6</button>
-    <button class="pk" onclick="pcKey(7)">7</button>
-    <button class="pk" onclick="pcKey(8)">8</button>
-    <button class="pk" onclick="pcKey(9)">9</button>
-    <button class="pk" onclick="pcClear()">CLR</button>
-    <button class="pk" onclick="pcKey(0)">0</button>
-    <button class="pk" onclick="pcDel()">⌫</button>
-  </div>
-  <div class="passcode-msg" id="pc-msg">ENTER ACCESS CODE</div>
-</div>
-
-<!-- ═══════════════════════ MAIN APP ═════════════════════════════ -->
-<div class="jarvis-app" id="main-app" style="display:none; flex-direction:column; height:100vh;">
-  <div id="chat-window"></div>
-
-  <div class="hud-inputbar">
-    <button class="hud-btn" id="mic-btn" title="Voice input">🎙</button>
-    <input type="text" id="user-input" placeholder="Issue command, Sir…" autocomplete="off"/>
-    <button class="hud-btn send" onclick="sendMessage()">SEND</button>
-    <button class="hud-btn" id="voice-mode-btn" title="Live voice mode" onclick="toggleVoiceMode()">📡</button>
+<!-- ═══════════════ MESSAGES ═══════════════ -->
+<div id="messages">
+  <div class="welcome">
+    <div class="welcome-orb">🤖</div>
+    <div class="welcome-text">READY FOR YOUR COMMAND</div>
+    <div class="welcome-sub">TAP THE ORB OR TYPE BELOW</div>
   </div>
 </div>
 
-<!-- ═══════════════════ VOICE MODE OVERLAY ═══════════════════════ -->
-<div class="voice-overlay" id="voice-overlay">
-  <div class="voice-radar">
-    <div class="radar-ring"></div>
-    <div class="radar-ring"></div>
-    <div class="radar-ring"></div>
-<div class="voice-core" id="voice-core">🎙</div>
+<!-- ═══════════════ TAP ORB ═══════════════ -->
+<div id="tapArea">
+  <div id="tapBtn" onclick="tapSpeak()">
+    <div id="tapIcon">🎙️</div>
+    <div id="tapLabel">TAP TO SPEAK</div>
   </div>
-  <div class="voice-status" id="voice-status">STANDBY</div>
-  <button class="hud-btn" style="width:120px; font-size:9px; letter-spacing:.2em" onclick="toggleVoiceMode()">EXIT</button>
 </div>
 
-<script>
-const PASSCODE = '615113';
-let pcInput = '';
-
-function pcKey(n) {
-  if (pcInput.length >= 6) return;
-  pcInput += n;
-  document.getElementById('d' + (pcInput.length - 1)).classList.add('filled');
-  if (pcInput.length === 6) setTimeout(pcCheck, 180);
-}
-function pcDel() {
-  if (!pcInput.length) return;
-  document.getElementById('d' + (pcInput.length - 1)).classList.remove('filled');
-  pcInput = pcInput.slice(0, -1);
-}
-function pcClear() { while (pcInput.length) pcDel(); }
-function pcCheck() {
-  if (pcInput === PASSCODE) {
-    document.getElementById('passcode-screen').style.display = 'none';
-    const app = document.getElementById('main-app');
-    app.style.display = 'flex';
-    initApp();
-  } else {
-    const msg = document.getElementById('pc-msg');
-    msg.textContent = 'ACCESS DENIED';
-    msg.className = 'passcode-msg error';
-    document.querySelectorAll('.pd').forEach(d => d.classList.add('filled'));
-    setTimeout(() => {
-      pcClear();
-      msg.textContent = 'ENTER ACCESS CODE';
-      msg.className = 'passcode-msg';
-    }, 900);
-  }
-}
-
-let sessionStart;
-function startClock() {
-  sessionStart = Date.now();
-  setInterval(() => {
-    const now = new Date();
-    document.getElementById('sb-time').textContent = now.toTimeString().slice(0,8);
-    document.getElementById('sb-date').textContent =
-      now.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
-    const up = Math.floor((Date.now() - sessionStart) / 1000);
-    const m = Math.floor(up/60), s = up%60;
-    document.getElementById('tele-uptime').textContent = `${m}:${String(s).padStart(2,'0')}`;
-  }, 1000);
-}
-
-let history = [];
-let msgCount = 0;
-
-function initApp() {
-  startClock();
-  addMessage('jarvis', 'Online, Boss Muhammed Aali. All systems nominal. How may I assist you, Sir?');
-}
-
-function addMessage(role, text) {
-  const win = document.getElementById('chat-window');
-  const div = document.createElement('div');
-  div.className = `msg ${role}`;
-  div.textContent = text;
-  win.appendChild(div);
-  win.scrollTop = win.scrollHeight;
-  if (role === 'user') history.push({ role:'user', content: text });
-  if (role === 'jarvis') history.push({ role:'assistant', content: text });
-  msgCount++;
-  document.getElementById('tele-msgs').textContent = msgCount;
-  document.getElementById('msgs-bar').style.width = Math.min(msgCount * 6, 95) + '%';
-  document.getElementById('tele-ctx').textContent = history.length;
-  document.getElementById('ctx-bar').style.width = Math.min(history.length * 3, 95) + '%';
-}
-
-function showTyping() {
-  const win = document.getElementById('chat-window');
-  const div = document.createElement('div');
-  div.className = 'msg typing';
-  div.id = 'typing-indicator';
-  div.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
-  win.appendChild(div);
-  win.scrollTop = win.scrollHeight;
-}
-function hideTyping() {
-  const t = document.getElementById('typing-indicator');
-  if (t) t.remove();
-}
-
-async function sendMessage() {
-  const input = document.getElementById('user-input');
-  const text = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  addMessage('user', text);
-  showTyping();
-  const t0 = Date.now();
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history })
-    });
-    const data = await res.json();
-    const reply = data.choices?.[0]?.message?.content || data.reply || 'Error — no response.';
-    hideTyping();
-    addMessage('jarvis', reply);
-    document.getElementById('tele-latency').textContent = (Date.now() - t0) + 'ms';
-    speak(reply);
-  } catch(e) {
-    hideTyping();
-    addMessage('jarvis', 'Connection error, Sir. Please try again.');
-  }
-}
-
-document.getElementById('user-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMessage();
-});
-
-function speak(text) {
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  const voices = window.speechSynthesis.getVoices();
-  const female = voices.find(v =>
-    /female|woman|samantha|zira|google uk english female/i.test(v.name)
-  ) || voices.find(v => v.lang === 'en-US') || voices[0];
-  if (female) utt.voice = female;
-  utt.rate = 1.0; utt.pitch = 1.05;
-  window.speechSynthesis.speak(utt);
-}
-
-const micBtn = document.getElementById('mic-btn');
-let recognition;
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.onresult = e => {
-    document.getElementById('user-input').value = e.results[0][0].transcript;
-    sendMessage();
-  };
-  recognition.onend = () => micBtn.classList.remove('active');
-}
-micBtn.addEventListener('click', () => {
-  if (!recognition) return;
-  micBtn.classList.add('active');
-  recognition.start();
-});
-
-let voiceActive = false;
-function toggleVoiceMode() {
-  voiceActive = !voiceActive;
-  document.getElementById('voice-overlay').classList.toggle('active', voiceActive);
-  if (voiceActive) startVoiceLoop();
-  else {
-    window.speechSynthesis.cancel();
-    if (recognition) recognition.abort();
-    setVoiceState('idle');
-  }
-}
-function setVoiceState(state) {
-  const icons = { listening:'🎙', thinking:'⚡', speaking:'🔊', idle:'○' };
-  const core = document.getElementById('voice-core');
-  core.className = 'voice-core ' + state;
-  core.textContent = icons[state] || '○';
-  document.getElementById('voice-status').textContent = state.toUpperCase();
-  document.getElementById('tele-voice').textContent = state.toUpperCase();
-}
-async function startVoiceLoop() {
-  if (!voiceActive) return;
-  setVoiceState('listening');
-  try {
-    const transcript = await listenOnce();
-    if (!voiceActive) return;
-    if (transcript) {
-      addMessage('user', transcript);
-      setVoiceState('thinking');
-      const t0 = Date.now();
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history })
-      });
-      const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content || data.reply || '';
-      document.getElementById('tele-latency').textContent = (Date.now() - t0) + 'ms';
-      addMessage('jarvis', reply);
-      setVoiceState('speaking');
-      await speakAsync(reply);
-    }
-    if (voiceActive) startVoiceLoop();
-  } catch(e) {
-    if (voiceActive) setTimeout(startVoiceLoop, 1200);
-  }
-}
-function listenOnce() {
-  return new Promise((res, rej) => {
-    if (!recognition) return rej('no SR');
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const r = new SR();
-    r.lang = 'en-US';
-    r.onresult = e => res(e.results[0][0].transcript);
-    r.onerror = rej;
-    r.onend = () => res('');
-    r.start();
-  });
-}
-function speakAsync(text) {
-  return new Promise(res => {
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const female = voices.find(v =>
-      /female|woman|samantha|zira|google uk english female/i.test(v.name)
-    ) || voices[0];
-    if (female) utt.voice = female;
-    utt.rate = 1.0; utt.pitch = 1.05;
-    utt.onend = res;
-    window.speechSynthesis.speak(utt);
-  });
-}
-
-window.speechSynthesis.onvoiceschanged = () => {};
-</script>
-</body>
-</html>
-    
+<!-- ═══════════════ INPUT BAR ═══════════════ -->
+<div id="inputBar">
+  <input id="userInput" type="text" placeholder="Ask JARVIS..." autocomplete="off"
+    onkeydown="if(event.key==='Enter')sendMessage(this.value)"/>
+  <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>
+  <div class="icon-btn" id="sendBtn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
+  
