@@ -689,4 +689,129 @@ function toggleMic() {
   micRec = new SR();
   micRec.lang = 'en-US'; micRec.interimResults = true; micRec.continuous = false;
   micRec.onstart = () => btn.classList.add('recording');
+micRec.onresult = (e) => { let interim = '', final = ''; for (const r of e.results) { if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript; } userInput.value = final || interim; };
+  micRec.onend = () => { micRec = null; btn.classList.remove('recording'); };
+  micRec.onerror = () => { micRec = null; btn.classList.remove('recording'); };
+  try { micRec.start(); } catch(e) { micRec = null; }
+}
+
+// ── LIVE MODE ──
+function startLiveMode() {
+  if (!SR) { addMsg('ai', 'Speech recognition not supported, Sir.'); return; }
+  liveMode = true; liveOverlay.classList.add('active'); listenLoop();
+}
+function endLiveMode() {
+  liveMode = false;
+  if (liveRec) { try { liveRec.stop(); } catch(_){} liveRec = null; }
+  speechSynthesis.cancel(); liveOverlay.classList.remove('active'); liveOrb.className = ''; liveLabel.textContent = 'LISTENING';
+  document.getElementById('liveMicDead').style.display = 'none';
+}
+function toggleMute() {
+  liveMuted = !liveMuted;
+  const btn = document.getElementById('muteBtn');
+  btn.textContent = liveMuted ? '🔊' : '🔇';
+  if (liveMuted) speechSynthesis.cancel();
+}
+function listenLoop() {
+  if (!liveMode || busy) return;
+  liveOrb.className = 'listening'; liveLabel.textContent = 'LISTENING'; liveText.textContent = '';
+  document.getElementById('liveMicDead').style.display = 'none';
+  liveRec = new SR();
+  liveRec.lang = 'en-US'; liveRec.interimResults = true; liveRec.continuous = false;
+  liveRec.onresult = (e) => {
+    let interim = '', final = '';
+    for (const r of e.results) { if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript; }
+    liveText.textContent = final || interim;
+    if (final) { liveRec = null; liveOrb.className = 'thinking'; liveLabel.textContent = 'THINKING'; liveSend(final.trim()); }
+  };
+  liveRec.onerror = (e) => {
+    liveRec = null;
+    if (liveMode) { if (e.error === 'no-speech') { setTimeout(listenLoop, 300); return; } document.getElementById('liveMicDead').style.display = 'block'; liveOrb.className = ''; liveLabel.textContent = 'MIC ERROR'; }
+  };
+  liveRec.onend = () => { if (liveMode && liveRec) { liveRec = null; setTimeout(listenLoop, 300); } };
+  try { liveRec.start(); } catch(e) { liveRec = null; if (liveMode) setTimeout(listenLoop, 1000); }
+}
+async function liveSend(text) {
+  if (!text || busy) { if (liveMode) listenLoop(); return; }
+  busy = true;
+  addMsg('user', text); history.push({ role: 'user', content: text });
+  const waResult = detectWhatsAppIntent(text);
+  if (waResult) { busy = false; handleWhatsApp(waResult); if (liveMode) setTimeout(listenLoop, 2000); return; }
+  const taskerResult = detectTaskerIntent(text);
+  if (taskerResult) { busy = false; handleTasker(taskerResult); if (liveMode) setTimeout(listenLoop, 2000); return; }
+  if (/^(?:remember|note|save)[\s:]+(.+)/i.test(text)) {
+    const fact = text.replace(/^(?:remember|note|save)[\s:]+/i, '').trim();
+    const added = addMemory(fact);
+    const reply = added ? `Noted, Sir.` : `Already noted, Sir.`;
+    history.push({ role: 'assistant', content: reply }); addMsg('ai', reply, added ? 'mem' : null); speak(reply); busy = false; return;
+  }
+  try {
+    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history, location: liveLocation, memory: loadMemory() }) });
+    const data = await res.json();
+    const reply = data.reply || "I'm having trouble, Sir.";
+    history.push({ role: 'assistant', content: reply }); addMsg('ai', reply, data.searched ? 'live' : null);
+    liveText.textContent = reply; liveOrb.className = 'speaking'; liveLabel.textContent = 'SPEAKING'; speak(reply);
+  } catch { const err = "Connectivity issue, Sir."; addMsg('ai', err); speak(err); liveText.textContent = err; }
+  busy = false;
+}
+
+// ── PHOTO VISION ──
+let currentPhotoBase64 = null, currentMediaType = null;
+function handlePhotoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  event.target.value = '';
+  const mediaType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const base64 = dataUrl.split(',')[1];
+    currentPhotoBase64 = base64; currentMediaType = mediaType;
+    showPhotoInChat(dataUrl);
+    document.getElementById('photoThumb').src = dataUrl;
+    document.getElementById('photoBar').classList.add('visible');
+    document.getElementById('photoQuestion').value = '';
+    document.getElementById('photoQuestion').focus();
+    sendPhotoToJarvis(base64, mediaType, null);
+  };
+  reader.readAsDataURL(file);
+}
+function showPhotoInChat(dataUrl) {
+  clearWelcome();
+  const wrap = document.createElement('div');
+  wrap.className = 'img-preview-wrap';
+  wrap.innerHTML = `<div class="msg-label" style="align-self:flex-end;">YOU</div><img class="img-preview" src="${dataUrl}" alt="uploaded photo" onclick="this.style.maxWidth=this.style.maxWidth==='100%'?'220px':'100%'"/>`;
+  messagesEl.appendChild(wrap); messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+async function sendPhotoToJarvis(base64, mediaType, question) {
+  if (busy) return;
+  busy = true; showTyping();
+  try {
+    const res = await fetch('/api/vision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: base64, mediaType, question: question || null, memory: loadMemory() }) });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.reply || "I couldn't analyse that image, Sir.";
+    history.push({ role: 'user', content: question || '[Image uploaded]' });
+    history.push({ role: 'assistant', content: reply });
+    addMsg('ai', reply, 'photo'); speak(reply);
+  } catch { removeTyping(); const err = "Vision service unavailable, Sir."; addMsg('ai', err); speak(err); }
+  busy = false;
+}
+function askAboutPhoto(question) {
+  if (!currentPhotoBase64 || !question?.trim() || busy) return;
+  const q = question.trim();
+  document.getElementById('photoQuestion').value = '';
+  addMsg('user', q);
+  sendPhotoToJarvis(currentPhotoBase64, currentMediaType, q);
+}
+function clearPhoto() {
+  currentPhotoBase64 = null; currentMediaType = null;
+  document.getElementById('photoBar').classList.remove('visible');
+  document.getElementById('photoThumb').src = '';
+  document.getElementById('photoQuestion').value = '';
+}
+</script>
+<script src="jarvis-reminders.js"></script>
+</body>
+</html>
   
