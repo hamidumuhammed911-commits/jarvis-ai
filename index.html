@@ -298,4 +298,395 @@
     onkeydown="if(event.key==='Enter')sendMessage(this.value)"/>
   <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>
   <div class="icon-btn" id="sendBtn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
+<div class="icon-btn" id="photoBtn" onclick="document.getElementById('photoInput').click()" title="Upload Photo">📷</div>
+  <div class="icon-btn" id="briefingBtn" onclick="runBriefing()" title="Morning Briefing">☀️</div>
+  <div class="icon-btn" id="liveBtn" onclick="startLiveMode()" title="Live Mode">⚡</div>
+</div>
+
+<!-- hidden file input — accepts camera + gallery on Android -->
+<input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)"/>
+
+<!-- ═══════════════ PHOTO QUESTION BAR ═══════════════ -->
+<div id="photoBar">
+  <img id="photoThumb" src="" alt="photo"/>
+  <input id="photoQuestion" type="text" placeholder="Ask about this photo..." autocomplete="off"
+    onkeydown="if(event.key==='Enter')askAboutPhoto(this.value)"/>
+  <button id="photoAskBtn" onclick="askAboutPhoto(document.getElementById('photoQuestion').value)">ASK ➤</button>
+  <button id="photoClearBtn" onclick="clearPhoto()" title="Remove photo">✕</button>
+</div>
+
+<!-- ═══════════════ LIVE MODE OVERLAY ═══════════════ -->
+<div id="liveOverlay">
+  <div id="liveOrb">🎙️</div>
+  <div id="liveLabel">LISTENING</div>
+  <div id="liveText">Ready, Boss Muhammed Aali.</div>
+  <div id="liveMicDead">⚠ MIC LOST — TAP ORB TO RESTART</div>
+  <div class="live-controls">
+    <div class="icon-btn" id="muteBtn" onclick="toggleMute()">🔇</div>
+    <div class="icon-btn" id="endBtn" onclick="endLiveMode()">✕ END</div>
+  </div>
+</div>
+
+<!-- ═══════════════ BRIEFING OVERLAY ═══════════════ -->
+<div id="briefingOverlay">
+  <div class="briefing-icon">☀️</div>
+  <div class="briefing-title">MORNING BRIEFING</div>
+  <div id="briefingText">Fetching your briefing, Sir...</div>
+  <button id="briefingClose" onclick="closeBriefing()">DISMISS</button>
+</div>
+
+<!-- ═══════════════ MEMORY PANEL ═══════════════ -->
+<div id="memPanel">
+  <div class="mem-panel-header">
+    <div class="mem-panel-title">🧠 JARVIS MEMORY</div>
+    <button class="mem-panel-close" onclick="closeMemPanel()">✕ CLOSE</button>
+  </div>
+  <div class="mem-panel-sub">FACTS JARVIS REMEMBERS ABOUT YOU</div>
+  <div id="memList"></div>
+  <div class="mem-add-row">
+    <input id="memInput" type="text" placeholder="Add a memory (e.g. I prefer Urdu greetings)" autocomplete="off"
+      onkeydown="if(event.key==='Enter')manualAddMemory()"/>
+    <button id="memAddBtn" onclick="manualAddMemory()">+ ADD</button>
+  </div>
+  <div class="mem-hint">
+    💡 JARVIS auto-saves facts from your conversations.<br/>
+    Tap 💾 SAVE on any message to remember it. Max 30 memories.
+  </div>
+</div>
+
+<script>
+// JARVIS v2 — Memory System + Morning Briefing + Photo Vision + Reminders
+
+const PASSCODE = '615113';
+const MEMORY_KEY = 'jarvis_memory_v1';
+const MAX_MEMORIES = 30;
+
+function loadMemory() {
+  try { return JSON.parse(localStorage.getItem(MEMORY_KEY)) || []; }
+  catch { return []; }
+}
+function saveMemoryStore(arr) {
+  localStorage.setItem(MEMORY_KEY, JSON.stringify(arr));
+  updateMemBadge();
+}
+function addMemory(fact) {
+  const mem = loadMemory();
+  const clean = fact.trim();
+  if (!clean) return false;
+  if (mem.some(m => m.toLowerCase() === clean.toLowerCase())) return false;
+  if (mem.length >= MAX_MEMORIES) mem.shift();
+  mem.push(clean);
+  saveMemoryStore(mem);
+  return true;
+}
+function deleteMemory(index) {
+  const mem = loadMemory();
+  mem.splice(index, 1);
+  saveMemoryStore(mem);
+  renderMemList();
+}
+function updateMemBadge() {
+  const mem = loadMemory();
+  const badge = document.getElementById('memBadge');
+  const count = document.getElementById('memCount');
+  if (mem.length > 0) { count.textContent = mem.length; badge.style.display = 'block'; }
+  else { badge.style.display = 'none'; }
+}
+function autoExtractMemories(userText) {
+  const prefPatterns = [
+    /i (?:prefer|like|love|hate|dislike|always|usually|never)\s+(.{5,60})/i,
+    /my (?:name|job|work|profession|hobby|favorite|favourite)\s+is\s+(.{3,50})/i,
+    /i(?:'m| am) (?:a |an )?(.{5,50})/i,
+    /i (?:work|live|study)\s+(?:in|at|as)\s+(.{3,50})/i,
+    /call me\s+(.{2,30})/i,
+    /remember (?:that )?(.{5,80})/i,
+  ];
+  for (const pat of prefPatterns) {
+    const m = userText.match(pat);
+    if (m?.[1]) { addMemory(userText.trim().slice(0, 80)); break; }
+  }
+}
+function manualAddMemory() {
+  const input = document.getElementById('memInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const added = addMemory(val);
+  input.value = '';
+  renderMemList();
+  if (added) {
+    const hint = document.querySelector('.mem-hint');
+    hint.style.color = 'var(--mem)';
+    hint.textContent = '✓ Memory saved.';
+    setTimeout(() => { hint.style.color = ''; hint.textContent = '💡 JARVIS auto-saves facts from your conversations.\nTap 💾 SAVE on any message to remember it. Max 30 memories.'; }, 2000);
+  }
+}
+function renderMemList() {
+  const mem = loadMemory();
+  const list = document.getElementById('memList');
+  list.innerHTML = '';
+  if (mem.length === 0) { list.innerHTML = '<div class="mem-empty">NO MEMORIES YET — JARVIS IS LEARNING</div>'; return; }
+  mem.forEach((fact, i) => {
+    const item = document.createElement('div');
+    item.className = 'mem-item';
+    item.innerHTML = `<div class="mem-item-text">${fact}</div><button class="mem-item-del" onclick="deleteMemory(${i})">✕</button>`;
+    list.appendChild(item);
+  });
+}
+function openMemPanel() { renderMemList(); document.getElementById('memPanel').classList.add('open'); }
+function closeMemPanel() { document.getElementById('memPanel').classList.remove('open'); }
+
+// ── BRIEFING ──
+async function runBriefing() {
+  const overlay = document.getElementById('briefingOverlay');
+  const textEl = document.getElementById('briefingText');
+  overlay.classList.add('active');
+  textEl.textContent = 'Fetching your briefing, Sir...';
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ briefing: true, location: liveLocation, memory: loadMemory() })
+    });
+    const data = await res.json();
+    const reply = data.reply || "Briefing unavailable, Sir.";
+    textEl.textContent = reply;
+    speak(reply);
+    addMsg('ai', reply, 'briefing');
+    history.push({ role: 'assistant', content: reply });
+  } catch { textEl.textContent = "Connectivity issue — briefing unavailable, Sir."; }
+}
+function closeBriefing() { speechSynthesis.cancel(); document.getElementById('briefingOverlay').classList.remove('active'); }
+
+// ── LOCK SCREEN ──
+let lockInput = '';
+const LOCK_LEN = 6;
+function lockKey(d) {
+  if (lockInput.length >= LOCK_LEN) return;
+  lockInput += d; updateDots();
+  if (lockInput.length === LOCK_LEN) setTimeout(checkCode, 100);
+}
+function lockDel() { lockInput = lockInput.slice(0, -1); updateDots(); document.getElementById('lockError').textContent = ''; }
+function updateDots() {
+  for (let i = 0; i < LOCK_LEN; i++)
+    document.getElementById('d' + i).classList.toggle('filled', i < lockInput.length);
+}
+function checkCode() {
+  if (lockInput === PASSCODE) { unlockAndStart(); }
+  else {
+    document.getElementById('lockError').textContent = 'ACCESS DENIED';
+    for (let i = 0; i < LOCK_LEN; i++) document.getElementById('d' + i).classList.remove('filled');
+    setTimeout(() => { lockInput = ''; updateDots(); document.getElementById('lockError').textContent = ''; }, 1000);
+  }
+}
+let lockVoiceRec = null;
+function lockVoiceUnlock() {
+  const btn = document.getElementById('lockVoiceBtn');
+  const status = document.getElementById('lockVoiceStatus');
+  const SR2 = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR2) { document.getElementById('lockError').textContent = 'VOICE NOT SUPPORTED'; return; }
+  if (lockVoiceRec) { lockVoiceRec.stop(); lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = ''; return; }
+  lockVoiceRec = new SR2();
+  lockVoiceRec.lang = 'en-US'; lockVoiceRec.interimResults = false;
+  lockVoiceRec.onstart = () => { btn.classList.add('listening'); btn.textContent = '🔴 LISTENING...'; status.textContent = 'SAY YOUR CODE NOW'; };
+  lockVoiceRec.onresult = (e) => {
+    const said = e.results[0][0].transcript.trim();
+    const digits = said.replace(/\s+/g,'').replace(/zero/gi,'0').replace(/one/gi,'1').replace(/two/gi,'2').replace(/three/gi,'3').replace(/four/gi,'4').replace(/five/gi,'5').replace(/six/gi,'6').replace(/seven/gi,'7').replace(/eight/gi,'8').replace(/nine/gi,'9').replace(/[^0-9]/g,'');
+    lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = '';
+    lockInput = digits.slice(0, LOCK_LEN); updateDots();
+    if (lockInput.length === LOCK_LEN) checkCode();
+    else { document.getElementById('lockError').textContent = 'ACCESS DENIED'; setTimeout(() => { lockInput = ''; updateDots(); document.getElementById('lockError').textContent = ''; }, 1200); }
+  };
+  lockVoiceRec.onerror = () => { lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = ''; document.getElementById('lockError').textContent = 'MIC ERROR — TRY AGAIN'; };
+  lockVoiceRec.onend = () => { if (lockVoiceRec) { lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = ''; } };
+  try { lockVoiceRec.start(); } catch(e) { lockVoiceRec = null; }
+}
+function unlockAndStart() { document.getElementById('lockScreen').classList.add('hidden'); startLocationEngine(); updateMemBadge(); }
+
+// ── LOCATION ──
+let liveLocation = null;
+function startLocationEngine() {
+  if (!navigator.geolocation) return;
+  const opts = { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 };
+  async function updateLocation(pos) {
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    liveLocation = { lat, lon };
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, { headers: { 'Accept-Language': 'en' } });
+      const d = await r.json();
+      const city = d.address?.city || d.address?.town || d.address?.village || '';
+      const country = d.address?.country || '';
+      liveLocation.city = city; liveLocation.country = country;
+      if (city) { document.getElementById('locationCity').textContent = city.toUpperCase(); document.getElementById('locationBadge').style.display = 'block'; }
+    } catch (_) {}
+  }
+  navigator.geolocation.getCurrentPosition(updateLocation, () => {}, opts);
+  setInterval(() => navigator.geolocation.getCurrentPosition(updateLocation, () => {}, opts), 10 * 60 * 1000);
+}
+
+// ── TTS ──
+let ttsVoice = null, ttsReady = false, liveMuted = false;
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return false;
+  ttsVoice = voices.find(v => /female|woman|girl/i.test(v.name) && /en/i.test(v.lang)) ||
+    voices.find(v => /zira|samantha|victoria|karen|moira|tessa|fiona|allison|ava|susan|kate/i.test(v.name)) ||
+    voices.find(v => /en/i.test(v.lang)) || voices[0];
+  ttsReady = true; return true;
+}
+if (!loadVoices()) speechSynthesis.onvoiceschanged = () => { loadVoices(); };
+function speak(text) {
+  if (liveMuted) return;
+  speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  if (ttsVoice) utt.voice = ttsVoice;
+  utt.rate = 1.0; utt.pitch = 1.1; utt.volume = 1.0;
+  utt.onstart = () => { tapBtn.classList.add('speaking'); if (liveMode) { liveOrb.className = 'speaking'; liveLabel.textContent = 'SPEAKING'; } };
+  utt.onend = utt.onerror = () => { tapBtn.classList.remove('speaking'); if (liveMode) listenLoop(); };
+  speechSynthesis.speak(utt);
+}
+
+// ── ELEMENTS ──
+const messagesEl = document.getElementById('messages');
+const userInput  = document.getElementById('userInput');
+const tapBtn     = document.getElementById('tapBtn');
+const tapIcon    = document.getElementById('tapIcon');
+const tapLabel   = document.getElementById('tapLabel');
+const liveOverlay= document.getElementById('liveOverlay');
+const liveOrb    = document.getElementById('liveOrb');
+const liveLabel  = document.getElementById('liveLabel');
+const liveText   = document.getElementById('liveText');
+const SR         = window.SpeechRecognition || window.webkitSpeechRecognition;
+let history = [], busy = false, liveMode = false, liveRec = null;
+
+// ── MESSAGES ──
+function clearWelcome() { document.querySelector('.welcome')?.remove(); }
+function addMsg(role, text, badge) {
+  clearWelcome();
+  const d = document.createElement('div');
+  d.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
+  let badgeHtml = '';
+  if (badge === 'live')      badgeHtml = '<span class="live-badge">🔴 LIVE</span>';
+  else if (badge === 'wa')   badgeHtml = '<span class="wa-badge">💬 WHATSAPP</span>';
+  else if (badge === 'app')  badgeHtml = '<span class="app-badge">📱 APP</span>';
+  else if (badge === 'mem')  badgeHtml = '<span class="mem-save-badge">🧠 REMEMBERED</span>';
+  else if (badge === 'briefing') badgeHtml = '<span class="briefing-badge">☀️ BRIEFING</span>';
+  else if (badge === 'photo') badgeHtml = '<span class="live-badge">📷 VISION</span>';
+  d.innerHTML = `<div class="msg-label">${role === 'user' ? 'YOU' : 'JARVIS'} ${badgeHtml}</div><div class="msg-bubble">${text}</div>`;
+  if (role === 'ai' && badge !== 'mem' && badge !== 'briefing') {
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'mem-save-btn';
+    saveBtn.textContent = '💾 SAVE TO MEMORY';
+    saveBtn.onclick = () => {
+      const added = addMemory(text.slice(0, 120));
+      if (added) { saveBtn.textContent = '✓ SAVED'; saveBtn.classList.add('saved'); saveBtn.disabled = true; }
+      else { saveBtn.textContent = 'ALREADY SAVED'; saveBtn.disabled = true; }
+    };
+    d.appendChild(saveBtn);
+  }
+  messagesEl.appendChild(d);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function showTyping() {
+  const t = document.createElement('div');
+  t.className = 'msg ai'; t.id = 'typing';
+  t.innerHTML = `<div class="msg-label">JARVIS</div><div class="thinking-bubble"><div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div></div>`;
+  messagesEl.appendChild(t); messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function removeTyping() { document.getElementById('typing')?.remove(); }
+
+// ── WHATSAPP ──
+const WA_CONTACTS = {};
+function detectWhatsAppIntent(text) {
+  const patterns = [
+    /(?:send\s+)?(?:a\s+)?(?:whatsapp|wa|wapp)\s+(?:message\s+)?(?:to\s+)?(\w+)(?:\s+(?:saying?|that|:)\s*(.+))?/i,
+    /(?:message|text|ping)\s+(\w+)\s+on\s+(?:whatsapp|wa)/i,
+    /(?:tell|ask)\s+(\w+)\s+(?:on\s+whatsapp|via\s+whatsapp)(?:\s+(?:that|to)\s*(.+))?/i,
+  ];
+  for (const pat of patterns) { const m = text.match(pat); if (m) return { name: m[1]?.toLowerCase(), msg: m[2] || '', original: text }; }
+  return null;
+}
+function handleWhatsApp({ name, msg }) {
+  const phone = WA_CONTACTS[name];
+  if (!phone) { const reply = `I don't have a WhatsApp contact for "${name}", Sir.`; addMsg('ai', reply, 'wa'); speak(reply); history.push({ role: 'assistant', content: reply }); return; }
+  const waUrl = `https://wa.me/${phone}${msg ? '?text=' + encodeURIComponent(msg) : ''}`;
+  const reply = msg ? `Opening WhatsApp for ${name}, Sir.` : `Opening WhatsApp chat with ${name}, Sir.`;
+  addMsg('ai', reply, 'wa'); speak(reply); history.push({ role: 'assistant', content: reply });
+  setTimeout(() => window.open(waUrl, '_blank'), 800);
+}
+
+// ── TASKER ──
+const TASKER_BASE = 'http://localhost:1820/run';
+const TASKER_APPS = { 'youtube': 'Open YouTube', 'camera': 'Open Camera', 'settings': 'Open Settings', 'maps|navigation': 'Open Maps', 'spotify|music': 'Open Spotify', 'chrome|browser': 'Open Chrome', 'calculator': 'Open Calculator', 'gallery|photos': 'Open Gallery', 'contacts': 'Open Contacts', 'dialer|phone': 'Open Phone', 'calendar': 'Open Calendar', 'files': 'Open Files' };
+function detectTaskerIntent(text) {
+  const m = text.match(/(?:open|launch|start|switch\s+to|go\s+to)\s+(\w[\w\s]*)/i);
+  if (!m) return null;
+  const appQuery = m[1].trim().toLowerCase();
+  for (const [pattern, taskName] of Object.entries(TASKER_APPS)) { if (new RegExp(pattern, 'i').test(appQuery)) return { appQuery, taskName }; }
+  return null;
+}
+async function handleTasker({ appQuery, taskName }) {
+  const reply = `Opening ${appQuery} for you, Sir.`;
+  addMsg('ai', reply, 'app'); speak(reply); history.push({ role: 'assistant', content: reply });
+  try { await fetch(`${TASKER_BASE}?taskName=${encodeURIComponent(taskName)}`, { signal: AbortSignal.timeout(3000) }); } catch (_) {}
+}
+
+// ── SEND MESSAGE ──
+async function sendMessage(text) {
+  if (!text?.trim() || busy) return;
+  busy = true;
+  const userText = text.trim();
+  addMsg('user', userText);
+  history.push({ role: 'user', content: userText });
+  userInput.value = '';
+  const waResult = detectWhatsAppIntent(userText);
+  if (waResult) { busy = false; handleWhatsApp(waResult); return; }
+  const taskerResult = detectTaskerIntent(userText);
+  if (taskerResult) { busy = false; handleTasker(taskerResult); return; }
+  if (/^(?:remember|note|save)[\s:]+(.+)/i.test(userText)) {
+    const fact = userText.replace(/^(?:remember|note|save)[\s:]+/i, '').trim();
+    const added = addMemory(fact);
+    const reply = added ? `Noted, Sir. I'll remember that.` : `I already have that noted, Sir.`;
+    history.push({ role: 'assistant', content: reply }); addMsg('ai', reply, added ? 'mem' : null); speak(reply); busy = false; return;
+  }
+  if (/^(?:forget|delete|remove) (?:that|memory|all)?[\s:]*(.*)/i.test(userText)) {
+    const target = userText.replace(/^(?:forget|delete|remove) (?:that|memory|all)?[\s:]*/i, '').trim();
+    let reply;
+    if (!target || /^all$/i.test(target)) { saveMemoryStore([]); reply = 'Memory cleared, Sir. Starting fresh.'; }
+    else { const mem = loadMemory(); const idx = mem.findIndex(m => m.toLowerCase().includes(target.toLowerCase())); if (idx >= 0) { mem.splice(idx, 1); saveMemoryStore(mem); reply = `Removed that from memory, Sir.`; } else reply = `I couldn't find that in my memory, Sir.`; }
+    history.push({ role: 'assistant', content: reply }); addMsg('ai', reply); speak(reply); busy = false; return;
+  }
+  autoExtractMemories(userText);
+  showTyping();
+  try {
+    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history, location: liveLocation, memory: loadMemory() }) });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.reply || "I'm having trouble responding, Sir.";
+    history.push({ role: 'assistant', content: reply }); addMsg('ai', reply, data.searched ? 'live' : null); speak(reply);
+  } catch { removeTyping(); const errMsg = "Connectivity issue, Sir."; addMsg('ai', errMsg); speak(errMsg); }
+  busy = false;
+}
+
+// ── TAP TO SPEAK ──
+let tapRec = null;
+function tapSpeak() {
+  if (!SR) { addMsg('ai', 'Speech recognition not supported, Sir.'); return; }
+  if (tapRec) { tapRec.stop(); return; }
+  tapRec = new SR();
+  tapRec.lang = 'en-US'; tapRec.interimResults = false; tapRec.continuous = false;
+  tapRec.onstart = () => { tapBtn.classList.add('listening'); tapIcon.textContent = '🔴'; tapLabel.textContent = 'LISTENING'; };
+  tapRec.onresult = (e) => { const t = e.results[0][0].transcript.trim(); userInput.value = t; sendMessage(t); };
+  tapRec.onend = tapRec.onerror = () => { tapRec = null; tapBtn.classList.remove('listening'); tapIcon.textContent = '🎙️'; tapLabel.textContent = 'TAP TO SPEAK'; };
+  try { tapRec.start(); } catch(e) { tapRec = null; }
+}
+
+// ── MIC BUTTON ──
+let micRec = null;
+function toggleMic() {
+  if (!SR) return;
+  const btn = document.getElementById('micBtn');
+  if (micRec) { micRec.stop(); return; }
+  micRec = new SR();
+  micRec.lang = 'en-US'; micRec.interimResults = true; micRec.continuous = false;
+  micRec.onstart = () => btn.classList.add('recording');
   
