@@ -825,4 +825,523 @@ body::after {
   font-size: 18px;
   display: flex;
   align-items: center;
+justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.voice-ctrl-btn:active { transform: scale(0.92); }
+.voice-ctrl-btn.end {
+  border-color: rgba(255,51,102,0.4);
+  color: #ff3366;
+  width: 64px;
+  height: 64px;
+  font-size: 22px;
+}
+.voice-ctrl-btn.end:active {
+  background: rgba(255,51,102,0.15);
+}
+
+/* UTILITY */
+.hidden { display: none !important; }
+
+@keyframes ripple {
+  from { transform: scale(0); opacity: 0.4; }
+  to   { transform: scale(3); opacity: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock-screen">
+  <div class="lock-logo">JARVIS</div>
+  <div class="lock-sub">Stark Industries — Restricted Access</div>
+  <div class="lock-prompt">ENTER ACCESS CODE</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+    <div class="pin-dot" id="d4"></div>
+    <div class="pin-dot" id="d5"></div>
+  </div>
+  <div class="numpad" id="numpad">
+    <button class="num-key" data-n="1">1<span class="sub"></span></button>
+    <button class="num-key" data-n="2">2<span class="sub">ABC</span></button>
+    <button class="num-key" data-n="3">3<span class="sub">DEF</span></button>
+    <button class="num-key" data-n="4">4<span class="sub">GHI</span></button>
+    <button class="num-key" data-n="5">5<span class="sub">JKL</span></button>
+    <button class="num-key" data-n="6">6<span class="sub">MNO</span></button>
+    <button class="num-key" data-n="7">7<span class="sub">PQRS</span></button>
+    <button class="num-key" data-n="8">8<span class="sub">TUV</span></button>
+    <button class="num-key" data-n="9">9<span class="sub">WXYZ</span></button>
+    <button class="num-key empty"></button>
+    <button class="num-key" data-n="0">0</button>
+    <button class="num-key del" id="del-btn">⌫</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- HUD Header -->
+  <header id="hud-header">
+    <div class="hud-left">
+      <div class="hud-sys-label">System Status</div>
+      <div class="hud-sys-status">
+        <span class="status-dot"></span>
+        <span>ONLINE</span>
+      </div>
+    </div>
+    <div class="hud-center">
+      <div class="hud-logo">JARVIS</div>
+      <div class="hud-subtitle">Just A Rather Very Intelligent System</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-clock" id="hud-clock">--:--:--</div>
+      <div class="hud-date" id="hud-date">-- --- ----</div>
+      <div class="hud-version">V4.2.0</div>
+    </div>
+  </header>
+
+  <!-- Chat messages -->
+  <div id="chat-area">
+    <div class="session-divider">
+      <span>SESSION INITIATED — AUTHENTICATION VERIFIED</span>
+    </div>
+  </div>
+
+  <!-- Input bar -->
+  <div id="input-bar">
+    <div class="input-row">
+      <button id="mic-btn" title="Voice input">🎙</button>
+      <div class="input-wrapper">
+        <input type="text" id="user-input" placeholder="Issue command, Sir…"
+               autocomplete="off" spellcheck="false"/>
+        <div class="input-accent"></div>
+      </div>
+      <button id="send-btn">SEND</button>
+      <button id="live-btn" title="Live voice mode">📡</button>
+    </div>
+    <div class="status-bar">
+      <div class="status-item active" id="status-conn">
+        <span class="dot"></span><span>GROQ LINK</span>
+      </div>
+      <div class="status-item" id="status-loc">
+        <span class="dot"></span><span>LOC: ACQUIRING</span>
+      </div>
+      <div class="status-item">
+        <span class="dot"></span><span>AES-256 ACTIVE</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- LIVE VOICE OVERLAY -->
+<div id="voice-overlay">
+  <div class="voice-state-label">LIVE VOICE MODE</div>
+  <div id="voice-state-text">LISTENING</div>
+
+  <div class="arc-ring-container">
+    <div class="arc-ring arc-ring-1"></div>
+    <div class="arc-ring arc-ring-2"></div>
+    <div class="arc-ring arc-ring-3"></div>
+    <div class="arc-core">
+      <div class="arc-icon" id="voice-icon">🎙</div>
+    </div>
+  </div>
+
+  <div id="voice-transcript">Speak your command…</div>
+
+  <div class="voice-controls">
+    <button class="voice-ctrl-btn" id="mute-btn" title="Mute">🔇</button>
+    <button class="voice-ctrl-btn end" id="end-voice-btn" title="End voice mode">✕</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const PASSCODE = '615113';
+const API_URL  = '/api/chat';
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let history       = [];
+let pinEntry      = '';
+let locationCache = null;
+let voiceActive   = false;
+let voiceMuted    = false;
+let recognition   = null;
+let currentUtter  = null;
+let voiceState    = 'idle';
+
+// ══════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('hud-clock').textContent =
+    now.toTimeString().slice(0,8);
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN',
+                  'JUL','AUG','SEP','OCT','NOV','DEC'];
+  document.getElementById('hud-date').textContent =
+    `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ══════════════════════════════════════════
+// PASSCODE
+// ══════════════════════════════════════════
+const lockScreen = document.getElementById('lock-screen');
+
+document.getElementById('numpad').addEventListener('click', e => {
+  const key = e.target.closest('.num-key');
+  if (!key || key.classList.contains('empty') || key.id === 'del-btn') return;
+  if (pinEntry.length >= 6) return;
+  pinEntry += key.dataset.n;
+  renderDots();
+  if (pinEntry.length === 6) checkPin();
+});
+
+document.getElementById('del-btn').addEventListener('click', () => {
+  pinEntry = pinEntry.slice(0,-1);
+  renderDots();
+});
+
+document.addEventListener('keydown', e => {
+  if (lockScreen.style.display !== 'none') {
+    if (/^[0-9]$/.test(e.key) && pinEntry.length < 6) {
+      pinEntry += e.key;
+      renderDots();
+      if (pinEntry.length === 6) checkPin();
+    } else if (e.key === 'Backspace') {
+      pinEntry = pinEntry.slice(0,-1);
+      renderDots();
+    }
+  }
+});
+
+function renderDots(state = 'normal') {
+  for (let i = 0; i < 6; i++) {
+    const d = document.getElementById('d'+i);
+    d.classList.remove('filled','error');
+    if (state === 'error') d.classList.add('error');
+    else if (i < pinEntry.length) d.classList.add('filled');
+  }
+}
+
+function checkPin() {
+  if (pinEntry === PASSCODE) {
+    lockScreen.style.display = 'none';
+    initSession();
+  } else {
+    renderDots('error');
+    navigator.vibrate?.([80,40,80]);
+    setTimeout(() => { pinEntry = ''; renderDots(); }, 900);
+  }
+}
+
+// ══════════════════════════════════════════
+// SESSION INIT
+// ══════════════════════════════════════════
+function initSession() {
+  initLocation();
+  sendToJarvis('__init__', true);
+}
+
+// ══════════════════════════════════════════
+// LOCATION
+// ══════════════════════════════════════════
+function initLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      const d = await r.json();
+      locationCache = {
+        lat: lat.toFixed(5),
+        lon: lon.toFixed(5),
+        city: d.address?.city || d.address?.town || d.address?.village || '',
+        country: d.address?.country || ''
+      };
+      const locEl = document.getElementById('status-loc');
+      locEl.classList.add('active');
+      locEl.querySelector('span:last-child').textContent =
+        `LOC: ${locationCache.city.toUpperCase() || 'LOCKED'}`;
+    } catch {
+      locationCache = { lat: lat.toFixed(5), lon: lon.toFixed(5), city: '', country: '' };
+    }
+  }, err => console.warn('Geolocation:', err.message), { timeout: 8000 });
+}
+
+// ══════════════════════════════════════════
+// CHAT RENDER
+// ══════════════════════════════════════════
+const chatArea = document.getElementById('chat-area');
+
+function addMessage(role, text) {
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = role === 'jarvis' ? 'JARVIS' : 'BOSS MUHAMMED AALI';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+
+  const textEl = document.createElement('div');
+  textEl.className = 'msg-text';
+  textEl.textContent = text;
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  time.textContent = new Date().toTimeString().slice(0,8);
+
+  bubble.appendChild(textEl);
+  row.appendChild(label);
+  row.appendChild(bubble);
+  row.appendChild(time);
+  chatArea.appendChild(row);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return row;
+}
+
+function showThinking() {
+  const row = document.createElement('div');
+  row.className = 'thinking-row';
+  row.id = 'thinking';
+  row.innerHTML = `
+    <span class="thinking-label">PROCESSING</span>
+    <div class="thinking-dots">
+      <span></span><span></span><span></span>
+    </div>`;
+  chatArea.appendChild(row);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function hideThinking() {
+  document.getElementById('thinking')?.remove();
+}
+
+// ══════════════════════════════════════════
+// API
+// ══════════════════════════════════════════
+async function sendToJarvis(userText, isInit = false) {
+  if (!isInit) {
+    addMessage('user', userText);
+    history.push({ role: 'user', content: userText });
+  } else {
+    history.push({
+      role: 'user',
+      content: 'Greet me for the first time — introduce yourself briefly.'
+    });
+  }
+
+  showThinking();
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history, location: locationCache })
+    });
+    const data = await res.json();
+    hideThinking();
+
+    const reply = data.reply || "Systems nominal, Sir.";
+    addMessage('jarvis', reply);
+    history.push({ role: 'assistant', content: reply });
+    speak(reply);
+  } catch (err) {
+    hideThinking();
+    const errMsg = "Communication link degraded, Sir. Attempting reconnect.";
+    addMessage('jarvis', errMsg);
+    speak(errMsg);
+  }
+}
+
+// ══════════════════════════════════════════
+// TTS
+// ══════════════════════════════════════════
+function speak(text) {
+  if (voiceMuted) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+
+  const voices = speechSynthesis.getVoices();
+  const female = voices.find(v =>
+    v.name.toLowerCase().includes('female') ||
+    v.name.includes('Samantha') ||
+    v.name.includes('Karen') ||
+    v.name.includes('Moira') ||
+    v.name.includes('Victoria') ||
+    v.name.includes('Google UK English Female') ||
+    v.name.includes('Microsoft Zira')
+  ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+  if (female) u.voice = female;
+  u.rate   = 1.0;
+  u.pitch  = 1.1;
+  u.volume = 1.0;
+  currentUtter = u;
+
+  if (voiceActive) {
+    setVoiceState('speaking');
+    u.onend = () => {
+      if (voiceActive) setVoiceState('listening');
+      startVoiceListening();
+    };
+  }
+
+  speechSynthesis.speak(u);
+}
+
+speechSynthesis.onvoiceschanged = () => {};
+
+// ══════════════════════════════════════════
+// MIC BUTTON
+// ══════════════════════════════════════════
+const micBtn = document.getElementById('mic-btn');
+
+micBtn.addEventListener('click', () => {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Voice input not supported on this browser.');
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const r  = new SR();
+  r.lang = 'en-US';
+  r.interimResults = false;
+
+  micBtn.classList.add('listening');
+  micBtn.textContent = '⏹';
+
+  r.onresult = e => {
+    const t = e.results[0][0].transcript;
+    document.getElementById('user-input').value = t;
+    sendFromInput();
+  };
+  r.onerror = r.onend = () => {
+    micBtn.classList.remove('listening');
+    micBtn.textContent = '🎙';
+  };
+  r.start();
+});
+
+// ══════════════════════════════════════════
+// SEND
+// ══════════════════════════════════════════
+const userInput = document.getElementById('user-input');
+const sendBtn   = document.getElementById('send-btn');
+
+function sendFromInput() {
+  const text = userInput.value.trim();
+  if (!text) return;
+  userInput.value = '';
+  sendToJarvis(text);
+}
+
+sendBtn.addEventListener('click', sendFromInput);
+userInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendFromInput();
+});
+
+// ══════════════════════════════════════════
+// LIVE VOICE MODE
+// ══════════════════════════════════════════
+const voiceOverlay = document.getElementById('voice-overlay');
+const voiceStateEl = document.getElementById('voice-state-text');
+const voiceTransEl = document.getElementById('voice-transcript');
+const voiceIcon    = document.getElementById('voice-icon');
+
+document.getElementById('live-btn').addEventListener('click', startLiveVoice);
+document.getElementById('end-voice-btn').addEventListener('click', endLiveVoice);
+document.getElementById('mute-btn').addEventListener('click', () => {
+  voiceMuted = !voiceMuted;
+  document.getElementById('mute-btn').textContent = voiceMuted ? '🔊' : '🔇';
+  document.getElementById('mute-btn').title = voiceMuted ? 'Unmute' : 'Mute';
+});
+
+function setVoiceState(state) {
+  voiceState = state;
+  const labels = { listening: 'LISTENING', thinking: 'PROCESSING', speaking: 'SPEAKING' };
+  const icons  = { listening: '🎙', thinking: '⚡', speaking: '📢' };
+  voiceStateEl.textContent = labels[state] || state.toUpperCase();
+  voiceIcon.textContent    = icons[state]  || '🎙';
+}
+
+function startLiveVoice() {
+  voiceActive = true;
+  voiceOverlay.classList.add('active');
+  setVoiceState('listening');
+  startVoiceListening();
+}
+
+function endLiveVoice() {
+  voiceActive = false;
+  voiceOverlay.classList.remove('active');
+  speechSynthesis.cancel();
+  recognition?.stop();
+  setVoiceState('idle');
+}
+
+function startVoiceListening() {
+  if (!voiceActive) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = true;
+
+  recognition.onresult = e => {
+    let interim = '', final = '';
+    for (const r of e.results) {
+      if (r.isFinal) final += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    voiceTransEl.textContent = final || interim || 'Speak your command…';
+    if (final) {
+      recognition.stop();
+      setVoiceState('thinking');
+      sendToJarvis(final);
+    }
+  };
+
+  recognition.onend = () => {
+    if (voiceActive && voiceState === 'listening') {
+      setTimeout(startVoiceListening, 500);
+    }
+  };
+
+  recognition.onerror = e => {
+    if (e.error === 'no-speech' && voiceActive) {
+      setTimeout(startVoiceListening, 400);
+    }
+  };
+
+  setVoiceState('listening');
+  voiceTransEl.textContent = 'Speak your command…';
+  recognition.start();
+}
+
+// ══════════════════════════════════════════
+// PWA SERVICE WORKER
+// ══════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
   
