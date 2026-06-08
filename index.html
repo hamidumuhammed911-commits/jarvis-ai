@@ -1,747 +1,631 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="JARVIS"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#020a14"/>
-  <title>JARVIS</title>
-  <link rel="manifest" href="manifest.json"/>
-  <style>
-    :root {
-      --bg:      #020a14;
-      --surface: #050f1e;
-      --border:  #0a2040;
-      --accent:  #00d4ff;
-      --accent2: #0066cc;
-      --danger:  #ff3333;
-      --text:    #c8e8ff;
-      --dim:     #4a7a9b;
-      --glow:    0 0 20px rgba(0,212,255,0.3);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JARVIS HUD — UI Upgrade Preview</title>
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Courier New', monospace;
-      height: 100dvh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
+<!-- ═══════════════════════════════════════════════════════════════
+     JARVIS HOLOGRAPHIC HUD UPGRADE
+     Drop the <style> block into your existing <head>
+     Drop the <body> structure & <script> into your index.html
+     ═══════════════════════════════════════════════════════════════ -->
 
-    /* ── LOCK SCREEN ── */
-    #lockScreen {
-      position: fixed; inset: 0; z-index: 999;
-      background: var(--bg);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 24px;
-    }
-    #lockScreen.hidden { display: none; }
-    .lock-title  { font-size: 13px; letter-spacing: 6px; color: var(--accent); opacity: 0.8; }
-    .lock-logo   { font-size: 28px; font-weight: bold; letter-spacing: 4px; color: var(--accent); text-shadow: var(--glow); }
-    .lock-subtitle { font-size: 10px; letter-spacing: 3px; color: var(--dim); margin-top: -18px; }
-    .lock-dots   { display: flex; gap: 12px; margin: 8px 0; }
-    .lock-dot    { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--accent); background: transparent; transition: background 0.15s, box-shadow 0.15s; }
-    .lock-dot.filled { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-    .lock-grid   { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 220px; }
-    .lock-key    { background: rgba(0,212,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 20px; font-weight: bold; padding: 16px; cursor: pointer; transition: background 0.1s, border-color 0.1s; user-select: none; }
-    .lock-key:active, .lock-key:hover { background: rgba(0,212,255,0.15); border-color: var(--accent); }
-    .lock-del    { font-size: 14px; }
-    #lockError   { font-size: 11px; letter-spacing: 3px; color: var(--danger); min-height: 16px; }
-    .lock-voice-btn { background: transparent; border: 1px solid var(--border); border-radius: 24px; padding: 10px 24px; color: var(--dim); font-family: inherit; font-size: 11px; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; }
-    .lock-voice-btn.listening { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px rgba(255,51,51,0.3); }
-    #lockVoiceStatus { font-size: 10px; letter-spacing: 2px; color: var(--dim); min-height: 14px; }
+<style>
+/* ─── FONTS ─────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Rajdhani:wght@300;400;600&display=swap');
 
-    /* ── HEADER ── */
-    #header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .header-logo { font-size: 15px; font-weight: bold; letter-spacing: 4px; color: var(--accent); text-shadow: var(--glow); }
-    .header-status { display: flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: 2px; color: var(--dim); }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 6px #00ff88; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    #locationBadge { font-size: 9px; color: var(--dim); letter-spacing: 1px; display: none; transition: all 0.3s; }
+/* ─── TOKENS ─────────────────────────────────────────────────────── */
+:root {
+  --hud-cyan:    #00e5ff;
+  --hud-blue:    #0077ff;
+  --hud-gold:    #ffc107;
+  --hud-red:     #ff1744;
+  --hud-bg:      #020b18;
+  --hud-panel:   rgba(0, 20, 50, 0.72);
+  --hud-border:  rgba(0, 229, 255, 0.25);
+  --hud-glow:    0 0 12px rgba(0, 229, 255, 0.6), 0 0 40px rgba(0, 119, 255, 0.25);
+  --scan-speed:  6s;
+}
 
-    /* ── MESSAGES ── */
-    #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
-    #messages::-webkit-scrollbar { width: 3px; }
-    #messages::-webkit-scrollbar-thumb { background: var(--border); }
-    .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: var(--dim); }
-    .welcome-orb { width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--border); background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.15), transparent 70%); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px; box-shadow: 0 0 30px rgba(0,212,255,0.1); animation: breathe 3s ease-in-out infinite; }
-    @keyframes breathe { 0%,100% { box-shadow: 0 0 20px rgba(0,212,255,0.1); } 50% { box-shadow: 0 0 40px rgba(0,212,255,0.25); } }
-    .welcome-text { font-size: 11px; letter-spacing: 3px; }
-    .welcome-sub  { font-size: 9px; letter-spacing: 2px; opacity: 0.5; }
-    .msg { display: flex; flex-direction: column; gap: 4px; max-width: 88%; animation: msgIn 0.25s ease; }
-    @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .msg.user { align-self: flex-end; align-items: flex-end; }
-    .msg.ai   { align-self: flex-start; }
-    .msg-label { font-size: 9px; letter-spacing: 2px; color: var(--dim); padding: 0 4px; display: flex; align-items: center; gap: 6px; }
-    .live-badge { font-size: 8px; color: #ff4444; letter-spacing: 1px; opacity: 0.8; }
-    .wa-badge   { font-size: 8px; color: #25D366; letter-spacing: 1px; opacity: 0.8; }
-    .app-badge  { font-size: 8px; color: var(--accent); letter-spacing: 1px; opacity: 0.8; }
-    .msg-bubble { padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.6; border: 1px solid var(--border); }
-    .msg.user .msg-bubble { background: rgba(0,102,204,0.2); border-color: var(--accent2); }
-    .msg.ai   .msg-bubble { background: rgba(0,212,255,0.05); border-color: var(--border); }
+/* ─── RESET / BASE ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── THINKING DOTS ── */
-    .thinking-bubble { display: flex; gap: 5px; padding: 14px 18px; background: rgba(0,212,255,0.05); border: 1px solid var(--border); border-radius: 12px; align-items: center; }
-    .thinking-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.4; animation: think 1.2s infinite; }
-    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes think { 0%,100% { opacity: 0.2; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
+body {
+  background: var(--hud-bg);
+  color: var(--hud-cyan);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
 
-    /* ── INPUT BAR ── */
-    #inputBar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; align-items: center; }
-    #userInput { flex: 1; background: rgba(0,212,255,0.05); border: 1px solid var(--border); border-radius: 24px; color: var(--text); font-family: inherit; font-size: 13px; padding: 10px 16px; outline: none; transition: border-color 0.2s; }
-    #userInput:focus { border-color: var(--accent2); }
-    #userInput::placeholder { color: var(--dim); }
-    .icon-btn { width: 42px; height: 42px; border-radius: 50%; background: rgba(0,212,255,0.08); border: 1px solid var(--border); color: var(--accent); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; user-select: none; }
-    .icon-btn:active, .icon-btn.active { background: rgba(0,212,255,0.2); border-color: var(--accent); box-shadow: var(--glow); }
-    .icon-btn.recording { background: rgba(255,51,51,0.15); border-color: var(--danger); animation: recPulse 1s infinite; }
-    @keyframes recPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,51,51,0.4); } 50% { box-shadow: 0 0 0 8px rgba(255,51,51,0); } }
-    #sendBtn { background: rgba(0,212,255,0.12); border-color: var(--accent2); }
+/* ─── GLOBAL SCANLINES (overlay the entire page) ─────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 229, 255, 0.025) 3px,
+    rgba(0, 229, 255, 0.025) 4px
+  );
+  animation: flicker 8s infinite;
+}
 
-    /* ── TAP ORB ── */
-    #tapArea { padding: 10px 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
-    #tapBtn { width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.25), rgba(0,50,100,0.4)); border: 2px solid var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; gap: 3px; transition: all 0.2s; box-shadow: 0 0 20px rgba(0,212,255,0.15); user-select: none; }
-    #tapBtn:active, #tapBtn.speaking { transform: scale(0.93); }
-    #tapBtn.listening { border-color: var(--danger); box-shadow: 0 0 30px rgba(255,51,51,0.4); animation: tapPulse 1s infinite; }
-    @keyframes tapPulse { 0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); } 50% { box-shadow: 0 0 40px rgba(255,51,51,0.6); } }
-    #tapIcon  { font-size: 22px; }
-    #tapLabel { font-size: 8px; letter-spacing: 2px; color: var(--dim); }
+/* ─── MOVING HORIZONTAL SCAN BEAM ───────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed; left: 0; right: 0; z-index: 9998;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(0, 229, 255, 0.08) 20%,
+    rgba(0, 229, 255, 0.55) 50%,
+    rgba(0, 229, 255, 0.08) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  animation: scanbeam var(--scan-speed) linear infinite;
+}
 
-    /* ── LIVE MODE OVERLAY ── */
-    #liveOverlay { position: fixed; inset: 0; z-index: 100; background: rgba(2,10,20,0.97); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
-    #liveOverlay.active { display: flex; }
-    #liveOrb { width: 140px; height: 140px; border-radius: 50%; border: 2px solid var(--accent); background: radial-gradient(circle at 35% 35%, rgba(0,212,255,0.2), transparent 70%); display: flex; align-items: center; justify-content: center; font-size: 48px; transition: all 0.3s; }
-    #liveOrb.listening { animation: orbPulse 1s infinite; }
-    #liveOrb.thinking  { animation: orbSpin 2s linear infinite; opacity: 0.7; }
-    #liveOrb.speaking  { box-shadow: 0 0 60px rgba(0,212,255,0.5); }
-    @keyframes orbPulse { 0%,100% { box-shadow: 0 0 20px rgba(255,51,51,0.3); border-color: #ff4444; } 50% { box-shadow: 0 0 50px rgba(255,51,51,0.6); } }
-    @keyframes orbSpin  { from { border-top-color: var(--accent); border-right-color: transparent; } to { transform: rotate(360deg); } }
-    #liveLabel { font-size: 11px; letter-spacing: 4px; color: var(--dim); }
-    #liveText  { font-size: 13px; color: var(--text); text-align: center; max-width: 300px; line-height: 1.6; min-height: 40px; padding: 0 20px; }
-    #liveMicDead { font-size: 10px; color: var(--danger); letter-spacing: 2px; display: none; }
-    .live-controls { display: flex; gap: 16px; }
-    #muteBtn { background: rgba(255,51,51,0.1); border: 1px solid rgba(255,51,51,0.3); color: #ff8888; }
-    #endBtn  { background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
-    * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-  </style>
+@keyframes scanbeam {
+  0%   { top: -4px; opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { top: 100vh; opacity: 0; }
+}
+
+@keyframes flicker {
+  0%, 97%, 100% { opacity: 1; }
+  98%            { opacity: 0.92; }
+  99%            { opacity: 0.97; }
+}
+
+/* ─── CORNER BRACKETS (HUD frame) ────────────────────────────────── */
+.hud-frame {
+  position: fixed; inset: 12px; z-index: 200;
+  pointer-events: none;
+}
+.hud-frame::before,
+.hud-frame::after,
+.hud-frame .corner-br,
+.hud-frame .corner-bl {
+  content: '';
+  position: absolute;
+  width: 40px; height: 40px;
+  border-color: var(--hud-cyan);
+  border-style: solid;
+  opacity: 0.7;
+}
+.hud-frame::before  { top: 0;    left: 0;  border-width: 2px 0 0 2px; }
+.hud-frame::after   { top: 0;    right: 0; border-width: 2px 2px 0 0; }
+.hud-frame .corner-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+.hud-frame .corner-bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+
+/* ─── STATUS BAR (top) ───────────────────────────────────────────── */
+.hud-statusbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: 42px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  background: linear-gradient(180deg, rgba(0,20,50,0.95) 0%, transparent 100%);
+  border-bottom: 1px solid var(--hud-border);
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(0,229,255,0.75);
+}
+.hud-statusbar .sb-left,
+.hud-statusbar .sb-right {
+  display: flex; align-items: center; gap: 20px;
+}
+.hud-statusbar .sb-center {
+  font-size: 13px; font-weight: 900;
+  color: var(--hud-cyan);
+  text-shadow: var(--hud-glow);
+  letter-spacing: 0.35em;
+}
+.status-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--hud-cyan);
+  box-shadow: 0 0 8px var(--hud-cyan);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.5; }
+}
+
+/* ─── SIDE TELEMETRY STRIPS ──────────────────────────────────────── */
+.hud-telemetry {
+  position: fixed; top: 80px; bottom: 80px;
+  width: 160px; z-index: 150;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 0 8px;
+  pointer-events: none;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(0,229,255,0.5);
+}
+.hud-telemetry.left  { left: 0; }
+.hud-telemetry.right { right: 0; text-align: right; }
+
+.tele-block { display: flex; flex-direction: column; gap: 4px; }
+.tele-label { text-transform: uppercase; font-size: 7px; opacity: 0.6; }
+.tele-value {
+  font-size: 11px; font-weight: 600;
+  color: var(--hud-cyan);
+  text-shadow: 0 0 8px rgba(0,229,255,0.8);
+}
+.tele-bar {
+  height: 2px;
+  background: rgba(0,229,255,0.15);
+  position: relative; overflow: hidden;
+  border-radius: 1px;
+}
+.tele-bar-fill {
+  position: absolute; left: 0; top: 0; height: 100%;
+  background: linear-gradient(90deg, var(--hud-blue), var(--hud-cyan));
+  animation: bar-anim 3s ease-in-out infinite alternate;
+  box-shadow: 0 0 6px var(--hud-cyan);
+}
+@keyframes bar-anim {
+  0%   { width: 40%; }
+  100% { width: 85%; }
+}
+
+/* ─── MAIN CHAT PANEL ────────────────────────────────────────────── */
+.jarvis-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0 170px; /* make room for side telemetry */
+  padding-top: 50px;
+  padding-bottom: 0;
+}
+
+/* ─── CHAT WINDOW ────────────────────────────────────────────────── */
+#chat-window {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hud-border) transparent;
+}
+
+/* ─── MESSAGE BUBBLES ────────────────────────────────────────────── */
+.msg {
+  max-width: 78%;
+  padding: 10px 16px;
+  border-radius: 2px;
+  position: relative;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  animation: msg-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* JARVIS messages */
+.msg.jarvis {
+  align-self: flex-start;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border);
+  border-left: 3px solid var(--hud-cyan);
+  color: #d0f4ff;
+  box-shadow: var(--hud-glow);
+}
+.msg.jarvis::before {
+  content: 'JARVIS';
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--hud-cyan);
+  margin-bottom: 5px;
+  opacity: 0.8;
+}
+
+/* User messages */
+.msg.user {
+  align-self: flex-end;
+  background: rgba(0, 119, 255, 0.12);
+  border: 1px solid rgba(0, 119, 255, 0.35);
+  border-right: 3px solid var(--hud-blue);
+  color: #cce8ff;
+}
+.msg.user::before {
+  content: 'BOSS MUHAMMED AALI';
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--hud-blue);
+  margin-bottom: 5px;
+  opacity: 0.8;
+  text-align: right;
+}
+
+/* Clip corners on bubbles */
+.msg.jarvis { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+.msg.user   { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+
+/* ─── TYPING INDICATOR ───────────────────────────────────────────── */
+.msg.typing {
+  align-self: flex-start;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border);
+  border-left: 3px solid var(--hud-cyan);
+  box-shadow: var(--hud-glow);
+  padding: 12px 20px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.typing-dots {
+  display: flex; gap: 6px; align-items: center;
+}
+.typing-dots span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--hud-cyan);
+  box-shadow: 0 0 6px var(--hud-cyan);
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-bounce {
+  0%,80%,100% { transform: scale(1);   opacity: 0.5; }
+  40%          { transform: scale(1.5); opacity: 1;   }
+}
+
+/* ─── INPUT BAR ──────────────────────────────────────────────────── */
+.hud-inputbar {
+  padding: 14px 20px 18px;
+  background: linear-gradient(0deg, rgba(0,20,50,0.95) 0%, transparent 100%);
+  border-top: 1px solid var(--hud-border);
+  display: flex; gap: 10px; align-items: center;
+}
+
+.hud-inputbar input {
+  flex: 1;
+  background: rgba(0,20,50,0.8);
+  border: 1px solid var(--hud-border);
+  border-bottom: 2px solid var(--hud-cyan);
+  color: var(--hud-cyan);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  padding: 10px 16px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.hud-inputbar input::placeholder { color: rgba(0,229,255,0.3); }
+.hud-inputbar input:focus {
+  border-color: var(--hud-cyan);
+  box-shadow: var(--hud-glow);
+}
+
+/* HUD buttons */
+.hud-btn {
+  width: 44px; height: 44px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border);
+  color: var(--hud-cyan);
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.hud-btn:hover {
+  background: rgba(0,229,255,0.15);
+  border-color: var(--hud-cyan);
+  box-shadow: var(--hud-glow);
+  color: #fff;
+}
+.hud-btn.active,
+.hud-btn:active {
+  background: rgba(0,229,255,0.25);
+  box-shadow: inset 0 0 12px rgba(0,229,255,0.3), var(--hud-glow);
+}
+
+/* Send button accent */
+.hud-btn.send {
+  width: auto; padding: 0 18px;
+  font-size: 9px; letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-color: var(--hud-cyan);
+}
+
+/* ─── LIVE VOICE MODE OVERLAY ────────────────────────────────────── */
+.voice-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(2, 11, 24, 0.97);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+.voice-overlay.active { display: flex; }
+
+/* Radar rings */
+.voice-radar {
+  position: relative;
+  width: 220px; height: 220px;
+}
+.radar-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0,229,255,0.3);
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  animation: radar-expand 2.5s ease-out infinite;
+}
+.radar-ring:nth-child(1) { width: 80px;  height: 80px;  animation-delay: 0s; }
+.radar-ring:nth-child(2) { width: 140px; height: 140px; animation-delay: 0.6s; }
+.radar-ring:nth-child(3) { width: 200px; height: 200px; animation-delay: 1.2s; }
+@keyframes radar-expand {
+  0%   { opacity: 0.8; transform: translate(-50%,-50%) scale(0.8); }
+  100% { opacity: 0;   transform: translate(-50%,-50%) scale(1.3); }
+}
+
+.voice-core {
+  position: absolute;
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  background: radial-gradient(circle, rgba(0,229,255,0.4) 0%, rgba(0,119,255,0.15) 70%, transparent 100%);
+  border: 2px solid var(--hud-cyan);
+  box-shadow: 0 0 30px rgba(0,229,255,0.6), 0 0 80px rgba(0,119,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+}
+.voice-core.listening { animation: core-pulse 1s ease-in-out infinite alternate; }
+.voice-core.thinking  { animation: core-spin 1.5s linear infinite; }
+.voice-core.speaking  { animation: core-speak 0.3s ease-in-out infinite alternate; }
+
+@keyframes core-pulse {
+  from { box-shadow: 0 0 20px rgba(0,229,255,0.4); transform: translate(-50%,-50%) scale(1);   }
+  to   { box-shadow: 0 0 50px rgba(0,229,255,0.9); transform: translate(-50%,-50%) scale(1.08); }
+}
+@keyframes core-spin {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to   { transform: translate(-50%,-50%) rotate(360deg); }
+}
+@keyframes core-speak {
+  from { transform: translate(-50%,-50%) scale(1);    }
+  to   { transform: translate(-50%,-50%) scale(1.12); }
+}
+
+.voice-status {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--hud-cyan);
+  text-shadow: var(--hud-glow);
+}
+
+/* ─── BOTTOM STATUS BAR ──────────────────────────────────────────── */
+.hud-footer {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
+  height: 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  background: linear-gradient(0deg, rgba(0,20,50,0.95) 0%, transparent 100%);
+  border-top: 1px solid var(--hud-border);
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: rgba(0,229,255,0.4);
+  text-transform: uppercase;
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────────────────────── */
+#chat-window::-webkit-scrollbar       { width: 4px; }
+#chat-window::-webkit-scrollbar-track { background: transparent; }
+#chat-window::-webkit-scrollbar-thumb { background: var(--hud-border); border-radius: 2px; }
+
+/* ─── PASSCODE SCREEN ────────────────────────────────────────────── */
+#passcode-screen {
+  position: fixed; inset: 0; z-index: 2000;
+  background: var(--hud-bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 28px;
+}
+.passcode-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 22px; font-weight: 900;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--hud-cyan);
+  text-shadow: var(--hud-glow);
+}
+.passcode-dots {
+  display: flex; gap: 14px;
+}
+.pd {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--hud-cyan);
+  background: transparent;
+  transition: all 0.15s;
+}
+.pd.filled {
+  background: var(--hud-cyan);
+  box-shadow: 0 0 14px var(--hud-cyan);
+}
+.passcode-grid {
+  display: grid; grid-template-columns: repeat(3, 70px); gap: 10px;
+}
+.pk {
+  height: 56px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border);
+  color: var(--hud-cyan);
+  font-family: 'Orbitron', monospace;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.pk:hover { background: rgba(0,229,255,0.15); box-shadow: var(--hud-glow); }
+.pk:active { transform: scale(0.94); }
+.passcode-msg {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgba(0,229,255,0.5);
+  min-height: 16px;
+}
+.passcode-msg.error { color: var(--hud-red); text-shadow: 0 0 8px var(--hud-red); }
+
+/* ─── MOBILE ─────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .hud-telemetry { display: none; }
+  .jarvis-app { margin: 0; }
+}
+</style>
 </head>
 <body>
 
-<!-- ═══════════════ LOCK SCREEN ═══════════════ -->
-<div id="lockScreen">
-  <div class="lock-title">J.A.R.V.I.S</div>
-  <div class="lock-logo">◈ JARVIS ◈</div>
-  <div class="lock-subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-  <div class="lock-dots">
-    <div class="lock-dot" id="d0"></div>
-    <div class="lock-dot" id="d1"></div>
-    <div class="lock-dot" id="d2"></div>
-    <div class="lock-dot" id="d3"></div>
-    <div class="lock-dot" id="d4"></div>
-    <div class="lock-dot" id="d5"></div>
-  </div>
-  <div id="lockError"></div>
-  <div class="lock-grid">
-    <button class="lock-key" onclick="lockKey('1')">1</button>
-    <button class="lock-key" onclick="lockKey('2')">2</button>
-    <button class="lock-key" onclick="lockKey('3')">3</button>
-    <button class="lock-key" onclick="lockKey('4')">4</button>
-    <button class="lock-key" onclick="lockKey('5')">5</button>
-    <button class="lock-key" onclick="lockKey('6')">6</button>
-    <button class="lock-key" onclick="lockKey('7')">7</button>
-    <button class="lock-key" onclick="lockKey('8')">8</button>
-    <button class="lock-key" onclick="lockKey('9')">9</button>
-    <button class="lock-key lock-del" onclick="lockDel()">⌫</button>
-    <button class="lock-key" onclick="lockKey('0')">0</button>
-    <button class="lock-key" onclick="lockKey('')"></button>
-  </div>
-  <button class="lock-voice-btn" id="lockVoiceBtn" onclick="lockVoiceUnlock()">🎤 SPEAK CODE</button>
-  <div id="lockVoiceStatus"></div>
+<!-- ═══════════════════════ HUD CHROME ═══════════════════════════ -->
+<div class="hud-frame">
+  <div class="corner-br"></div>
+  <div class="corner-bl"></div>
 </div>
 
-<!-- ═══════════════ HEADER ═══════════════ -->
-<div id="header">
-  <div class="header-logo">J.A.R.V.I.S</div>
-  <div id="locationBadge">📍 <span id="locationCity"></span></div>
-  <div class="header-status">
-    <div class="status-dot"></div>
-    <span>ONLINE</span>
+<div class="hud-statusbar">
+  <div class="sb-left">
+    <span class="status-dot"></span>
+    <span>SYS ONLINE</span>
+    <span id="sb-time">00:00:00</span>
+  </div>
+  <div class="sb-center">J · A · R · V · I · S</div>
+  <div class="sb-right">
+    <span id="sb-date">--</span>
+    <span>v4.1.0</span>
   </div>
 </div>
 
-<!-- ═══════════════ MESSAGES ═══════════════ -->
-<div id="messages">
-  <div class="welcome">
-    <div class="welcome-orb">🤖</div>
-    <div class="welcome-text">READY FOR YOUR COMMAND</div>
-    <div class="welcome-sub">TAP THE ORB OR TYPE BELOW</div>
+<!-- Left telemetry -->
+<div class="hud-telemetry left">
+  <div class="tele-block">
+    <div class="tele-label">Neural Core</div>
+    <div class="tele-value" id="tele-neural">94%</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:94%"></div></div>
+  </div>
+  <div class="tele-block">
+    <div class="tele-label">Voice Engine</div>
+    <div class="tele-value" id="tele-voice">READY</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:72%; animation-delay:.8s"></div></div>
+  </div>
+  <div class="tele-block">
+    <div class="tele-label">API Latency</div>
+    <div class="tele-value" id="tele-latency">42ms</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:30%; animation-delay:1.4s"></div></div>
+  </div>
+  <div class="tele-block">
+    <div class="tele-label">Context Len</div>
+    <div class="tele-value" id="tele-ctx">0</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:5%; animation-delay:0.3s" id="ctx-bar"></div></div>
   </div>
 </div>
 
-<!-- ═══════════════ TAP ORB ═══════════════ -->
-<div id="tapArea">
-  <div id="tapBtn" onclick="tapSpeak()">
-    <div id="tapIcon">🎙️</div>
-    <div id="tapLabel">TAP TO SPEAK</div>
+<!-- Right telemetry -->
+<div class="hud-telemetry right">
+  <div class="tele-block" style="align-items:flex-end">
+    <div class="tele-label">Model</div>
+    <div class="tele-value" style="font-size:8px">LLAMA-3.3-70B</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:100%"></div></div>
+  </div>
+  <div class="tele-block" style="align-items:flex-end">
+    <div class="tele-label">Provider</div>
+    <div class="tele-value">GROQ</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:88%; animation-delay:0.5s"></div></div>
+  </div>
+  <div class="tele-block" style="align-items:flex-end">
+    <div class="tele-label">Session Msgs</div>
+    <div class="tele-value" id="tele-msgs">0</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:8%; animation-delay:1s" id="msgs-bar"></div></div>
+  </div>
+  <div class="tele-block" style="align-items:flex-end">
+    <div class="tele-label">Uptime</div>
+    <div class="tele-value" id="tele-uptime">0:00</div>
+    <div class="tele-bar"><div class="tele-bar-fill" style="width:20%; animation-delay:1.8s"></div></div>
   </div>
 </div>
 
-<!-- ═══════════════ INPUT BAR ═══════════════ -->
-<div id="inputBar">
-  <input id="userInput" type="text" placeholder="Ask JARVIS..." autocomplete="off"
-    onkeydown="if(event.key==='Enter')sendMessage(this.value)"/>
-  <div class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</div>
-  <div class="icon-btn" id="sendBtn" onclick="sendMessage(document.getElementById('userInput').value)">➤</div>
-  <div class="icon-btn" id="liveBtn" onclick="startLiveMode()" title="Live Mode">⚡</div>
+<div class="hud-footer">
+  <span>© STARK INDUSTRIES — RESTRICTED ACCESS</span>
+  <span id="footer-loc">LOCATION: CLASSIFIED</span>
+  <span>ENCRYPTION: AES-256 ACTIVE</span>
 </div>
 
-<!-- ═══════════════ LIVE MODE OVERLAY ═══════════════ -->
-<div id="liveOverlay">
-  <div id="liveOrb">🎙️</div>
-  <div id="liveLabel">LISTENING</div>
-  <div id="liveText">Ready, Boss Muhammed Aali.</div>
-  <div id="liveMicDead">⚠ MIC LOST — TAP ORB TO RESTART</div>
-  <div class="live-controls">
-    <div class="icon-btn" id="muteBtn" onclick="toggleMute()">🔇</div>
-    <div class="icon-btn" id="endBtn" onclick="endLiveMode()">✕ END</div>
+<!-- ═══════════════════ PASSCODE SCREEN ══════════════════════════ -->
+<div id="passcode-screen">
+  <div class="passcode-title">IDENTIFY</div>
+  <div class="passcode-dots" id="pc-dots">
+    <div class="pd" id="d0"></div>
+    <div class="pd" id="d1"></div>
+    <div class="pd" id="d2"></div>
+    <div class="pd" id="d3"></div>
+    <div class="pd" id="d4"></div>
+    <div class="pd" id="d5"></div>
+  </div>
+  <div class="passcode-grid">
+    <button class="pk" onclick="pcKey(1)">1</button>
+    <button class="pk" onclick="pcKey(2)">2</button>
+    <button class="pk" onclick="pcKey(3)">3</button>
+    <button class="pk" onclick="pcKey(4)">4</button>
+    <button class="pk" onclick="pcKey(5)">5</button>
+    <button class="pk" onclick="pcKey(6)">6</button>
+    <button class="pk" onclick="pcKey(7)">7</button>
+    <button class="pk" onclick="pcKey(8)">8</button>
+    <button class="pk" onclick="pcKey(9)">9</button>
+    <button class="pk" onclick="pcClear()">CLR</button>
+    <button class="pk" onclick="pcKey(0)">0</button>
+    <button class="pk" onclick="pcDel()">⌫</button>
+  </div>
+  <div class="passcode-msg" id="pc-msg">ENTER ACCESS CODE</div>
+</div>
+
+<!-- ═══════════════════════ MAIN APP ═════════════════════════════ -->
+<div class="jarvis-app" id="main-app" style="display:none; flex-direction:column; height:100vh;">
+  <div id="chat-window"></div>
+
+  <div class="hud-inputbar">
+    <button class="hud-btn" id="mic-btn" title="Voice input">🎙</button>
+    <input type="text" id="user-input" placeholder="Issue command, Sir…" autocomplete="off"/>
+    <button class="hud-btn send" onclick="sendMessage()">SEND</button>
+    <button class="hud-btn" id="voice-mode-btn" title="Live voice mode" onclick="toggleVoiceMode()">📡</button>
   </div>
 </div>
 
-<script>
-// ═══════════════════════════════════════════════════════════════
-// JARVIS — Complete Frontend (all 4 features integrated)
-// ═══════════════════════════════════════════════════════════════
-
-const PASSCODE = '615113';
-
-// ── LOCK SCREEN ─────────────────────────────────────────────────
-let lockInput = '';
-const LOCK_LEN = 6;
-
-function lockKey(d) {
-  if (lockInput.length >= LOCK_LEN) return;
-  lockInput += d;
-  updateDots();
-  if (lockInput.length === LOCK_LEN) setTimeout(checkCode, 100);
-}
-
-function lockDel() {
-  lockInput = lockInput.slice(0, -1);
-  updateDots();
-  document.getElementById('lockError').textContent = '';
-}
-
-function updateDots() {
-  for (let i = 0; i < LOCK_LEN; i++) {
-    document.getElementById('d' + i).classList.toggle('filled', i < lockInput.length);
-  }
-}
-
-function checkCode() {
-  if (lockInput === PASSCODE) {
-    unlockAndStart();
-  } else {
-    document.getElementById('lockError').textContent = 'ACCESS DENIED';
-    for (let i = 0; i < LOCK_LEN; i++) document.getElementById('d' + i).classList.remove('filled');
-    setTimeout(() => {
-      lockInput = '';
-      updateDots();
-      document.getElementById('lockError').textContent = '';
-    }, 1000);
-  }
-}
-
-// ── VOICE UNLOCK ─────────────────────────────────────────────────
-let lockVoiceRec = null;
-
-function lockVoiceUnlock() {
-  const btn    = document.getElementById('lockVoiceBtn');
-  const status = document.getElementById('lockVoiceStatus');
-  const SR2    = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR2) { document.getElementById('lockError').textContent = 'VOICE NOT SUPPORTED'; return; }
-
-  if (lockVoiceRec) {
-    lockVoiceRec.stop(); lockVoiceRec = null;
-    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';
-    status.textContent = ''; return;
-  }
-
-  lockVoiceRec = new SR2();
-  lockVoiceRec.lang = 'en-US'; lockVoiceRec.interimResults = false;
-
-  lockVoiceRec.onstart = () => {
-    btn.classList.add('listening'); btn.textContent = '🔴 LISTENING...';
-    status.textContent = 'SAY YOUR CODE NOW';
-  };
-
-  lockVoiceRec.onresult = (e) => {
-    const said   = e.results[0][0].transcript.trim();
-    const digits = said.replace(/\s+/g, '')
-      .replace(/zero/gi,'0').replace(/one/gi,'1').replace(/two/gi,'2')
-      .replace(/three/gi,'3').replace(/four/gi,'4').replace(/five/gi,'5')
-      .replace(/six/gi,'6').replace(/seven/gi,'7').replace(/eight/gi,'8')
-      .replace(/nine/gi,'9').replace(/[^0-9]/g, '');
-
-    lockVoiceRec = null;
-    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';
-    status.textContent = '';
-
-    lockInput = digits.slice(0, LOCK_LEN);
-    updateDots();
-    if (lockInput.length === LOCK_LEN) checkCode();
-    else {
-      document.getElementById('lockError').textContent = 'ACCESS DENIED';
-      setTimeout(() => { lockInput = ''; updateDots(); document.getElementById('lockError').textContent = ''; }, 1200);
-    }
-  };
-
-  lockVoiceRec.onerror = () => {
-    lockVoiceRec = null;
-    btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE';
-    status.textContent = '';
-    document.getElementById('lockError').textContent = 'MIC ERROR — TRY AGAIN';
-  };
-
-  lockVoiceRec.onend = () => {
-    if (lockVoiceRec) { lockVoiceRec = null; btn.className = 'lock-voice-btn'; btn.textContent = '🎤 SPEAK CODE'; status.textContent = ''; }
-  };
-
-  try { lockVoiceRec.start(); } catch(e) { lockVoiceRec = null; }
-}
-
-// ── UNLOCK + START ───────────────────────────────────────────────
-function unlockAndStart() {
-  document.getElementById('lockScreen').classList.add('hidden');
-  startLocationEngine();
-}
-
-// ── ① LOCATION ENGINE ────────────────────────────────────────────
-let liveLocation = null;
-
-function startLocationEngine() {
-  if (!navigator.geolocation) return;
-  const opts = { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 };
-
-  async function updateLocation(pos) {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-    liveLocation = { lat, lon };
-
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-        { headers: { 'Accept-Language': 'en' } }
-      );
-      const d = await r.json();
-      const city    = d.address?.city || d.address?.town || d.address?.village || '';
-      const country = d.address?.country || '';
-      liveLocation.city    = city;
-      liveLocation.country = country;
-
-      if (city) {
-        document.getElementById('locationCity').textContent = city.toUpperCase();
-        document.getElementById('locationBadge').style.display = 'block';
-      }
-    } catch (_) {}
-  }
-
-  navigator.geolocation.getCurrentPosition(updateLocation, () => {}, opts);
-  setInterval(() => navigator.geolocation.getCurrentPosition(updateLocation, () => {}, opts), 10 * 60 * 1000);
-}
-
-// ── TTS ──────────────────────────────────────────────────────────
-let ttsVoice  = null;
-let ttsReady  = false;
-let liveMuted = false;
-
-function loadVoices() {
-  const voices = speechSynthesis.getVoices();
-  if (!voices.length) return false;
-  ttsVoice =
-    voices.find(v => /female|woman|girl/i.test(v.name) && /en/i.test(v.lang)) ||
-    voices.find(v => /zira|samantha|victoria|karen|moira|tessa|fiona|allison|ava|susan|kate/i.test(v.name)) ||
-    voices.find(v => /en[-_]?(gb|us|au|in)/i.test(v.lang) && v.name.toLowerCase().includes('female')) ||
-    voices.find(v => /en/i.test(v.lang)) ||
-    voices[0];
-  ttsReady = true;
-  return true;
-}
-
-if (!loadVoices()) {
-  speechSynthesis.onvoiceschanged = () => { loadVoices(); };
-}
-
-function speak(text) {
-  if (liveMuted) return;
-  speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  if (ttsVoice) utt.voice = ttsVoice;
-  utt.rate  = 1.0;
-  utt.pitch = 1.1;
-  utt.volume= 1.0;
-
-  utt.onstart = () => {
-    tapBtn.classList.add('speaking');
-    if (liveMode) { liveOrb.className = 'speaking'; liveLabel.textContent = 'SPEAKING'; }
-  };
-  utt.onend = utt.onerror = () => {
-    tapBtn.classList.remove('speaking');
-    if (liveMode) listenLoop();
-  };
-  speechSynthesis.speak(utt);
-}
-
-// ── ELEMENTS ─────────────────────────────────────────────────────
-const messagesEl = document.getElementById('messages');
-const userInput  = document.getElementById('userInput');
-const tapBtn     = document.getElementById('tapBtn');
-const tapIcon    = document.getElementById('tapIcon');
-const tapLabel   = document.getElementById('tapLabel');
-const liveOverlay= document.getElementById('liveOverlay');
-const liveOrb    = document.getElementById('liveOrb');
-const liveLabel  = document.getElementById('liveLabel');
-const liveText   = document.getElementById('liveText');
-const endBtn     = document.getElementById('endBtn');
-
-let history  = [];
-let busy     = false;
-let liveMode = false;
-let liveRec  = null;
-const SR     = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-// ── MESSAGES ─────────────────────────────────────────────────────
-function clearWelcome() { document.querySelector('.welcome')?.remove(); }
-
-function addMsg(role, text, badge) {
-  clearWelcome();
-  const d = document.createElement('div');
-  d.className = `msg ${role === 'user' ? 'user' : 'ai'}`;
-
-  let badgeHtml = '';
-  if (badge === 'live')      badgeHtml = '<span class="live-badge">🔴 LIVE</span>';
-  else if (badge === 'wa')   badgeHtml = '<span class="wa-badge">💬 WHATSAPP</span>';
-  else if (badge === 'app')  badgeHtml = '<span class="app-badge">📱 APP</span>';
-
-  d.innerHTML = `
-    <div class="msg-label">${role === 'user' ? 'YOU' : 'JARVIS'} ${badgeHtml}</div>
-    <div class="msg-bubble">${text}</div>
-  `;
-  messagesEl.appendChild(d);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-function showTyping() {
-  const t = document.createElement('div');
-  t.className = 'msg ai'; t.id = 'typing';
-  t.innerHTML = `<div class="msg-label">JARVIS</div><div class="thinking-bubble"><div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div></div>`;
-  messagesEl.appendChild(t);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-function removeTyping() { document.getElementById('typing')?.remove(); }
-
-// ── ③ WHATSAPP ────────────────────────────────────────────────────
-// ▼▼ ADD YOUR CONTACTS HERE ▼▼
-const WA_CONTACTS = {
-  // 'mum':   '923001234567',
-  // 'dad':   '923007654321',
-  // 'ali':   '923331234567',
-};
-
-function detectWhatsAppIntent(text) {
-  const patterns = [
-    /(?:send\s+)?(?:a\s+)?(?:whatsapp|wa|wapp)\s+(?:message\s+)?(?:to\s+)?(\w+)(?:\s+(?:saying?|that|:)\s*(.+))?/i,
-    /(?:message|text|ping)\s+(\w+)\s+on\s+(?:whatsapp|wa)/i,
-    /(?:tell|ask)\s+(\w+)\s+(?:on\s+whatsapp|via\s+whatsapp)(?:\s+(?:that|to)\s*(.+))?/i,
-  ];
-  for (const pat of patterns) {
-    const m = text.match(pat);
-    if (m) return { name: m[1]?.toLowerCase(), msg: m[2] || '', original: text };
-  }
-  return null;
-}
-
-function handleWhatsApp({ name, msg }) {
-  const phone = WA_CONTACTS[name];
-  if (!phone) {
-    const known = Object.keys(WA_CONTACTS).join(', ') || 'none configured yet';
-    const reply = `I don't have a WhatsApp contact for "${name}", Sir. Known contacts: ${known}.`;
-    addMsg('ai', reply, 'wa');
-    speak(reply);
-    history.push({ role: 'assistant', content: reply });
-    return;
-  }
-  const waUrl = `https://wa.me/${phone}${msg ? '?text=' + encodeURIComponent(msg) : ''}`;
-  const reply = msg
-    ? `Opening WhatsApp for ${name} with your message pre-filled, Sir.`
-    : `Opening WhatsApp chat with ${name}, Sir.`;
-  addMsg('ai', reply, 'wa');
-  speak(reply);
-  history.push({ role: 'assistant', content: reply });
-  setTimeout(() => window.open(waUrl, '_blank'), 800);
-}
-
-// ── ④ TASKER ──────────────────────────────────────────────────────
-const TASKER_BASE = 'http://localhost:1820/run';
-
-// ▼▼ MUST MATCH YOUR TASKER TASK NAMES EXACTLY ▼▼
-const TASKER_APPS = {
-  'youtube':          'Open YouTube',
-  'camera':           'Open Camera',
-  'settings':         'Open Settings',
-  'maps|navigation':  'Open Maps',
-  'spotify|music':    'Open Spotify',
-  'chrome|browser':   'Open Chrome',
-  'calculator':       'Open Calculator',
-  'gallery|photos':   'Open Gallery',
-  'contacts':         'Open Contacts',
-  'dialer|phone':     'Open Phone',
-  'calendar':         'Open Calendar',
-  'files':            'Open Files',
-};
-
-function detectTaskerIntent(text) {
-  const m = text.match(/(?:open|launch|start|switch\s+to|go\s+to)\s+(\w[\w\s]*)/i);
-  if (!m) return null;
-  const appQuery = m[1].trim().toLowerCase();
-  for (const [pattern, taskName] of Object.entries(TASKER_APPS)) {
-    if (new RegExp(pattern, 'i').test(appQuery)) return { appQuery, taskName };
-  }
-  return null;
-}
-
-async function handleTasker({ appQuery, taskName }) {
-  const reply = `Opening ${appQuery} for you, Sir.`;
-  addMsg('ai', reply, 'app');
-  speak(reply);
-  history.push({ role: 'assistant', content: reply });
-  try {
-    await fetch(`${TASKER_BASE}?taskName=${encodeURIComponent(taskName)}`, { signal: AbortSignal.timeout(3000) });
-  } catch (_) {}
-}
-
-// ── ① + ② SEND MESSAGE (with real-time search + location) ────────
-async function sendMessage(text) {
-  if (!text?.trim() || busy) return;
-  busy = true;
-
-  const userText = text.trim();
-  addMsg('user', userText);
-  history.push({ role: 'user', content: userText });
-  userInput.value = '';
-
-  // WhatsApp intent?
-  const waResult = detectWhatsAppIntent(userText);
-  if (waResult) { busy = false; handleWhatsApp(waResult); return; }
-
-  // Tasker intent?
-  const taskerResult = detectTaskerIntent(userText);
-  if (taskerResult) { busy = false; handleTasker(taskerResult); return; }
-
-  showTyping();
-
-  try {
-    const res  = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history, location: liveLocation })
-    });
-    const data = await res.json();
-    removeTyping();
-
-    const reply = data.reply || "I'm having trouble responding, Sir.";
-    history.push({ role: 'assistant', content: reply });
-    addMsg('ai', reply, data.searched ? 'live' : null);
-    speak(reply);
-
-  } catch (err) {
-    removeTyping();
-    const errMsg = "Connectivity issue, Sir. Please try again.";
-    addMsg('ai', errMsg);
-    speak(errMsg);
-  }
-
-  busy = false;
-}
-
-// ── TAP TO SPEAK ─────────────────────────────────────────────────
-let tapRec = null;
-
-function tapSpeak() {
-  if (!SR) { addMsg('ai', 'Speech recognition not supported, Sir.'); return; }
-  if (tapRec) { tapRec.stop(); return; }
-
-  tapRec = new SR();
-  tapRec.lang = 'en-US'; tapRec.interimResults = false; tapRec.continuous = false;
-
-  tapRec.onstart = () => {
-    tapBtn.classList.add('listening');
-    tapIcon.textContent = '🔴'; tapLabel.textContent = 'LISTENING';
-  };
-
-  tapRec.onresult = (e) => {
-    const t = e.results[0][0].transcript.trim();
-    userInput.value = t;
-    sendMessage(t);
-  };
-
-  tapRec.onend = tapRec.onerror = () => {
-    tapRec = null;
-    tapBtn.classList.remove('listening');
-    tapIcon.textContent = '🎙️'; tapLabel.textContent = 'TAP TO SPEAK';
-  };
-
-  try { tapRec.start(); } catch(e) { tapRec = null; }
-}
-
-// ── MIC BUTTON ───────────────────────────────────────────────────
-let micRec = null;
-
-function toggleMic() {
-  if (!SR) return;
-  const btn = document.getElementById('micBtn');
-  if (micRec) { micRec.stop(); return; }
-
-  micRec = new SR();
-  micRec.lang = 'en-US'; micRec.interimResults = true; micRec.continuous = false;
-
-  micRec.onstart = () => btn.classList.add('recording');
-
-  micRec.onresult = (e) => {
-    let interim = '', final = '';
-    for (const r of e.results) {
-      if (r.isFinal) final += r[0].transcript;
-      else interim += r[0].transcript;
-    }
-    userInput.value = final || interim;
-  };
-
-  micRec.onend = () => { micRec = null; btn.classList.remove('recording'); };
-  micRec.onerror = () => { micRec = null; btn.classList.remove('recording'); };
-
-  try { micRec.start(); } catch(e) { micRec = null; }
-}
-
-// ── LIVE MODE ─────────────────────────────────────────────────────
-function startLiveMode() {
-  if (!SR) { addMsg('ai', 'Speech recognition not supported, Sir.'); return; }
-  liveMode = true;
-  liveOverlay.classList.add('active');
-  listenLoop();
-}
-
-function endLiveMode() {
-  liveMode = false;
-  if (liveRec) { try { liveRec.stop(); } catch(_){} liveRec = null; }
-  speechSynthesis.cancel();
-  liveOverlay.classList.remove('active');
-  liveOrb.className = '';
-  liveLabel.textContent = 'LISTENING';
-  document.getElementById('liveMicDead').style.display = 'none';
-}
-
-function toggleMute() {
-  liveMuted = !liveMuted;
-  const btn = document.getElementById('muteBtn');
-  btn.textContent = liveMuted ? '🔊' : '🔇';
-  if (liveMuted) speechSynthesis.cancel();
-}
-
-function listenLoop() {
-  if (!liveMode || busy) return;
-
-  liveOrb.className = 'listening';
-  liveLabel.textContent = 'LISTENING';
-  liveText.textContent = '';
-  document.getElementById('liveMicDead').style.display = 'none';
-
-  liveRec = new SR();
-  liveRec.lang = 'en-US'; liveRec.interimResults = true; liveRec.continuous = false;
-
-  liveRec.onresult = (e) => {
-    let interim = '', final = '';
-    for (const r of e.results) {
-      if (r.isFinal) final += r[0].transcript;
-      else interim += r[0].transcript;
-    }
-    liveText.textContent = final || interim;
-    if (final) {
-      liveRec = null;
-      liveOrb.className = 'thinking';
-      liveLabel.textContent = 'THINKING';
-      liveSend(final.trim());
-    }
-  };
-
-  liveRec.onerror = (e) => {
-    liveRec = null;
-    if (liveMode) {
-      if (e.error === 'no-speech') { setTimeout(listenLoop, 300); return; }
-      document.getElementById('liveMicDead').style.display = 'block';
-      liveOrb.className = '';
-      liveLabel.textContent = 'MIC ERROR';
-    }
-  };
-
-  liveRec.onend = () => {
-    if (liveMode && liveRec) { liveRec = null; setTimeout(listenLoop, 300); }
-  };
-
-  try { liveRec.start(); } catch(e) { liveRec = null; if (liveMode) setTimeout(listenLoop, 1000); }
-}
-
-async function liveSend(text) {
-  if (!text || busy) { if (liveMode) listenLoop(); return; }
-  busy = true;
-
-  addMsg('user', text);
-  history.push({ role: 'user', content: text });
-
-  // WhatsApp in live mode
-  const waResult = detectWhatsAppIntent(text);
-  if (waResult) {
-    busy = false;
-    handleWhatsApp(waResult);
-    if (liveMode) setTimeout(listenLoop, 2000);
-    return;
-  }
-
-  // Tasker in live mode
-  const taskerResult = detectTaskerIntent(text);
-  if (taskerResult) {
-    busy = false;
-    handleTasker(taskerResult);
-    if (liveMode) setTimeout(listenLoop, 2000);
-    return;
-  }
-
-  try {
-    const res  = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history, location: liveLocation })
-    });
-    const data = await res.json();
-    const reply = data.reply || "I'm having trouble, Sir.";
-    history.push({ role: 'assistant', content: reply });
-    addMsg('ai', reply, data.searched ? 'live' : null);
-    liveText.textContent = reply;
-    liveOrb.className = 'speaking';
-    liveLabel.textContent = 'SPEAKING';
-    speak(reply);
-  } catch {
-    const err = "Connectivity issue, Sir.";
-    addMsg('ai', err); speak(err);
-    liveText.textContent = err;
-  }
-
-  busy = false;
-}
-</script>
-</body>
-</html>
+<!-- ═══════════════════ VOICE MODE OVERLAY ═══════════════════════ -->
+<div class="voice-overlay" id="voice-overlay">
+  <div class="voice-radar">
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    
