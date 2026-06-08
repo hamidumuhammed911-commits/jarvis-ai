@@ -628,4 +628,235 @@ body::after {
     <div class="radar-ring"></div>
     <div class="radar-ring"></div>
     <div class="radar-ring"></div>
+<div class="voice-core" id="voice-core">🎙</div>
+  </div>
+  <div class="voice-status" id="voice-status">STANDBY</div>
+  <button class="hud-btn" style="width:120px; font-size:9px; letter-spacing:.2em" onclick="toggleVoiceMode()">EXIT</button>
+</div>
+
+<script>
+const PASSCODE = '615113';
+let pcInput = '';
+
+function pcKey(n) {
+  if (pcInput.length >= 6) return;
+  pcInput += n;
+  document.getElementById('d' + (pcInput.length - 1)).classList.add('filled');
+  if (pcInput.length === 6) setTimeout(pcCheck, 180);
+}
+function pcDel() {
+  if (!pcInput.length) return;
+  document.getElementById('d' + (pcInput.length - 1)).classList.remove('filled');
+  pcInput = pcInput.slice(0, -1);
+}
+function pcClear() { while (pcInput.length) pcDel(); }
+function pcCheck() {
+  if (pcInput === PASSCODE) {
+    document.getElementById('passcode-screen').style.display = 'none';
+    const app = document.getElementById('main-app');
+    app.style.display = 'flex';
+    initApp();
+  } else {
+    const msg = document.getElementById('pc-msg');
+    msg.textContent = 'ACCESS DENIED';
+    msg.className = 'passcode-msg error';
+    document.querySelectorAll('.pd').forEach(d => d.classList.add('filled'));
+    setTimeout(() => {
+      pcClear();
+      msg.textContent = 'ENTER ACCESS CODE';
+      msg.className = 'passcode-msg';
+    }, 900);
+  }
+}
+
+let sessionStart;
+function startClock() {
+  sessionStart = Date.now();
+  setInterval(() => {
+    const now = new Date();
+    document.getElementById('sb-time').textContent = now.toTimeString().slice(0,8);
+    document.getElementById('sb-date').textContent =
+      now.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
+    const up = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = Math.floor(up/60), s = up%60;
+    document.getElementById('tele-uptime').textContent = `${m}:${String(s).padStart(2,'0')}`;
+  }, 1000);
+}
+
+let history = [];
+let msgCount = 0;
+
+function initApp() {
+  startClock();
+  addMessage('jarvis', 'Online, Boss Muhammed Aali. All systems nominal. How may I assist you, Sir?');
+}
+
+function addMessage(role, text) {
+  const win = document.getElementById('chat-window');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.textContent = text;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+  if (role === 'user') history.push({ role:'user', content: text });
+  if (role === 'jarvis') history.push({ role:'assistant', content: text });
+  msgCount++;
+  document.getElementById('tele-msgs').textContent = msgCount;
+  document.getElementById('msgs-bar').style.width = Math.min(msgCount * 6, 95) + '%';
+  document.getElementById('tele-ctx').textContent = history.length;
+  document.getElementById('ctx-bar').style.width = Math.min(history.length * 3, 95) + '%';
+}
+
+function showTyping() {
+  const win = document.getElementById('chat-window');
+  const div = document.createElement('div');
+  div.className = 'msg typing';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+}
+function hideTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  addMessage('user', text);
+  showTyping();
+  const t0 = Date.now();
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: history })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || data.reply || 'Error — no response.';
+    hideTyping();
+    addMessage('jarvis', reply);
+    document.getElementById('tele-latency').textContent = (Date.now() - t0) + 'ms';
+    speak(reply);
+  } catch(e) {
+    hideTyping();
+    addMessage('jarvis', 'Connection error, Sir. Please try again.');
+  }
+}
+
+document.getElementById('user-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+function speak(text) {
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  const voices = window.speechSynthesis.getVoices();
+  const female = voices.find(v =>
+    /female|woman|samantha|zira|google uk english female/i.test(v.name)
+  ) || voices.find(v => v.lang === 'en-US') || voices[0];
+  if (female) utt.voice = female;
+  utt.rate = 1.0; utt.pitch = 1.05;
+  window.speechSynthesis.speak(utt);
+}
+
+const micBtn = document.getElementById('mic-btn');
+let recognition;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.onresult = e => {
+    document.getElementById('user-input').value = e.results[0][0].transcript;
+    sendMessage();
+  };
+  recognition.onend = () => micBtn.classList.remove('active');
+}
+micBtn.addEventListener('click', () => {
+  if (!recognition) return;
+  micBtn.classList.add('active');
+  recognition.start();
+});
+
+let voiceActive = false;
+function toggleVoiceMode() {
+  voiceActive = !voiceActive;
+  document.getElementById('voice-overlay').classList.toggle('active', voiceActive);
+  if (voiceActive) startVoiceLoop();
+  else {
+    window.speechSynthesis.cancel();
+    if (recognition) recognition.abort();
+    setVoiceState('idle');
+  }
+}
+function setVoiceState(state) {
+  const icons = { listening:'🎙', thinking:'⚡', speaking:'🔊', idle:'○' };
+  const core = document.getElementById('voice-core');
+  core.className = 'voice-core ' + state;
+  core.textContent = icons[state] || '○';
+  document.getElementById('voice-status').textContent = state.toUpperCase();
+  document.getElementById('tele-voice').textContent = state.toUpperCase();
+}
+async function startVoiceLoop() {
+  if (!voiceActive) return;
+  setVoiceState('listening');
+  try {
+    const transcript = await listenOnce();
+    if (!voiceActive) return;
+    if (transcript) {
+      addMessage('user', transcript);
+      setVoiceState('thinking');
+      const t0 = Date.now();
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history })
+      });
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content || data.reply || '';
+      document.getElementById('tele-latency').textContent = (Date.now() - t0) + 'ms';
+      addMessage('jarvis', reply);
+      setVoiceState('speaking');
+      await speakAsync(reply);
+    }
+    if (voiceActive) startVoiceLoop();
+  } catch(e) {
+    if (voiceActive) setTimeout(startVoiceLoop, 1200);
+  }
+}
+function listenOnce() {
+  return new Promise((res, rej) => {
+    if (!recognition) return rej('no SR');
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SR();
+    r.lang = 'en-US';
+    r.onresult = e => res(e.results[0][0].transcript);
+    r.onerror = rej;
+    r.onend = () => res('');
+    r.start();
+  });
+}
+function speakAsync(text) {
+  return new Promise(res => {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const female = voices.find(v =>
+      /female|woman|samantha|zira|google uk english female/i.test(v.name)
+    ) || voices[0];
+    if (female) utt.voice = female;
+    utt.rate = 1.0; utt.pitch = 1.05;
+    utt.onend = res;
+    window.speechSynthesis.speak(utt);
+  });
+}
+
+window.speechSynthesis.onvoiceschanged = () => {};
+</script>
+</body>
+</html>
     
