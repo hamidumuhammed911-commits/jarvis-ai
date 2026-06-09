@@ -1,11 +1,6 @@
-// JARVIS V4.3.0 — sw.js
-// Cache version bump forces old cache purge on every deploy
-
-const CACHE_NAME = "jarvis-v4.3.0";
-const CACHE_STATIC = "jarvis-static-v4.3.0";
-
-// Assets to pre-cache on install
-const PRE_CACHE = [
+// JARVIS V4.4.0 — sw.js
+const CACHE_NAME = "jarvis-v4.4.0";
+const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
@@ -13,96 +8,99 @@ const PRE_CACHE = [
   "/jarvis-reminders.js",
 ];
 
-// Never cache these prefixes
-const NEVER_CACHE = ["/api/", "https://api.groq.com", "https://api.upstash.io"];
-
-// ── Install: pre-cache static shell ──────────────────────────────────────────
+// ── Install: cache static assets ──────────────────────────────────────────
 self.addEventListener("install", (event) => {
-  console.log("[JARVIS SW] Installing v4.3.0...");
   event.waitUntil(
-    caches
-      .open(CACHE_STATIC)
-      .then((cache) => cache.addAll(PRE_CACHE))
-      .then(() => self.skipWaiting()) // Force immediate activation
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
+  self.skipWaiting();
 });
 
-// ── Activate: purge ALL old caches ───────────────────────────────────────────
+// ── Activate: purge old caches ────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
-  console.log("[JARVIS SW] Activating v4.3.0 — purging old caches...");
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => k !== CACHE_STATIC) // Delete everything except current
-            .map((k) => {
-              console.log("[JARVIS SW] Deleting old cache:", k);
-              return caches.delete(k);
-            })
-        )
-      )
-      .then(() => self.clients.claim()) // Take control of all open tabs
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
-// ── Fetch: smart routing ──────────────────────────────────────────────────────
+// ── Fetch: network-first for API, cache-first for static ─────────────────
 self.addEventListener("fetch", (event) => {
-  const url = event.request.url;
+  const url = new URL(event.request.url);
 
-  // 1. Never cache API routes or external API calls
-  const isApiCall = NEVER_CACHE.some((prefix) => url.includes(prefix));
-  if (isApiCall) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // 2. For non-GET requests, always go to network
-  if (event.request.method !== "GET") {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // 3. For navigation requests (HTML pages) — network first, fallback to cache
-  if (event.request.mode === "navigate") {
+  // Never cache API routes
+  if (url.pathname.startsWith("/api/")) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Update cache with fresh version
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_STATIC).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
+      fetch(event.request).catch(() =>
+        new Response(JSON.stringify({ error: "Offline — JARVIS network unavailable" }), {
+          headers: { "Content-Type": "application/json" },
         })
-        .catch(() => caches.match("/index.html"))
+      )
     );
     return;
   }
 
-  // 4. Static assets — cache first, network fallback
+  // Cache-first for static assets
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        if (response.ok && event.request.method === "GET") {
-          const clone = response.clone();
-          caches.open(CACHE_STATIC).then((cache) => cache.put(event.request, clone));
-        }
+        if (!response || response.status !== 200 || response.type !== "basic") return response;
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
       });
     })
   );
 });
 
-// ── Message: handle skipWaiting from app ─────────────────────────────────────
+// ── Push Notifications (Reminders) ───────────────────────────────────────
+self.addEventListener("push", (event) => {
+  let data = { title: "JARVIS", body: "Reminder, Sir.", icon: "/icons/icon-192.png" };
+  try {
+    data = event.data ? JSON.parse(event.data.text()) : data;
+  } catch { /* use defaults */ }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || "JARVIS", {
+      body: data.body || "You have a reminder, Sir.",
+      icon: data.icon || "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      vibrate: [200, 100, 200],
+      tag: data.tag || "jarvis-reminder",
+      data: { url: data.url || "/" },
+      actions: [
+        { action: "open", title: "Open JARVIS" },
+        { action: "dismiss", title: "Dismiss" },
+      ],
+    })
+  );
+});
+
+// ── Notification click ────────────────────────────────────────────────────
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  if (event.action === "dismiss") return;
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === "/" && "focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(event.notification.data?.url || "/");
+    })
+  );
+});
+
+// ── Background Sync (future use) ─────────────────────────────────────────
+self.addEventListener("sync", (event) => {
+  if (event.tag === "jarvis-sync") {
+    event.waitUntil(Promise.resolve());
+  }
+});
+
+// ── Message from page (force update) ─────────────────────────────────────
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") {
-    console.log("[JARVIS SW] Received SKIP_WAITING — forcing update...");
-    self.skipWaiting();
-  }
-  if (event.data?.type === "GET_VERSION") {
-    event.ports[0]?.postMessage({ version: CACHE_NAME });
-  }
+  if (event.data === "skipWaiting") self.skipWaiting();
 });
