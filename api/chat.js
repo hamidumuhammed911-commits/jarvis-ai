@@ -1,4 +1,4 @@
-// api/chat.js — JARVIS backend with Groq + web search + location
+// api/chat.js — JARVIS backend with Groq + web search + direct weather
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -25,12 +25,45 @@ Rules:
 - Address him as "Boss Muhammed Aali" on the very first greeting, then use "Sir" for all subsequent turns.
 - Never refer to him in the third person.
 - Be concise — maximum 3 sentences unless a list or factual answer genuinely requires more.
-- You have access to a web_search tool. Use it automatically whenever the query involves:
-  news, weather, scores, stock prices, current events, live data, or anything time-sensitive.
-  Do NOT explain that you are searching — just search, then answer naturally.
+- You have access to a web_search tool and a get_weather tool.
+- For ANY weather query, ALWAYS use the get_weather tool — never guess or say you cannot access weather.
+- Use web_search for news, scores, stock prices, current events, or anything else time-sensitive.
+- Do NOT explain that you are searching — just search, then answer naturally.
 - For weather queries without an explicit location, use Boss Muhammed Aali's current location below.
 - If location is unavailable, ask "Shall I use your current location, Sir?"
 ${locationBlock}`;
+
+  const tools = [
+    {
+      type: "function",
+      function: {
+        name: "web_search",
+        description: "Search the web for real-time info: news, sports scores, stock prices, current events.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "The search query" },
+          },
+          required: ["query"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_weather",
+        description: "Get real-time weather for any city or coordinates. Always use this for weather questions.",
+        parameters: {
+          type: "object",
+          properties: {
+            city: { type: "string", description: "City name e.g. Minna, Lagos, London" },
+            lat:  { type: "number", description: "Latitude (use if city unknown)" },
+            lon:  { type: "number", description: "Longitude (use if city unknown)" },
+          },
+        },
+      },
+    },
+  ];
 
   try {
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -43,26 +76,7 @@ ${locationBlock}`;
         model: "llama-3.3-70b-versatile",
         max_tokens: 512,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "web_search",
-              description:
-                "Search the web for real-time info: news, weather, sports scores, stock prices, current events.",
-              parameters: {
-                type: "object",
-                properties: {
-                  query: {
-                    type: "string",
-                    description: "The search query",
-                  },
-                },
-                required: ["query"],
-              },
-            },
-          },
-        ],
+        tools,
         tool_choice: "auto",
       }),
     });
@@ -76,12 +90,19 @@ ${locationBlock}`;
 
     const choice = data.choices?.[0];
 
-    // Handle tool call — web search
+    // Handle tool calls
     if (choice?.finish_reason === "tool_calls" && choice.message?.tool_calls?.length > 0) {
       const toolCall = choice.message.tool_calls[0];
-      const { query } = JSON.parse(toolCall.function.arguments);
+      const toolName = toolCall.function.name;
+      const toolArgs = JSON.parse(toolCall.function.arguments);
 
-      const searchResult = await performWebSearch(query);
+      let toolResult = "";
+
+      if (toolName === "get_weather") {
+        toolResult = await getWeather(toolArgs, location);
+      } else if (toolName === "web_search") {
+        toolResult = await performWebSearch(toolArgs.query);
+      }
 
       const followUp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -99,7 +120,7 @@ ${locationBlock}`;
             {
               role: "tool",
               tool_call_id: toolCall.id,
-              content: searchResult,
+              content: toolResult,
             },
           ],
         }),
@@ -120,10 +141,77 @@ ${locationBlock}`;
   }
 }
 
-// Web search — supports Serper (recommended), SerpAPI, or Brave
+// ── WEATHER via Open-Meteo (free, no key) ──────────────────
+async function getWeather(args, locationFallback) {
+  try {
+    let lat = args.lat;
+    let lon = args.lon;
+    let cityName = args.city || "";
+
+    // If city name given, geocode it
+    if (cityName && (!lat || !lon)) {
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`
+      );
+      const geoData = await geoRes.json();
+      if (geoData.results?.length > 0) {
+        lat = geoData.results[0].latitude;
+        lon = geoData.results[0].longitude;
+        cityName = geoData.results[0].name + ", " + (geoData.results[0].country || "");
+      }
+    }
+
+    // Fall back to user's GPS location
+    if (!lat || !lon) {
+      if (locationFallback?.lat && locationFallback?.lon) {
+        lat = locationFallback.lat;
+        lon = locationFallback.lon;
+        cityName = locationFallback.city || "your location";
+      } else {
+        return "Location unavailable. Please enable GPS, Sir.";
+      }
+    }
+
+    const wRes = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code` +
+      `&wind_speed_unit=kmh&temperature_unit=celsius&timezone=auto&forecast_days=3`
+    );
+    const w = await wRes.json();
+    const c = w.current;
+    const d = w.daily;
+
+    const WMO = {
+      0:"Clear sky", 1:"Mainly clear", 2:"Partly cloudy", 3:"Overcast",
+      45:"Foggy", 48:"Icy fog", 51:"Light drizzle", 53:"Drizzle", 55:"Heavy drizzle",
+      61:"Light rain", 63:"Rain", 65:"Heavy rain", 71:"Light snow", 73:"Snow", 75:"Heavy snow",
+      80:"Rain showers", 81:"Rain showers", 95:"Thunderstorm", 99:"Thunderstorm with hail"
+    };
+
+    const condition = WMO[c.weather_code] || "Unknown";
+
+    return `Weather for ${cityName}:
+Current: ${Math.round(c.temperature_2m)}°C, ${condition}
+Feels like: ${Math.round(c.apparent_temperature)}°C
+Humidity: ${c.relative_humidity_2m}%
+Wind: ${Math.round(c.wind_speed_10m)} km/h
+Precipitation: ${c.precipitation} mm
+
+3-Day Forecast:
+- Today: ${Math.round(d.temperature_2m_min[0])}°C - ${Math.round(d.temperature_2m_max[0])}°C, ${WMO[d.weather_code[0]] || ""}
+- Tomorrow: ${Math.round(d.temperature_2m_min[1])}°C - ${Math.round(d.temperature_2m_max[1])}°C, ${WMO[d.weather_code[1]] || ""}
+- Day after: ${Math.round(d.temperature_2m_min[2])}°C - ${Math.round(d.temperature_2m_max[2])}°C, ${WMO[d.weather_code[2]] || ""}`;
+
+  } catch (e) {
+    console.error("Weather error:", e);
+    return "Weather service temporarily unavailable, Sir.";
+  }
+}
+
+// ── WEB SEARCH via Serper ───────────────────────────────────
 async function performWebSearch(query) {
   try {
-    // OPTION A: Serper.dev — set SERPER_KEY in Vercel env vars (2500 free/month)
     if (process.env.SERPER_KEY) {
       const r = await fetch("https://google.serper.dev/search", {
         method: "POST",
@@ -142,37 +230,7 @@ async function performWebSearch(query) {
       ].join("\n");
       return snippets || "No results found.";
     }
-
-    // OPTION B: SerpAPI — set SERPAPI_KEY in Vercel env vars (100 free/month)
-    if (process.env.SERPAPI_KEY) {
-      const url = `https://serpapi.com/search.json?q=${encodeURIComponent(query)}&num=5&api_key=${process.env.SERPAPI_KEY}`;
-      const r = await fetch(url);
-      const d = await r.json();
-      const snippets = [
-        ...(d.answer_box ? [`Answer: ${d.answer_box.answer || d.answer_box.snippet}`] : []),
-        ...(d.organic_results?.slice(0, 4).map((x) => `${x.title}: ${x.snippet}`) || []),
-      ].join("\n");
-      return snippets || "No results found.";
-    }
-
-    // OPTION C: Brave Search — set BRAVE_SEARCH_KEY in Vercel env vars (2000 free/day)
-    if (process.env.BRAVE_SEARCH_KEY) {
-      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
-      const r = await fetch(url, {
-        headers: {
-          "X-Subscription-Token": process.env.BRAVE_SEARCH_KEY,
-          Accept: "application/json",
-        },
-      });
-      const d = await r.json();
-      const snippets = d.web?.results
-        ?.slice(0, 4)
-        .map((x) => `${x.title}: ${x.description}`)
-        .join("\n");
-      return snippets || "No results found.";
-    }
-
-    return "Web search not configured. Add SERPER_KEY, SERPAPI_KEY, or BRAVE_SEARCH_KEY to Vercel environment variables.";
+    return "Web search not configured.";
   } catch (e) {
     console.error("Search error:", e);
     return "Search temporarily unavailable.";
