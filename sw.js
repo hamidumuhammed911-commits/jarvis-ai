@@ -1,80 +1,94 @@
-// ============================================================
-// JARVIS Service Worker — V4.3.0
-// FIX: Bumped cache version + API routes always bypass cache
-// ============================================================
+// JARVIS V4.3.0 — sw.js
+// Cache version bump forces old cache purge on every deploy
 
-const CACHE_NAME = 'jarvis-v4.3.0';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/jarvis-features.js',
-  '/jarvis-reminders.js'
+const CACHE_NAME = "jarvis-v4.3.0";
+const CACHE_STATIC = "jarvis-static-v4.3.0";
+
+// Assets to pre-cache on install
+const PRE_CACHE = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/jarvis-features.js",
+  "/jarvis-reminders.js",
 ];
 
-// ── Install: cache static shell ──────────────────────────────
-self.addEventListener('install', event => {
-  // Force this SW to activate immediately, replacing any old one
-  self.skipWaiting();
+// Never cache these prefixes
+const NEVER_CACHE = ["/api/", "https://api.groq.com", "https://api.upstash.io"];
+
+// ── Install: pre-cache static shell ──────────────────────────────────────────
+self.addEventListener("install", (event) => {
+  console.log("[JARVIS SW] Installing v4.3.0...");
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    caches
+      .open(CACHE_STATIC)
+      .then((cache) => cache.addAll(PRE_CACHE))
+      .then(() => self.skipWaiting()) // Force immediate activation
   );
 });
 
-// ── Activate: purge ALL old caches ──────────────────────────
-self.addEventListener('activate', event => {
+// ── Activate: purge ALL old caches ───────────────────────────────────────────
+self.addEventListener("activate", (event) => {
+  console.log("[JARVIS SW] Activating v4.3.0 — purging old caches...");
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => {
-            console.log('[SW] Deleting old cache:', key);
-            return caches.delete(key);
-          })
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k !== CACHE_STATIC) // Delete everything except current
+            .map((k) => {
+              console.log("[JARVIS SW] Deleting old cache:", k);
+              return caches.delete(k);
+            })
+        )
       )
-    ).then(() => self.clients.claim()) // Take control of all open tabs immediately
+      .then(() => self.clients.claim()) // Take control of all open tabs
   );
 });
 
-// ── Fetch: network-first for API, cache-first for static ────
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+// ── Fetch: smart routing ──────────────────────────────────────────────────────
+self.addEventListener("fetch", (event) => {
+  const url = event.request.url;
 
-  // CRITICAL: Never cache API calls — always go to network
-  if (
-    url.pathname.startsWith('/api/') ||
-    url.hostname.includes('api.groq.com') ||
-    url.hostname.includes('upstash.io') ||
-    url.hostname.includes('serper.dev') ||
-    url.hostname.includes('open-meteo.com') ||
-    url.hostname.includes('nominatim.openstreetmap.org')
-  ) {
+  // 1. Never cache API routes or external API calls
+  const isApiCall = NEVER_CACHE.some((prefix) => url.includes(prefix));
+  if (isApiCall) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 2. For non-GET requests, always go to network
+  if (event.request.method !== "GET") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 3. For navigation requests (HTML pages) — network first, fallback to cache
+  if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(err => {
-        console.error('[SW] API fetch failed:', err);
-        return new Response(
-          JSON.stringify({ error: 'Network unavailable', offline: true }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
-      })
+      fetch(event.request)
+        .then((response) => {
+          // Update cache with fresh version
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_STATIC).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match("/index.html"))
     );
     return;
   }
 
-  // Static assets: cache-first with network fallback
+  // 4. Static assets — cache first, network fallback
   event.respondWith(
-    caches.match(event.request).then(cached => {
+    caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Only cache valid GET responses
-        if (
-          event.request.method === 'GET' &&
-          response.status === 200 &&
-          response.type !== 'opaque'
-        ) {
+      return fetch(event.request).then((response) => {
+        if (response.ok && event.request.method === "GET") {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_STATIC).then((cache) => cache.put(event.request, clone));
         }
         return response;
       });
@@ -82,16 +96,13 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// ── Message: allow manual cache clear from app ──────────────
-self.addEventListener('message', event => {
-  if (event.data === 'SKIP_WAITING') {
+// ── Message: handle skipWaiting from app ─────────────────────────────────────
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    console.log("[JARVIS SW] Received SKIP_WAITING — forcing update...");
     self.skipWaiting();
   }
-  if (event.data === 'CLEAR_CACHE') {
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => caches.delete(key)))
-    ).then(() => {
-      event.ports[0]?.postMessage({ cleared: true });
-    });
+  if (event.data?.type === "GET_VERSION") {
+    event.ports[0]?.postMessage({ version: CACHE_NAME });
   }
 });
