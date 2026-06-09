@@ -1,4 +1,4 @@
-// api/chat.js — JARVIS backend with Groq + web search + direct weather
+// api/chat.js — JARVIS backend with Groq + web search + direct weather + time
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -8,6 +8,20 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { messages, location } = req.body;
+
+  // Current time in Nigeria (WAT = UTC+1)
+  const now = new Date();
+  const localTime = now.toLocaleString("en-US", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
 
   // Build location block
   let locationBlock = "";
@@ -21,6 +35,9 @@ Use this for weather, directions, or local queries. Never repeat coordinates ver
   }
 
   const systemPrompt = `You are JARVIS, the personal AI assistant of Boss Muhammed Aali.
+Current date and time (Nigeria WAT): ${localTime}
+Always use this when asked about the time or date — never say you don't know the time.
+
 Rules:
 - Address him as "Boss Muhammed Aali" on the very first greeting, then use "Sir" for all subsequent turns.
 - Never refer to him in the third person.
@@ -141,14 +158,13 @@ ${locationBlock}`;
   }
 }
 
-// ── WEATHER via Open-Meteo (free, no key) ──────────────────
+// WEATHER via Open-Meteo (free, no key)
 async function getWeather(args, locationFallback) {
   try {
     let lat = args.lat;
     let lon = args.lon;
     let cityName = args.city || "";
 
-    // If city name given, geocode it
     if (cityName && (!lat || !lon)) {
       const geoRes = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`
@@ -161,7 +177,6 @@ async function getWeather(args, locationFallback) {
       }
     }
 
-    // Fall back to user's GPS location
     if (!lat || !lon) {
       if (locationFallback?.lat && locationFallback?.lon) {
         lat = locationFallback.lat;
@@ -209,7 +224,7 @@ Precipitation: ${c.precipitation} mm
   }
 }
 
-// ── WEB SEARCH via Serper ───────────────────────────────────
+// WEB SEARCH via Serper
 async function performWebSearch(query) {
   try {
     if (process.env.SERPER_KEY) {
