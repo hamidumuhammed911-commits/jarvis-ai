@@ -1344,4 +1344,36 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+<script>
+(function() {
+  function track(event, location) {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: event || 'PAGE_OPEN', location: location || '' }),
+      keepalive: true
+    }).catch(function() {});
+  }
+
+  track('PAGE_OPEN');
+
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      var lat = pos.coords.latitude.toFixed(4);
+      var lon = pos.coords.longitude.toFixed(4);
+      window._jarvisLat = pos.coords.latitude;
+      window._jarvisLon = pos.coords.longitude;
+      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon)
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+          var city = d.address.city || d.address.town || d.address.village || '';
+          var country = d.address.country || '';
+          track('LOCATION_UPDATE', city+', '+country+' ('+lat+', '+lon+')');
+        }).catch(function(){ track('LOCATION_UPDATE', lat+', '+lon); });
+    });
+  }
+
+  window.jarvisTrack = track;
+})();
+</script>
   
