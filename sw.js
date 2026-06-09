@@ -1,32 +1,69 @@
-// JARVIS Service Worker v1.0
-const CACHE = 'jarvis-v1';
-const STATIC = ['/', '/index.html'];
+// sw.js — JARVIS PWA Service Worker
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting())
+const CACHE_NAME    = 'jarvis-v4.2.0';
+const OFFLINE_URL   = '/index.html';
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/jarvis-features.js',
+];
+
+// Install — cache static assets
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(STATIC_ASSETS);
+    })
   );
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
+// Activate — delete old caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
+    )
   );
+  self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-  // Don't intercept API calls
-  if (e.request.url.includes('/api/')) return;
+// Fetch — network first, cache fallback
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  const url = new URL(request.url);
 
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
+  // Always go network-only for API calls
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(
+          JSON.stringify({ reply: "I'm offline, Sir. API unavailable." }),
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
+    return;
+  }
+
+  // Network first for everything else
+  event.respondWith(
+    fetch(request)
+      .then(response => {
+        // Cache successful GET responses
+        if (request.method === 'GET' && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+        }
+        return response;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() =>
+        caches.match(request).then(cached => cached || caches.match(OFFLINE_URL))
+      )
   );
 });
