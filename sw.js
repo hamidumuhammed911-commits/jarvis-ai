@@ -1,6 +1,6 @@
 // sw.js — JARVIS PWA Service Worker
 
-const CACHE_NAME    = 'jarvis-v4.2.0';
+const CACHE_NAME    = 'jarvis-v4.3.0';
 const OFFLINE_URL   = '/index.html';
 const STATIC_ASSETS = [
   '/',
