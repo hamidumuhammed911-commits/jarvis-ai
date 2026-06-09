@@ -362,3 +362,332 @@ function startLockCountdown() {
 );
 
 // ── App Init ───────────────────────────────────────────────────────────────
+function initApp() {
+  startClock();
+  getLocation();
+  resetAutoLock();
+  startReminderChecker();
+  addMsg("SESSION INITIATED — AUTHENTICATION VERIFIED", "system");
+  addMsg("Good day, Boss Muhammed Aali. All systems are nominal. How may I assist you, Sir?", "bot");
+  registerSW();
+}
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const lag = new Intl.DateTimeFormat("en-NG", {
+      timeZone:"Africa/Lagos", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:true
+    });
+    const lad = new Intl.DateTimeFormat("en-NG", {
+      timeZone:"Africa/Lagos", weekday:"short", day:"2-digit", month:"short", year:"numeric"
+    });
+    document.getElementById("timeDisplay").textContent = lag.format(now);
+    document.getElementById("dateDisplay").textContent = lad.format(now);
+    document.getElementById("sbTime").textContent = lag.format(now).substring(0,5);
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ── Location ───────────────────────────────────────────────────────────────
+function getLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLon}&format=json`);
+      const d = await r.json();
+      userLocName = d.address?.city || d.address?.town || d.address?.state || "Nigeria";
+      document.getElementById("locStat").textContent = `LOC: ${userLocName.toUpperCase()}`;
+      document.getElementById("sbLoc").textContent = `📍 ${userLocName}`;
+      document.getElementById("wcLoc").textContent = `📍 ${userLocName}`;
+    } catch { userLocName = "Nigeria"; }
+    fetchWeatherCard();
+  }, () => {
+    document.getElementById("locStat").textContent = "LOC: UNAVAIL";
+  });
+}
+
+// ── Weather HUD Card ───────────────────────────────────────────────────────
+const WMO_ICONS = {
+  0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",
+  51:"🌦️",53:"🌧️",55:"🌧️",61:"🌦️",63:"🌧️",65:"⛈️",
+  71:"🌨️",73:"❄️",75:"❄️",80:"🌦️",81:"🌧️",82:"⛈️",
+  95:"⛈️",96:"⛈️",99:"⛈️"
+};
+
+async function fetchWeatherCard() {
+  if (!userLat || !userLon) return;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&timezone=auto`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const c    = data.current;
+    const WMO_TEXT = {
+      0:"Clear Sky",1:"Mainly Clear",2:"Partly Cloudy",3:"Overcast",
+      45:"Foggy",48:"Icy Fog",51:"Light Drizzle",53:"Drizzle",55:"Heavy Drizzle",
+      61:"Light Rain",63:"Rain",65:"Heavy Rain",71:"Light Snow",73:"Snow",75:"Heavy Snow",
+      80:"Showers",81:"Heavy Showers",82:"Violent Showers",95:"Thunderstorm",99:"Severe Storm"
+    };
+    weatherData = {
+      temp: Math.round(c.temperature_2m),
+      unit: data.current_units?.temperature_2m || "°C",
+      condition: WMO_TEXT[c.weathercode] || "Unknown",
+      wind: Math.round(c.windspeed_10m),
+      humidity: c.relativehumidity_2m,
+      code: c.weathercode,
+    };
+    document.getElementById("wcTemp").textContent = `${weatherData.temp}${weatherData.unit}`;
+    document.getElementById("wcCond").textContent = weatherData.condition;
+    document.getElementById("wcWind").textContent = weatherData.wind;
+    document.getElementById("wcHumid").textContent = weatherData.humidity;
+    document.getElementById("wcIcon").textContent = WMO_ICONS[c.weathercode] || "🌡️";
+    document.getElementById("wcUpdated").textContent = new Date().toLocaleTimeString("en-NG",{timeZone:"Africa/Lagos",hour:"2-digit",minute:"2-digit"});
+    document.getElementById("weatherCard").style.display = "block";
+  } catch { /* silent fail */ }
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+function addMsg(text, role) {
+  const box = document.getElementById("chatBox");
+  const div = document.createElement("div");
+  div.className = `msg ${role}`;
+  if (role === "bot") {
+    const lbl = document.createElement("div");
+    lbl.className = "msg-label";
+    lbl.textContent = "◈ JARVIS";
+    div.appendChild(lbl);
+  } else if (role === "user") {
+    const lbl = document.createElement("div");
+    lbl.className = "msg-label";
+    lbl.style.textAlign = "right";
+    lbl.textContent = "YOU ◈";
+    div.appendChild(lbl);
+  }
+  const p = document.createElement("div");
+  p.textContent = text;
+  div.appendChild(p);
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  const box = document.getElementById("chatBox");
+  const div = document.createElement("div");
+  div.className = "msg bot";
+  div.id = "typingIndicator";
+  div.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById("typingIndicator");
+  if (t) t.remove();
+}
+
+async function sendMessage(overrideText) {
+  const input = document.getElementById("msgInput");
+  const text  = overrideText || input.value.trim();
+  if (!text) return;
+  if (!overrideText) input.value = "";
+  addMsg(text, "user");
+  showTyping();
+  resetAutoLock();
+  try {
+    const body = { message: text, userId: USER_ID };
+    if (userLat) { body.lat = userLat; body.lon = userLon; }
+    const res  = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.reply || "Systems nominal, Sir.";
+    addMsg(reply, "bot");
+    speak(reply);
+    if (data.memorySize) {
+      document.getElementById("memCount").textContent = data.memorySize;
+    }
+    if (data.weather && !weatherData) weatherData = data.weather;
+  } catch (err) {
+    removeTyping();
+    addMsg("JARVIS core connection lost. Retrying, Sir.", "bot");
+    console.error(err);
+  }
+}
+
+function quickCmd(cmd) {
+  document.getElementById("msgInput").value = cmd;
+  sendMessage();
+}
+
+function clearChat() {
+  document.getElementById("chatBox").innerHTML = "";
+  addMsg("Chat cleared. Ready for new commands, Sir.", "system");
+}
+
+// ── TTS ────────────────────────────────────────────────────────────────────
+function speak(text) {
+  stopTTS();
+  if (!window.speechSynthesis) return;
+  const clean = text.replace(/[#*_`>]/g, "").substring(0, 300);
+  const utt   = new SpeechSynthesisUtterance(clean);
+  utt.lang  = "en-US";
+  utt.rate  = 0.92;
+  utt.pitch = 1.05;
+  const voices = speechSynthesis.getVoices();
+  const female = voices.find(v => /female|woman|samantha|google uk english female|zira/i.test(v.name));
+  if (female) utt.voice = female;
+  isTTSRunning = true;
+  utt.onend = () => { isTTSRunning = false; };
+  speechSynthesis.speak(utt);
+}
+
+function stopTTS() {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  isTTSRunning = false;
+}
+
+// ── Voice Input ────────────────────────────────────────────────────────────
+function toggleLiveVoice() {
+  const modal = document.getElementById("liveModal");
+  if (liveActive) {
+    liveActive = false;
+    modal.classList.remove("active");
+    if (recognition) { try { recognition.stop(); } catch {} }
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMsg("Voice recognition not supported on this browser, Sir.", "system"); return; }
+  recognition = new SR();
+  recognition.lang = "en-US";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.onresult = (e) => {
+    const t = Array.from(e.results).map(r => r[0].transcript).join("");
+    document.getElementById("liveTranscript").textContent = t;
+    if (e.results[e.results.length - 1].isFinal) {
+      liveActive = false;
+      modal.classList.remove("active");
+      document.getElementById("msgInput").value = t;
+      sendMessage();
+    }
+  };
+  recognition.onerror = () => { liveActive = false; modal.classList.remove("active"); };
+  recognition.onend   = () => { if (liveActive) { liveActive = false; modal.classList.remove("active"); } };
+  liveActive = true;
+  modal.classList.add("active");
+  document.getElementById("liveTranscript").textContent = "Speak your command…";
+  recognition.start();
+}
+
+// ── News ───────────────────────────────────────────────────────────────────
+async function loadNews(topic = "Nigeria") {
+  const panel   = document.getElementById("newsPanel");
+  const content = document.getElementById("newsContent");
+  panel.style.display = "block";
+  content.innerHTML   = '<div class="ni-loading">Retrieving intelligence feed, Sir…</div>';
+  try {
+    const res  = await fetch(`/api/news?topic=${encodeURIComponent(topic)}&count=5`);
+    const data = await res.json();
+    if (!data.articles || data.articles.length === 0) {
+      content.innerHTML = '<div class="ni-loading">No headlines found, Sir.</div>';
+      return;
+    }
+    content.innerHTML = data.articles.map(a => `
+      <div class="news-item" onclick="quickCmd('Tell me more about: ${a.title.replace(/'/g,"\\'")}')">
+        <div class="ni-title">${a.title}</div>
+        <div class="ni-meta"><span>📡 ${a.source || "Unknown"}</span><span>${a.date || ""}</span></div>
+      </div>`).join("");
+  } catch {
+    content.innerHTML = '<div class="ni-loading">Intel feed offline, Sir.</div>';
+  }
+}
+
+function closeNews() {
+  document.getElementById("newsPanel").style.display = "none";
+}
+
+// ── Reminders ─────────────────────────────────────────────────────────────
+function openReminder() {
+  const label = prompt("Reminder label:");
+  if (!label) return;
+  const timeStr = prompt("Time (HH:MM, 24hr):");
+  if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) {
+    addMsg("Invalid time format, Sir. Use HH:MM.", "system"); return;
+  }
+  const [hh, mm] = timeStr.split(":").map(Number);
+  reminders.push({ id: Date.now(), label, hh, mm, fired: false });
+  localStorage.setItem("jarvis_reminders", JSON.stringify(reminders));
+  addMsg(`Reminder set for ${timeStr} — "${label}", Sir.`, "system");
+  requestNotificationPermission();
+}
+
+function startReminderChecker() {
+  setInterval(() => {
+    const now  = new Date();
+    const nowH = parseInt(new Intl.DateTimeFormat("en-NG",{timeZone:"Africa/Lagos",hour:"2-digit",hour12:false}).format(now));
+    const nowM = parseInt(new Intl.DateTimeFormat("en-NG",{timeZone:"Africa/Lagos",minute:"2-digit"}).format(now));
+    reminders.forEach(r => {
+      if (!r.fired && r.hh === nowH && r.mm === nowM) { r.fired = true; fireReminder(r.label); }
+    });
+    if (nowH === 0 && nowM === 0) reminders.forEach(r => r.fired = false);
+    localStorage.setItem("jarvis_reminders", JSON.stringify(reminders));
+  }, 30000);
+}
+
+function fireReminder(label) {
+  const toast = document.getElementById("reminderToast");
+  toast.textContent = `⏰ REMINDER: ${label}`;
+  toast.style.display = "block";
+  setTimeout(() => { toast.style.display = "none"; }, 6000);
+  addMsg(`⏰ Reminder, Sir: ${label}`, "bot");
+  speak(`Reminder, Sir. ${label}`);
+  if (Notification.permission === "granted" && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification("JARVIS Reminder", {
+        body: label, icon: "/icons/icon-192.png", vibrate: [200,100,200], tag: "jarvis-reminder",
+      });
+    });
+  }
+}
+
+async function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") addMsg("Push notifications enabled, Sir.", "system");
+  }
+}
+
+// ── Service Worker ─────────────────────────────────────────────────────────
+function registerSW() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.register("/sw.js").then(reg => {
+    reg.addEventListener("updatefound", () => {
+      const newSW = reg.installing;
+      if (!newSW) return;
+      newSW.addEventListener("statechange", () => {
+        if (newSW.state === "installed" && navigator.serviceWorker.controller) {
+          newSW.postMessage("skipWaiting");
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(console.error);
+}
+
+// ── Input Enter key ────────────────────────────────────────────────────────
+document.getElementById("msgInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") sendMessage();
+});
+
+if (window.speechSynthesis) {
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>
