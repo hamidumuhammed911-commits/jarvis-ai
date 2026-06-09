@@ -1,299 +1,291 @@
-// ============================================================
-// JARVIS — api/chat.js  V4.3.0
-// Fixes: proper memory R/W, system prompt, "Systems nominal" bug
-// ============================================================
+// JARVIS V4.3.0 — api/chat.js
+// Groq LLM handler with: Upstash Redis memory, weather, Nigeria time, Serper web search
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: "edge" };
 
-// ── Upstash Redis helpers ────────────────────────────────────
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+// ── Upstash Redis helpers ────────────────────────────────────────────────────
 async function redisGet(key) {
-  try {
-    const url = `${process.env.KV_REST_API_URL}/get/${encodeURIComponent(key)}`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
-    });
-    const data = await res.json();
-    return data.result ?? null;
-  } catch (e) {
-    console.error('[Redis GET]', e.message);
-    return null;
-  }
+  const url = `${process.env.KV_REST_API_URL}/get/${encodeURIComponent(key)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.result ?? null;
 }
 
-async function redisSet(key, value, exSeconds = 0) {
-  try {
-    const body = exSeconds > 0
-      ? [key, value, 'EX', exSeconds]
-      : [key, value];
-    const res = await fetch(`${process.env.KV_REST_API_URL}/set`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-    return await res.json();
-  } catch (e) {
-    console.error('[Redis SET]', e.message);
-    return null;
-  }
+async function redisSet(key, value, exSeconds = 604800) {
+  // Default TTL: 7 days
+  const url = `${process.env.KV_REST_API_URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}/ex/${exSeconds}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+  });
+  return res.ok;
 }
 
-// ── Memory: load all facts for this user ────────────────────
-async function loadMemory(userId = 'boss') {
-  const raw = await redisGet(`jarvis:memory:${userId}`);
-  if (!raw) return [];
+async function loadMemory(userId) {
   try {
-    return JSON.parse(raw);
+    const raw = await redisGet(`jarvis:mem:${userId}`);
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-// ── Memory: save facts array ─────────────────────────────────
-async function saveMemory(facts, userId = 'boss') {
-  // Keep max 50 facts, no expiry (persistent)
-  const trimmed = facts.slice(-50);
-  await redisSet(`jarvis:memory:${userId}`, JSON.stringify(trimmed));
+async function saveMemory(userId, messages) {
+  try {
+    // Keep last 20 exchanges (40 messages) to avoid bloat
+    const trimmed = messages.slice(-40);
+    await redisSet(`jarvis:mem:${userId}`, JSON.stringify(trimmed));
+  } catch {
+    // Non-fatal — continue without saving
+  }
 }
 
-// ── Memory: extract new facts from message ──────────────────
-function extractFacts(message) {
-  const facts = [];
-  const lower = message.toLowerCase();
-
-  // "remember that X" / "remember X"
-  const rememberMatch = message.match(/remember (?:that )?(.+)/i);
-  if (rememberMatch) facts.push(rememberMatch[1].trim());
-
-  // "my name is X"
-  const nameMatch = message.match(/my name is ([^\.,]+)/i);
-  if (nameMatch) facts.push(`User's name is ${nameMatch[1].trim()}`);
-
-  // "I wake up at X" / "I sleep at X" / "I work at X"
-  const routineMatch = message.match(/I (?:wake up|sleep|go to bed|work|start|finish|eat|pray|exercise) (?:at|around|by) ([^\.,]+)/i);
-  if (routineMatch) facts.push(message.trim());
-
-  // "I am X years old" / "I'm X"
-  const ageMatch = message.match(/I(?:'m| am) (\d+) years old/i);
-  if (ageMatch) facts.push(`User is ${ageMatch[1]} years old`);
-
-  // "I live in X" / "I'm from X"
-  const locationMatch = message.match(/I (?:live in|am from|'m from) ([^\.,]+)/i);
-  if (locationMatch) facts.push(`User lives in ${locationMatch[1].trim()}`);
-
-  return facts;
-}
-
-// ── Nigeria time ─────────────────────────────────────────────
+// ── Nigeria time ─────────────────────────────────────────────────────────────
 function getNigeriaTime() {
-  return new Date().toLocaleString('en-NG', {
-    timeZone: 'Africa/Lagos',
-    weekday: 'long', year: 'numeric', month: 'long',
-    day: 'numeric', hour: '2-digit', minute: '2-digit',
-    hour12: true
+  return new Date().toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
   });
 }
 
-// ── Web search via Serper ────────────────────────────────────
-async function webSearch(query) {
-  try {
-    const res = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': process.env.SERPER_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ q: query, num: 3 })
-    });
-    const data = await res.json();
-    const snippets = (data.organic || [])
-      .slice(0, 3)
-      .map(r => `• ${r.title}: ${r.snippet}`)
-      .join('\n');
-    return snippets || 'No results found.';
-  } catch (e) {
-    return `Search failed: ${e.message}`;
-  }
-}
-
-// ── Weather via Open-Meteo ───────────────────────────────────
+// ── Weather via Open-Meteo (no key required) ─────────────────────────────────
 async function getWeather(lat, lon) {
+  if (!lat || !lon) return null;
   try {
-    const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m&timezone=auto`
-    );
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m&timezone=Africa%2FLagos`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
     const data = await res.json();
     const w = data.current_weather;
-    return `${w.temperature}°C, wind ${w.windspeed} km/h, weathercode ${w.weathercode}`;
-  } catch (e) {
-    return 'Weather unavailable';
+    const humidity = data.hourly?.relativehumidity_2m?.[0] ?? "N/A";
+    const codes = {
+      0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+      45: "Foggy", 48: "Icy fog", 51: "Light drizzle", 53: "Drizzle",
+      55: "Heavy drizzle", 61: "Slight rain", 63: "Moderate rain",
+      65: "Heavy rain", 71: "Slight snow", 73: "Moderate snow",
+      75: "Heavy snow", 80: "Slight showers", 81: "Moderate showers",
+      82: "Violent showers", 95: "Thunderstorm", 99: "Thunderstorm with hail",
+    };
+    const desc = codes[w.weathercode] ?? `Code ${w.weathercode}`;
+    return `${desc}, ${w.temperature}°C, wind ${w.windspeed} km/h, humidity ${humidity}%`;
+  } catch {
+    return null;
   }
 }
 
-// ── Build system prompt ──────────────────────────────────────
-function buildSystemPrompt(memoryFacts, weatherInfo, nigeriaTime) {
-  const memoryBlock = memoryFacts.length > 0
-    ? `\n\nTHINGS YOU REMEMBER ABOUT YOUR BOSS:\n${memoryFacts.map(f => `- ${f}`).join('\n')}`
-    : '';
-
-  return `You are JARVIS (Just A Rather Very Intelligent System), the AI assistant of Boss Muhammed Aali. You were built by Boss Muhammed Aali himself.
-
-PERSONALITY & RULES:
-- Always address the user as "Sir" or "Boss Muhammed Aali"
-- Tone: highly intelligent, calm, precise, slightly formal — like the JARVIS from Iron Man
-- Be genuinely helpful and informative. NEVER reply with generic filler like "Systems nominal, Sir" unless the user literally asks for system status
-- Give real, substantive answers to every question
-- For memory requests ("remember that X"), confirm what you stored: "Noted, Sir. I've stored that [fact]."
-- For memory recall requests, cite the stored fact clearly
-- Keep responses concise but complete
-
-CURRENT CONTEXT:
-- Current Nigeria time: ${nigeriaTime}
-- Current weather: ${weatherInfo || 'Not available'}
-${memoryBlock}
-
-CAPABILITIES:
-- Real-time web search
-- Weather & location awareness
-- Memory of facts about the Boss
-- Reminders and scheduling
-- General knowledge and reasoning`;
+// ── Web search via Serper.dev ────────────────────────────────────────────────
+async function webSearch(query) {
+  if (!process.env.SERPER_KEY) return null;
+  try {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": process.env.SERPER_KEY,
+      },
+      body: JSON.stringify({ q: query, num: 5 }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results = (data.organic ?? []).slice(0, 4);
+    if (!results.length) return null;
+    return results
+      .map((r, i) => `[${i + 1}] ${r.title}: ${r.snippet}`)
+      .join("\n");
+  } catch {
+    return null;
+  }
 }
 
-// ── Main handler ─────────────────────────────────────────────
+// ── Detect if message needs a live search ────────────────────────────────────
+function needsSearch(msg) {
+  const triggers = [
+    /latest|news|today|current|price of|score|weather|who is|what is happening|update/i,
+    /stock|crypto|bitcoin|dollar|naira|exchange rate/i,
+    /search|look up|find out|check online/i,
+  ];
+  return triggers.some((r) => r.test(msg));
+}
+
+// ── JARVIS system prompt ──────────────────────────────────────────────────────
+function buildSystemPrompt(nigeriaTime, weather, searchResults) {
+  let prompt = `You are JARVIS (Just A Rather Very Intelligent System), the advanced AI created by Tony Stark and now serving Boss Muhammed Aali exclusively.
+
+PERSONALITY:
+- Address the user ONLY as "Boss Muhammed Aali" or "Sir"
+- Speak with calm confidence, dry wit, and efficiency — like the MCU JARVIS
+- Keep replies concise but rich; avoid filler phrases
+- You are voice-first: responses should sound natural when spoken aloud
+- Never break character or mention you are an LLM
+
+CURRENT CONTEXT:
+- Nigeria Time: ${nigeriaTime}
+- Timezone: Africa/Lagos (WAT, UTC+1)`;
+
+  if (weather) {
+    prompt += `\n- Current Weather: ${weather}`;
+  }
+
+  if (searchResults) {
+    prompt += `\n\nLIVE WEB DATA (use to answer accurately):\n${searchResults}`;
+  }
+
+  prompt += `
+
+CAPABILITIES YOU HAVE:
+- Real-time web search (Serper)
+- GPS location awareness
+- Weather data (Open-Meteo)
+- Persistent memory (Upstash Redis)
+- Reminder management
+- WhatsApp integration (via Tasker on Redmi 14C)
+
+RULES:
+- If you don't know something current, say you can search for it
+- Format lists with dashes, not bullets
+- Never say "As an AI" or "I cannot"
+- Confirm task completions with: "Done, Sir." or "Understood, Boss Muhammed Aali."`;
+
+  return prompt;
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
 export default async function handler(req) {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, {
+      status: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
     });
   }
 
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   let body;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  const {
-    message = '',
-    messages: history = [],
-    lat,
-    lon,
-    userId = 'boss'
-  } = body;
+  const { message, lat, lon, userId = "boss" } = body;
 
-  if (!message.trim()) {
-    return new Response(JSON.stringify({ error: 'Empty message' }), { status: 400 });
+  if (!message?.trim()) {
+    return new Response(JSON.stringify({ error: "No message provided" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  // ── 1. Load memory ──────────────────────────────────────────
-  let memoryFacts = await loadMemory(userId);
+  // ── Gather context in parallel ──────────────────────────────────────────
+  const [memory, weather, searchResults] = await Promise.all([
+    loadMemory(userId),
+    getWeather(lat, lon),
+    needsSearch(message) ? webSearch(message) : Promise.resolve(null),
+  ]);
 
-  // ── 2. Extract & save new facts from this message ───────────
-  const newFacts = extractFacts(message);
-  if (newFacts.length > 0) {
-    // Avoid duplicates
-    for (const fact of newFacts) {
-      if (!memoryFacts.includes(fact)) {
-        memoryFacts.push(fact);
-      }
-    }
-    await saveMemory(memoryFacts, userId);
-  }
-
-  // ── 3. Gather context ────────────────────────────────────────
   const nigeriaTime = getNigeriaTime();
-  let weatherInfo = '';
-  if (lat && lon) {
-    weatherInfo = await getWeather(lat, lon);
-  }
+  const systemPrompt = buildSystemPrompt(nigeriaTime, weather, searchResults);
 
-  // ── 4. Check if web search needed ───────────────────────────
-  let searchContext = '';
-  const searchTriggers = /latest|news|current|today|price|weather|who is|what is happening|score|match|update/i;
-  if (searchTriggers.test(message) && !/remember|recall|what do you know/i.test(message)) {
-    searchContext = await webSearch(message);
-  }
-
-  // ── 5. Build messages for Groq ───────────────────────────────
-  const systemPrompt = buildSystemPrompt(memoryFacts, weatherInfo, nigeriaTime);
-
-  // Build conversation: last 10 turns from history for context
-  const recentHistory = (history || []).slice(-10);
-
-  const userContent = searchContext
-    ? `${message}\n\n[Web search results for context:\n${searchContext}]`
-    : message;
-
-  const groqMessages = [
-    ...recentHistory,
-    { role: 'user', content: userContent }
+  // ── Build message array ─────────────────────────────────────────────────
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...memory,
+    { role: "user", content: message.trim() },
   ];
 
-  // ── 6. Call Groq ─────────────────────────────────────────────
-  let groqResponse;
+  // ── Call Groq ───────────────────────────────────────────────────────────
+  let reply;
   try {
-    groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
+    const groqRes = await fetch(GROQ_API_URL, {
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...groqMessages
-        ],
+        model: GROQ_MODEL,
+        messages,
         max_tokens: 1024,
-        temperature: 0.7
-      })
+        temperature: 0.7,
+        stream: false,
+      }),
     });
-  } catch (e) {
-    return new Response(
-      JSON.stringify({ error: `Groq connection failed: ${e.message}` }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    );
+
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      console.error("Groq error:", err);
+      return new Response(
+        JSON.stringify({ error: "Groq API error", detail: err }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const groqData = await groqRes.json();
+    reply = groqData.choices?.[0]?.message?.content?.trim();
+
+    if (!reply) {
+      return new Response(JSON.stringify({ error: "Empty response from Groq" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  } catch (err) {
+    console.error("Fetch error:", err);
+    return new Response(JSON.stringify({ error: "Network error reaching Groq" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  if (!groqResponse.ok) {
-    const errText = await groqResponse.text();
-    return new Response(
-      JSON.stringify({ error: `Groq API error ${groqResponse.status}: ${errText}` }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  // ── Save updated memory ─────────────────────────────────────────────────
+  const updatedMemory = [
+    ...memory,
+    { role: "user", content: message.trim() },
+    { role: "assistant", content: reply },
+  ];
+  await saveMemory(userId, updatedMemory);
 
-  const groqData = await groqResponse.json();
-  const reply = groqData.choices?.[0]?.message?.content ?? 'I encountered an issue generating a response, Sir.';
-
-  // ── 7. Return response with memory state ─────────────────────
   return new Response(
     JSON.stringify({
       reply,
-      memorySaved: newFacts.length > 0,
-      newFacts,
-      memoryCount: memoryFacts.length,
-      timestamp: new Date().toISOString()
+      meta: {
+        time: nigeriaTime,
+        weather: weather ?? "unavailable",
+        webSearch: searchResults ? true : false,
+        memoryLength: updatedMemory.length,
+      },
     }),
     {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-store, no-cache, must-revalidate'
-      }
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
     }
   );
 }
