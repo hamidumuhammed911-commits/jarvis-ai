@@ -1,230 +1,299 @@
-// api/chat.js — JARVIS with memory, weather, time, web search
+// ============================================================
+// JARVIS — api/chat.js  V4.3.0
+// Fixes: proper memory R/W, system prompt, "Systems nominal" bug
+// ============================================================
 
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
-const MEMORY_KEY = "jarvis:memory:boss";
+export const config = { runtime: 'edge' };
 
-// ── KV helpers ─────────────────────────────────────────────
-async function memoryGet() {
+// ── Upstash Redis helpers ────────────────────────────────────
+async function redisGet(key) {
   try {
-    const r = await fetch(`${KV_URL}/get/${MEMORY_KEY}`, {
-      headers: { Authorization: `Bearer ${KV_TOKEN}` }
+    const url = `${process.env.KV_REST_API_URL}/get/${encodeURIComponent(key)}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` }
     });
-    const d = await r.json();
-    return d.result ? JSON.parse(d.result) : [];
-  } catch { return []; }
-}
-
-async function memorySet(facts) {
-  try {
-    await fetch(`${KV_URL}/set/${MEMORY_KEY}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${KV_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ value: JSON.stringify(facts) })
-    });
-  } catch {}
-}
-
-async function memoryAdd(fact) {
-  const facts = await memoryGet();
-  // avoid duplicates
-  if (!facts.includes(fact)) {
-    facts.push(fact);
-    if (facts.length > 50) facts.shift(); // keep last 50
-    await memorySet(facts);
+    const data = await res.json();
+    return data.result ?? null;
+  } catch (e) {
+    console.error('[Redis GET]', e.message);
+    return null;
   }
 }
 
-// ── Main handler ───────────────────────────────────────────
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+async function redisSet(key, value, exSeconds = 0) {
+  try {
+    const body = exSeconds > 0
+      ? [key, value, 'EX', exSeconds]
+      : [key, value];
+    const res = await fetch(`${process.env.KV_REST_API_URL}/set`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('[Redis SET]', e.message);
+    return null;
+  }
+}
 
-  const { messages, location } = req.body;
+// ── Memory: load all facts for this user ────────────────────
+async function loadMemory(userId = 'boss') {
+  const raw = await redisGet(`jarvis:memory:${userId}`);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
 
-  // Current Nigeria time
-  const now = new Date();
-  const localTime = now.toLocaleString("en-US", {
-    timeZone: "Africa/Lagos", hour12: true,
-    weekday: "long", year: "numeric", month: "long",
-    day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit"
+// ── Memory: save facts array ─────────────────────────────────
+async function saveMemory(facts, userId = 'boss') {
+  // Keep max 50 facts, no expiry (persistent)
+  const trimmed = facts.slice(-50);
+  await redisSet(`jarvis:memory:${userId}`, JSON.stringify(trimmed));
+}
+
+// ── Memory: extract new facts from message ──────────────────
+function extractFacts(message) {
+  const facts = [];
+  const lower = message.toLowerCase();
+
+  // "remember that X" / "remember X"
+  const rememberMatch = message.match(/remember (?:that )?(.+)/i);
+  if (rememberMatch) facts.push(rememberMatch[1].trim());
+
+  // "my name is X"
+  const nameMatch = message.match(/my name is ([^\.,]+)/i);
+  if (nameMatch) facts.push(`User's name is ${nameMatch[1].trim()}`);
+
+  // "I wake up at X" / "I sleep at X" / "I work at X"
+  const routineMatch = message.match(/I (?:wake up|sleep|go to bed|work|start|finish|eat|pray|exercise) (?:at|around|by) ([^\.,]+)/i);
+  if (routineMatch) facts.push(message.trim());
+
+  // "I am X years old" / "I'm X"
+  const ageMatch = message.match(/I(?:'m| am) (\d+) years old/i);
+  if (ageMatch) facts.push(`User is ${ageMatch[1]} years old`);
+
+  // "I live in X" / "I'm from X"
+  const locationMatch = message.match(/I (?:live in|am from|'m from) ([^\.,]+)/i);
+  if (locationMatch) facts.push(`User lives in ${locationMatch[1].trim()}`);
+
+  return facts;
+}
+
+// ── Nigeria time ─────────────────────────────────────────────
+function getNigeriaTime() {
+  return new Date().toLocaleString('en-NG', {
+    timeZone: 'Africa/Lagos',
+    weekday: 'long', year: 'numeric', month: 'long',
+    day: 'numeric', hour: '2-digit', minute: '2-digit',
+    hour12: true
   });
+}
 
-  // Load memory
-  const memoryFacts = await memoryGet();
+// ── Web search via Serper ────────────────────────────────────
+async function webSearch(query) {
+  try {
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': process.env.SERPER_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ q: query, num: 3 })
+    });
+    const data = await res.json();
+    const snippets = (data.organic || [])
+      .slice(0, 3)
+      .map(r => `• ${r.title}: ${r.snippet}`)
+      .join('\n');
+    return snippets || 'No results found.';
+  } catch (e) {
+    return `Search failed: ${e.message}`;
+  }
+}
+
+// ── Weather via Open-Meteo ───────────────────────────────────
+async function getWeather(lat, lon) {
+  try {
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m&timezone=auto`
+    );
+    const data = await res.json();
+    const w = data.current_weather;
+    return `${w.temperature}°C, wind ${w.windspeed} km/h, weathercode ${w.weathercode}`;
+  } catch (e) {
+    return 'Weather unavailable';
+  }
+}
+
+// ── Build system prompt ──────────────────────────────────────
+function buildSystemPrompt(memoryFacts, weatherInfo, nigeriaTime) {
   const memoryBlock = memoryFacts.length > 0
-    ? `\nThings you remember about Boss Muhammed Aali:\n${memoryFacts.map(f => `- ${f}`).join("\n")}`
-    : "\nNo memories stored yet.";
+    ? `\n\nTHINGS YOU REMEMBER ABOUT YOUR BOSS:\n${memoryFacts.map(f => `- ${f}`).join('\n')}`
+    : '';
 
-  // Location block
-  let locationBlock = "";
-  if (location?.lat && location?.lon) {
-    locationBlock = `\nCurrent location: ${location.city || "unknown"}, ${location.country || "unknown"} (${location.lat}, ${location.lon})`;
+  return `You are JARVIS (Just A Rather Very Intelligent System), the AI assistant of Boss Muhammed Aali. You were built by Boss Muhammed Aali himself.
+
+PERSONALITY & RULES:
+- Always address the user as "Sir" or "Boss Muhammed Aali"
+- Tone: highly intelligent, calm, precise, slightly formal — like the JARVIS from Iron Man
+- Be genuinely helpful and informative. NEVER reply with generic filler like "Systems nominal, Sir" unless the user literally asks for system status
+- Give real, substantive answers to every question
+- For memory requests ("remember that X"), confirm what you stored: "Noted, Sir. I've stored that [fact]."
+- For memory recall requests, cite the stored fact clearly
+- Keep responses concise but complete
+
+CURRENT CONTEXT:
+- Current Nigeria time: ${nigeriaTime}
+- Current weather: ${weatherInfo || 'Not available'}
+${memoryBlock}
+
+CAPABILITIES:
+- Real-time web search
+- Weather & location awareness
+- Memory of facts about the Boss
+- Reminders and scheduling
+- General knowledge and reasoning`;
+}
+
+// ── Main handler ─────────────────────────────────────────────
+export default async function handler(req) {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
   }
 
-  const systemPrompt = `You are JARVIS, the personal AI assistant of Boss Muhammed Aali.
-Current date and time (Nigeria WAT): ${localTime}
-${memoryBlock}
-${locationBlock}
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
+  }
 
-Rules:
-- Address him as "Boss Muhammed Aali" on first greeting, then "Sir".
-- Never third person. Max 3 sentences unless list/factual.
-- For ANY weather query, use get_weather tool immediately.
-- For news, scores, stocks, current events, use web_search tool.
-- For time/date questions, answer directly from the time above.
-- MEMORY: When Boss Muhammed Aali tells you something personal to remember (preferences, habits, people, schedule), use the save_memory tool to store it. Examples: "remember I wake at 6am", "my wife's name is Aisha", "I prefer Celsius".
-- When recalling memories, refer to them naturally without saying "according to my memory".
-- Never say you cannot remember — check the memory block above first.`;
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+  }
 
-  const tools = [
-    {
-      type: "function",
-      function: {
-        name: "web_search",
-        description: "Search the web for real-time info: news, sports, stocks, current events.",
-        parameters: {
-          type: "object",
-          properties: { query: { type: "string" } },
-          required: ["query"]
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "get_weather",
-        description: "Get real-time weather. Always use for weather questions.",
-        parameters: {
-          type: "object",
-          properties: {
-            city: { type: "string", description: "City name" },
-            lat:  { type: "number" },
-            lon:  { type: "number" }
-          }
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "save_memory",
-        description: "Save a fact about Boss Muhammed Aali to long-term memory.",
-        parameters: {
-          type: "object",
-          properties: {
-            fact: { type: "string", description: "The fact to remember, e.g. 'Wakes up at 6am', 'Wife is named Aisha'" }
-          },
-          required: ["fact"]
-        }
+  const {
+    message = '',
+    messages: history = [],
+    lat,
+    lon,
+    userId = 'boss'
+  } = body;
+
+  if (!message.trim()) {
+    return new Response(JSON.stringify({ error: 'Empty message' }), { status: 400 });
+  }
+
+  // ── 1. Load memory ──────────────────────────────────────────
+  let memoryFacts = await loadMemory(userId);
+
+  // ── 2. Extract & save new facts from this message ───────────
+  const newFacts = extractFacts(message);
+  if (newFacts.length > 0) {
+    // Avoid duplicates
+    for (const fact of newFacts) {
+      if (!memoryFacts.includes(fact)) {
+        memoryFacts.push(fact);
       }
     }
+    await saveMemory(memoryFacts, userId);
+  }
+
+  // ── 3. Gather context ────────────────────────────────────────
+  const nigeriaTime = getNigeriaTime();
+  let weatherInfo = '';
+  if (lat && lon) {
+    weatherInfo = await getWeather(lat, lon);
+  }
+
+  // ── 4. Check if web search needed ───────────────────────────
+  let searchContext = '';
+  const searchTriggers = /latest|news|current|today|price|weather|who is|what is happening|score|match|update/i;
+  if (searchTriggers.test(message) && !/remember|recall|what do you know/i.test(message)) {
+    searchContext = await webSearch(message);
+  }
+
+  // ── 5. Build messages for Groq ───────────────────────────────
+  const systemPrompt = buildSystemPrompt(memoryFacts, weatherInfo, nigeriaTime);
+
+  // Build conversation: last 10 turns from history for context
+  const recentHistory = (history || []).slice(-10);
+
+  const userContent = searchContext
+    ? `${message}\n\n[Web search results for context:\n${searchContext}]`
+    : message;
+
+  const groqMessages = [
+    ...recentHistory,
+    { role: 'user', content: userContent }
   ];
 
+  // ── 6. Call Groq ─────────────────────────────────────────────
+  let groqResponse;
   try {
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+    groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 512,
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        tools,
-        tool_choice: "auto"
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...groqMessages
+        ],
+        max_tokens: 1024,
+        temperature: 0.7
       })
     });
-
-    const data = await groqRes.json();
-    if (!groqRes.ok) return res.status(500).json({ error: data.error?.message || "Groq error" });
-
-    const choice = data.choices?.[0];
-
-    if (choice?.finish_reason === "tool_calls" && choice.message?.tool_calls?.length > 0) {
-      const toolCall = choice.message.tool_calls[0];
-      const toolName = toolCall.function.name;
-      const toolArgs = JSON.parse(toolCall.function.arguments);
-
-      let toolResult = "";
-
-      if (toolName === "save_memory") {
-        await memoryAdd(toolArgs.fact);
-        toolResult = `Memory saved: "${toolArgs.fact}"`;
-      } else if (toolName === "get_weather") {
-        toolResult = await getWeather(toolArgs, location);
-      } else if (toolName === "web_search") {
-        toolResult = await performWebSearch(toolArgs.query);
-      }
-
-      const followUp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          max_tokens: 512,
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-            choice.message,
-            { role: "tool", tool_call_id: toolCall.id, content: toolResult }
-          ]
-        })
-      });
-
-      const followData = await followUp.json();
-      return res.status(200).json({ reply: followData.choices?.[0]?.message?.content || "I couldn't retrieve that, Sir." });
-    }
-
-    return res.status(200).json({ reply: choice?.message?.content || "I didn't catch that, Sir." });
-
-  } catch (err) {
-    console.error("Handler error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ error: `Groq connection failed: ${e.message}` }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
   }
-}
 
-// ── WEATHER ────────────────────────────────────────────────
-async function getWeather(args, locationFallback) {
-  try {
-    let lat = args.lat, lon = args.lon, cityName = args.city || "";
-    if (cityName && (!lat || !lon)) {
-      const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`);
-      const gd = await g.json();
-      if (gd.results?.length > 0) {
-        lat = gd.results[0].latitude; lon = gd.results[0].longitude;
-        cityName = gd.results[0].name + ", " + (gd.results[0].country || "");
+  if (!groqResponse.ok) {
+    const errText = await groqResponse.text();
+    return new Response(
+      JSON.stringify({ error: `Groq API error ${groqResponse.status}: ${errText}` }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const groqData = await groqResponse.json();
+  const reply = groqData.choices?.[0]?.message?.content ?? 'I encountered an issue generating a response, Sir.';
+
+  // ── 7. Return response with memory state ─────────────────────
+  return new Response(
+    JSON.stringify({
+      reply,
+      memorySaved: newFacts.length > 0,
+      newFacts,
+      memoryCount: memoryFacts.length,
+      timestamp: new Date().toISOString()
+    }),
+    {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
       }
     }
-    if (!lat || !lon) {
-      if (locationFallback?.lat) { lat = locationFallback.lat; lon = locationFallback.lon; cityName = locationFallback.city || "your location"; }
-      else return "Location unavailable, Sir.";
-    }
-    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code&wind_speed_unit=kmh&temperature_unit=celsius&timezone=auto&forecast_days=3`);
-    const wd = await w.json();
-    const c = wd.current, d = wd.daily;
-    const WMO = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Foggy",51:"Light drizzle",53:"Drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",80:"Rain showers",95:"Thunderstorm"};
-    return `Weather for ${cityName}:\nCurrent: ${Math.round(c.temperature_2m)}°C, ${WMO[c.weather_code]||"Unknown"}\nFeels like: ${Math.round(c.apparent_temperature)}°C\nHumidity: ${c.relative_humidity_2m}%\nWind: ${Math.round(c.wind_speed_10m)} km/h\n\n3-Day Forecast:\n- Today: ${Math.round(d.temperature_2m_min[0])}–${Math.round(d.temperature_2m_max[0])}°C, ${WMO[d.weather_code[0]]||""}\n- Tomorrow: ${Math.round(d.temperature_2m_min[1])}–${Math.round(d.temperature_2m_max[1])}°C, ${WMO[d.weather_code[1]]||""}\n- Day after: ${Math.round(d.temperature_2m_min[2])}–${Math.round(d.temperature_2m_max[2])}°C, ${WMO[d.weather_code[2]]||""}`;
-  } catch { return "Weather service temporarily unavailable, Sir."; }
+  );
 }
-
-// ── WEB SEARCH ─────────────────────────────────────────────
-async function performWebSearch(query) {
-  try {
-    if (process.env.SERPER_KEY) {
-      const r = await fetch("https://google.serper.dev/search", {
-        method: "POST",
-        headers: { "X-API-KEY": process.env.SERPER_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: query, num: 5 })
-      });
-      const d = await r.json();
-      const snippets = [
-        ...(d.answerBox ? [`${d.answerBox.title||""}: ${d.answerBox.answer||d.answerBox.snippet||""}`] : []),
-        ...(d.organic?.slice(0,4).map(x=>`${x.title}: ${x.snippet}`) || [])
-      ].join("\n");
-      return snippets || "No results found.";
-    }
-    return "Web search not configured.";
-  } catch { return "Search temporarily unavailable."; }
-            }
