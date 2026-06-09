@@ -2,1377 +2,363 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<meta name="theme-color" content="#020d1a"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#020d1a"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>JARVIS — Stark Industries</title>
-<link rel="manifest" href="manifest.json"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+<link rel="manifest" href="/manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 <style>
-/* ══════════════════════════════════════════
-   TOKEN SYSTEM
-══════════════════════════════════════════ */
-:root {
-  --bg-void:      #020d1a;
-  --bg-deep:      #040f1f;
-  --bg-panel:     #061628;
-  --bg-card:      #071c33;
-  --bg-card-alt:  #0a2240;
+  :root {
+    --cyan: #00f5ff;
+    --cyan-dim: #00b8cc;
+    --cyan-glow: rgba(0,245,255,0.15);
+    --bg: #020d1a;
+    --bg2: #041525;
+    --bg3: #061e30;
+    --red: #ff3b5c;
+    --amber: #ffb700;
+    --green: #00ff88;
+    --text: #c8eeff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace}
 
-  --cyan-core:    #00d4ff;
-  --cyan-bright:  #40e8ff;
-  --cyan-dim:     #0099bb;
-  --cyan-ghost:   rgba(0,212,255,0.08);
-  --cyan-glow:    rgba(0,212,255,0.25);
-  --cyan-border:  rgba(0,212,255,0.3);
+  /* ── LOCK SCREEN ── */
+  #lockScreen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+  .lock-logo{font-family:'Orbitron',sans-serif;font-size:2.2rem;font-weight:900;color:var(--cyan);text-shadow:0 0 30px var(--cyan);letter-spacing:6px}
+  .lock-sub{font-size:.7rem;color:var(--cyan-dim);letter-spacing:4px;text-transform:uppercase}
+  .lock-dots{display:flex;gap:12px;margin:10px 0}
+  .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--cyan-dim);background:transparent;transition:.2s}
+  .dot.filled{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .dot.error{background:var(--red);border-color:var(--red)}
+  .lock-msg{font-size:.65rem;color:var(--cyan-dim);height:16px;letter-spacing:2px}
+  .numpad{display:grid;grid-template-columns:repeat(3,72px);gap:10px}
+  .num-btn{height:72px;border-radius:8px;border:1px solid rgba(0,245,255,.25);background:rgba(0,245,255,.04);color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:1.1rem;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .num-btn:active{background:rgba(0,245,255,.15);transform:scale(.95)}
+  .num-btn .sub{font-family:'Share Tech Mono',monospace;font-size:.45rem;color:var(--cyan-dim);letter-spacing:2px}
+  .lock-timer{font-size:.6rem;color:rgba(0,245,255,.3);letter-spacing:2px;margin-top:4px}
 
-  --arc-blue:     #1a6fff;
-  --arc-glow:     rgba(26,111,255,0.4);
+  /* ── MAIN APP ── */
+  #app{display:none;flex-direction:column;height:100vh;max-width:480px;margin:0 auto;position:relative}
 
-  --text-primary:   #c8f0ff;
-  --text-secondary: #5a9ab5;
-  --text-dim:       #2a5a72;
-  --text-jarvis:    #00d4ff;
-  --text-user:      #7ec8e3;
+  /* Header */
+  .hdr{padding:8px 14px 6px;border-bottom:1px solid rgba(0,245,255,.12);background:var(--bg2)}
+  .hdr-top{display:flex;align-items:center;justify-content:space-between}
+  .brand{font-family:'Orbitron',sans-serif;font-size:1.05rem;font-weight:900;color:var(--cyan);text-shadow:0 0 16px var(--cyan);letter-spacing:4px}
+  .version-badge{font-size:.55rem;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.3);color:var(--cyan-dim);padding:2px 7px;border-radius:10px;letter-spacing:2px}
+  .hdr-stats{display:flex;gap:10px;margin-top:5px;font-size:.58rem;color:var(--cyan-dim);letter-spacing:1px}
+  .stat{display:flex;align-items:center;gap:4px}
+  .stat-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+  #memBadge{background:rgba(0,245,255,.08);border:1px solid rgba(0,245,255,.2);padding:1px 6px;border-radius:8px}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-  --font-hud:   'Orbitron', monospace;
-  --font-data:  'Share Tech Mono', monospace;
-  --font-body:  'Rajdhani', sans-serif;
+  /* Time bar */
+  .time-bar{display:flex;justify-content:space-between;align-items:center;padding:4px 14px;background:rgba(0,245,255,.03);font-size:.6rem;color:var(--cyan-dim);border-bottom:1px solid rgba(0,245,255,.08)}
 
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
+  /* Weather HUD Card */
+  #weatherCard{display:none;margin:8px 10px 0;border:1px solid rgba(0,245,255,.2);border-radius:10px;background:linear-gradient(135deg,rgba(0,245,255,.05),rgba(0,184,204,.08));padding:10px 14px;animation:fadeIn .4s ease}
+  .wc-row{display:flex;align-items:center;justify-content:space-between}
+  .wc-temp{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:700;color:var(--cyan)}
+  .wc-cond{font-size:.7rem;color:var(--text);margin-top:2px}
+  .wc-loc{font-size:.58rem;color:var(--cyan-dim);letter-spacing:1px}
+  .wc-icon{font-size:2.2rem}
+  .wc-details{display:flex;gap:14px;margin-top:6px;font-size:.6rem;color:var(--cyan-dim)}
+  .wc-det{display:flex;align-items:center;gap:4px}
+  .wc-close{font-size:.6rem;color:var(--cyan-dim);cursor:pointer;opacity:.6;padding:2px 6px;border:1px solid rgba(0,245,255,.15);border-radius:6px;background:none}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 
-  --header-h:   72px;
-  --footer-h:   80px;
-}
+  /* Chat */
+  #chatBox{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
+  #chatBox::-webkit-scrollbar{width:3px}
+  #chatBox::-webkit-scrollbar-track{background:transparent}
+  #chatBox::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:2px}
+  .msg{max-width:88%;padding:9px 12px;border-radius:10px;font-size:.78rem;line-height:1.5;animation:msgIn .25s ease}
+  @keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .msg.user{align-self:flex-end;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.25);color:var(--cyan);border-bottom-right-radius:3px}
+  .msg.bot{align-self:flex-start;background:rgba(4,21,37,.9);border:1px solid rgba(0,245,255,.15);color:var(--text);border-bottom-left-radius:3px}
+  .msg.system{align-self:center;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.1);color:var(--cyan-dim);font-size:.65rem;text-align:center;border-radius:20px;padding:5px 14px}
+  .msg-label{font-size:.55rem;color:var(--cyan-dim);margin-bottom:3px;letter-spacing:1px}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  /* News Panel */
+  #newsPanel{display:none;margin:0 10px 8px;border:1px solid rgba(0,245,255,.2);border-radius:10px;background:var(--bg2);overflow:hidden;animation:fadeIn .3s ease;max-height:220px;overflow-y:auto}
+  .news-hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(0,245,255,.06);border-bottom:1px solid rgba(0,245,255,.1);font-size:.65rem;color:var(--cyan);letter-spacing:2px;font-family:'Orbitron',sans-serif}
+  .news-close{cursor:pointer;opacity:.6;font-size:.7rem;background:none;border:none;color:var(--cyan-dim)}
+  .news-item{padding:8px 12px;border-bottom:1px solid rgba(0,245,255,.06);cursor:pointer;transition:.15s}
+  .news-item:hover{background:rgba(0,245,255,.04)}
+  .news-item:last-child{border-bottom:none}
+  .ni-title{font-size:.7rem;color:var(--text);line-height:1.4}
+  .ni-meta{font-size:.58rem;color:var(--cyan-dim);margin-top:2px;display:flex;gap:8px}
+  .ni-loading{padding:16px;text-align:center;font-size:.65rem;color:var(--cyan-dim)}
 
-html, body {
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg-void);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-}
+  /* Input area */
+  .input-wrap{padding:8px 10px;background:var(--bg2);border-top:1px solid rgba(0,245,255,.12)}
+  .input-row{display:flex;gap:8px;align-items:center}
+  #msgInput{flex:1;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.2);border-radius:8px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:.8rem;padding:10px 12px;outline:none;transition:.2s}
+  #msgInput:focus{border-color:var(--cyan);box-shadow:0 0 10px rgba(0,245,255,.1)}
+  #msgInput::placeholder{color:rgba(0,245,255,.3)}
+  .icon-btn{width:40px;height:40px;border-radius:8px;border:1px solid rgba(0,245,255,.2);background:rgba(0,245,255,.05);color:var(--cyan);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+  .icon-btn:active{background:rgba(0,245,255,.15);transform:scale(.93)}
+  #sendBtn{background:rgba(0,245,255,.12);border-color:var(--cyan)}
 
-/* ══════════════════════════════════════════
-   SCANLINE OVERLAY — signature element
-══════════════════════════════════════════ */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.07) 2px,
-    rgba(0,0,0,0.07) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
+  /* Status bar */
+  .status-bar{display:flex;justify-content:space-around;padding:4px 10px;font-size:.55rem;color:var(--cyan-dim);letter-spacing:1px;border-top:1px solid rgba(0,245,255,.06)}
+  .sb-item{display:flex;align-items:center;gap:3px}
 
-/* Corner frame brackets */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    linear-gradient(var(--cyan-core), var(--cyan-core)) top left / 40px 2px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) top left / 2px 40px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) top right / 40px 2px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) top right / 2px 40px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) bottom left / 40px 2px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) bottom left / 2px 40px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) bottom right / 40px 2px no-repeat,
-    linear-gradient(var(--cyan-core), var(--cyan-core)) bottom right / 2px 40px no-repeat;
-  pointer-events: none;
-  z-index: 9998;
-  opacity: 0.6;
-}
+  /* Quick buttons */
+  .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:6px 10px 4px}
+  .q-btn{padding:6px 4px;border:1px solid rgba(0,245,255,.18);border-radius:7px;background:rgba(0,245,255,.03);color:var(--cyan-dim);font-size:.58rem;text-align:center;cursor:pointer;transition:.15s;font-family:'Share Tech Mono',monospace;line-height:1.4}
+  .q-btn:active{background:rgba(0,245,255,.12);color:var(--cyan);transform:scale(.95)}
+  .q-btn .q-icon{display:block;font-size:.85rem;margin-bottom:2px}
 
-/* ══════════════════════════════════════════
-   LAYOUT
-══════════════════════════════════════════ */
-#app {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  position: relative;
-}
+  /* Live Voice Modal */
+  #liveModal{display:none;position:fixed;inset:0;z-index:500;background:rgba(2,13,26,.95);flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  #liveModal.active{display:flex}
+  .live-ring{width:120px;height:120px;border-radius:50%;border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;position:relative}
+  .live-ring::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(0,245,255,.3);animation:ringPulse 1.5s infinite}
+  .live-ring::after{content:'';position:absolute;inset:-16px;border-radius:50%;border:1px solid rgba(0,245,255,.15);animation:ringPulse 1.5s .5s infinite}
+  @keyframes ringPulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.2);opacity:0}}
+  .live-mic{font-size:2.5rem}
+  .live-label{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--cyan);letter-spacing:3px}
+  .live-transcript{font-size:.7rem;color:var(--text);max-width:280px;text-align:center;min-height:20px}
+  .live-close{margin-top:8px;padding:8px 24px;border:1px solid rgba(0,245,255,.3);border-radius:8px;background:none;color:var(--cyan-dim);font-family:'Orbitron',sans-serif;font-size:.65rem;cursor:pointer;letter-spacing:2px}
 
-/* ══════════════════════════════════════════
-   HEADER — HUD BAR
-══════════════════════════════════════════ */
-#hud-header {
-  flex-shrink: 0;
-  height: var(--header-h);
-  background: linear-gradient(180deg, #030e1e 0%, var(--bg-deep) 100%);
-  border-bottom: 1px solid var(--cyan-border);
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  padding: 0 14px;
-  position: relative;
-  box-shadow: 0 2px 20px rgba(0,212,255,0.12);
-}
+  /* Typing indicator */
+  .typing{display:flex;gap:5px;align-items:center;padding:10px 12px}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--cyan-dim);animation:bounce .9s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}
+  .typing span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
 
-/* Left cluster */
-.hud-left {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.hud-sys-label {
-  font-family: var(--font-data);
-  font-size: 8px;
-  color: var(--text-dim);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-.hud-sys-status {
-  font-family: var(--font-hud);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--cyan-core);
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #00ff88;
-  animation: pulse-dot 2s ease-in-out infinite;
-  box-shadow: 0 0 8px #00ff88;
-}
-@keyframes pulse-dot {
-  0%,100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.7); }
-}
-
-/* Center — JARVIS logo */
-.hud-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-}
-.hud-logo {
-  font-family: var(--font-hud);
-  font-size: 22px;
-  font-weight: 900;
-  color: var(--cyan-core);
-  letter-spacing: 8px;
-  text-shadow: 0 0 20px var(--cyan-core), 0 0 40px rgba(0,212,255,0.4);
-  line-height: 1;
-}
-.hud-subtitle {
-  font-family: var(--font-data);
-  font-size: 7px;
-  color: var(--text-dim);
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
-
-/* Right cluster */
-.hud-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-.hud-clock {
-  font-family: var(--font-data);
-  font-size: 14px;
-  color: var(--cyan-core);
-  letter-spacing: 2px;
-}
-.hud-date {
-  font-family: var(--font-data);
-  font-size: 9px;
-  color: var(--text-secondary);
-  letter-spacing: 1px;
-}
-.hud-version {
-  font-family: var(--font-data);
-  font-size: 8px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-}
-
-/* Animated bottom edge of header */
-#hud-header::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--cyan-core), transparent);
-  animation: scan-line 4s ease-in-out infinite;
-}
-@keyframes scan-line {
-  0%,100% { left: 10%; right: 80%; opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  50% { left: 80%; right: 10%; }
-}
-
-/* ══════════════════════════════════════════
-   CHAT AREA
-══════════════════════════════════════════ */
-#chat-area {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scroll-behavior: smooth;
-  position: relative;
-}
-
-/* Subtle radial glow behind chat */
-#chat-area::before {
-  content: '';
-  position: fixed;
-  top: 30%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-#chat-area::-webkit-scrollbar { width: 3px; }
-#chat-area::-webkit-scrollbar-track { background: transparent; }
-#chat-area::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
-
-/* ── Message bubbles ── */
-.msg-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  animation: msg-in 0.3s cubic-bezier(0.34,1.2,0.64,1) both;
-  position: relative;
-  z-index: 1;
-}
-@keyframes msg-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.msg-label {
-  font-family: var(--font-data);
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  padding: 0 4px;
-}
-
-/* JARVIS bubble */
-.msg-row.jarvis .msg-label { color: var(--cyan-dim); }
-.msg-row.jarvis .msg-bubble {
-  background: linear-gradient(135deg, #061c30 0%, #071828 100%);
-  border: 1px solid var(--cyan-border);
-  border-left: 3px solid var(--cyan-core);
-  border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg);
-  padding: 12px 14px;
-  max-width: 86%;
-  align-self: flex-start;
-  position: relative;
-  box-shadow: 0 0 20px rgba(0,212,255,0.08), inset 0 1px 0 rgba(0,212,255,0.1);
-}
-.msg-row.jarvis .msg-bubble::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, var(--cyan-core), transparent);
-  border-radius: var(--radius-sm);
-}
-.msg-row.jarvis .msg-text {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--text-primary);
-  line-height: 1.5;
-  letter-spacing: 0.3px;
-}
-/* Arc reactor icon on JARVIS messages */
-.msg-row.jarvis .msg-bubble::after {
-  content: '◈';
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 10px;
-  color: var(--cyan-dim);
-  opacity: 0.4;
-}
-
-/* User bubble */
-.msg-row.user {
-  align-items: flex-end;
-}
-.msg-row.user .msg-label { color: var(--arc-blue); text-align: right; }
-.msg-row.user .msg-bubble {
-  background: linear-gradient(135deg, #0d2040 0%, #0a1a35 100%);
-  border: 1px solid rgba(26,111,255,0.35);
-  border-right: 3px solid var(--arc-blue);
-  border-radius: var(--radius-lg) 0 var(--radius-lg) var(--radius-lg);
-  padding: 12px 14px;
-  max-width: 82%;
-  align-self: flex-end;
-  position: relative;
-  box-shadow: 0 0 16px rgba(26,111,255,0.1), inset 0 1px 0 rgba(26,111,255,0.15);
-}
-.msg-row.user .msg-bubble::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--arc-blue));
-}
-.msg-row.user .msg-text {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-user);
-  line-height: 1.5;
-  letter-spacing: 0.3px;
-}
-
-/* Timestamp */
-.msg-time {
-  font-family: var(--font-data);
-  font-size: 8px;
-  color: var(--text-dim);
-  padding: 0 6px;
-  letter-spacing: 1px;
-}
-
-/* ── Thinking indicator ── */
-.thinking-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  animation: msg-in 0.3s ease both;
-}
-.thinking-label {
-  font-family: var(--font-data);
-  font-size: 9px;
-  color: var(--cyan-dim);
-  letter-spacing: 2px;
-}
-.thinking-dots {
-  display: flex;
-  gap: 5px;
-}
-.thinking-dots span {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--cyan-core);
-  animation: dot-bounce 1.2s ease-in-out infinite;
-  box-shadow: 0 0 6px var(--cyan-core);
-}
-.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
-.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dot-bounce {
-  0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
-}
-
-/* ── Divider ── */
-.session-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-}
-.session-divider::before, .session-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--text-dim));
-}
-.session-divider::after {
-  background: linear-gradient(90deg, var(--text-dim), transparent);
-}
-.session-divider span {
-  font-family: var(--font-data);
-  font-size: 8px;
-  color: var(--text-dim);
-  letter-spacing: 2px;
-  white-space: nowrap;
-}
-
-/* ══════════════════════════════════════════
-   FOOTER — INPUT BAR
-══════════════════════════════════════════ */
-#input-bar {
-  flex-shrink: 0;
-  background: linear-gradient(0deg, #030e1e 0%, var(--bg-deep) 100%);
-  border-top: 1px solid var(--cyan-border);
-  padding: 10px 12px 12px;
-  box-shadow: 0 -2px 20px rgba(0,212,255,0.1);
-}
-
-.input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-/* Mic button */
-#mic-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--cyan-border);
-  background: var(--bg-card);
-  color: var(--cyan-core);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-#mic-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--cyan-ghost);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-#mic-btn:active::before, #mic-btn.listening::before { opacity: 1; }
-#mic-btn.listening {
-  border-color: var(--cyan-core);
-  box-shadow: 0 0 12px var(--cyan-glow), inset 0 0 12px var(--cyan-ghost);
-  animation: mic-pulse 1s ease-in-out infinite;
-}
-@keyframes mic-pulse {
-  0%,100% { box-shadow: 0 0 12px var(--cyan-glow); }
-  50% { box-shadow: 0 0 24px var(--cyan-core), 0 0 40px var(--cyan-glow); }
-}
-
-/* Text input */
-.input-wrapper {
-  flex: 1;
-  position: relative;
-}
-#user-input {
-  width: 100%;
-  height: 44px;
-  background: var(--bg-card);
-  border: 1px solid var(--cyan-border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 500;
-  padding: 0 14px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  letter-spacing: 0.3px;
-}
-#user-input::placeholder {
-  color: var(--text-dim);
-  font-style: italic;
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-#user-input:focus {
-  border-color: var(--cyan-core);
-  box-shadow: 0 0 0 1px rgba(0,212,255,0.15), 0 0 12px rgba(0,212,255,0.1);
-}
-/* Animated left accent on focus */
-#user-input:focus + .input-accent { opacity: 1; }
-.input-accent {
-  position: absolute;
-  left: -1px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  background: var(--cyan-core);
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity 0.2s;
-  box-shadow: 0 0 6px var(--cyan-core);
-}
-
-/* Send button */
-#send-btn {
-  width: 60px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--cyan-border);
-  background: linear-gradient(135deg, #082a45, #061c2e);
-  color: var(--cyan-core);
-  font-family: var(--font-hud);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-#send-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(0,212,255,0.15), transparent);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-#send-btn:hover::before, #send-btn:active::before { opacity: 1; }
-#send-btn:active { transform: scale(0.97); }
-
-/* Live voice button */
-#live-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(26,111,255,0.35);
-  background: var(--bg-card);
-  color: var(--arc-blue);
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-#live-btn:active {
-  background: rgba(26,111,255,0.1);
-  border-color: var(--arc-blue);
-}
-
-/* ── Status bar ── */
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2px;
-}
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-data);
-  font-size: 8px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.status-item .dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-.status-item.active .dot {
-  background: #00ff88;
-  box-shadow: 0 0 6px #00ff88;
-}
-.status-item.active { color: var(--text-secondary); }
-
-/* ══════════════════════════════════════════
-   PASSCODE LOCK SCREEN
-══════════════════════════════════════════ */
-#lock-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: #010b17;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-}
-#lock-screen::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 2px,
-    rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px
-  );
-}
-.lock-logo {
-  font-family: var(--font-hud);
-  font-size: 36px;
-  font-weight: 900;
-  color: var(--cyan-core);
-  letter-spacing: 10px;
-  text-shadow: 0 0 30px var(--cyan-core), 0 0 60px rgba(0,212,255,0.3);
-  animation: glow-breathe 3s ease-in-out infinite;
-}
-@keyframes glow-breathe {
-  0%,100% { text-shadow: 0 0 20px var(--cyan-core), 0 0 40px rgba(0,212,255,0.3); }
-  50% { text-shadow: 0 0 40px var(--cyan-core), 0 0 80px rgba(0,212,255,0.5), 0 0 120px rgba(0,212,255,0.2); }
-}
-.lock-sub {
-  font-family: var(--font-data);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  margin-top: -20px;
-}
-.lock-prompt {
-  font-family: var(--font-data);
-  font-size: 11px;
-  color: var(--text-secondary);
-  letter-spacing: 2px;
-  text-align: center;
-}
-.pin-dots {
-  display: flex;
-  gap: 14px;
-}
-.pin-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid var(--cyan-border);
-  background: transparent;
-  transition: all 0.2s;
-}
-.pin-dot.filled {
-  background: var(--cyan-core);
-  box-shadow: 0 0 12px var(--cyan-core);
-  border-color: var(--cyan-core);
-}
-.pin-dot.error {
-  background: #ff3366;
-  box-shadow: 0 0 12px #ff3366;
-  border-color: #ff3366;
-}
-.numpad {
-  display: grid;
-  grid-template-columns: repeat(3, 72px);
-  gap: 10px;
-}
-.num-key {
-  height: 56px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--cyan-border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-family: var(--font-hud);
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  position: relative;
-  overflow: hidden;
-}
-.num-key .sub { font-family: var(--font-data); font-size: 7px; color: var(--text-dim); letter-spacing: 1px; }
-.num-key:active {
-  background: var(--cyan-ghost);
-  border-color: var(--cyan-core);
-  transform: scale(0.95);
-  box-shadow: 0 0 12px var(--cyan-glow);
-}
-.num-key.del { color: var(--cyan-dim); font-size: 14px; }
-.num-key.empty { pointer-events: none; opacity: 0; }
-
-/* ══════════════════════════════════════════
-   LIVE VOICE OVERLAY
-══════════════════════════════════════════ */
-#voice-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  background: rgba(1,11,23,0.97);
-  backdrop-filter: blur(8px);
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-}
-#voice-overlay.active { display: flex; }
-
-.voice-state-label {
-  font-family: var(--font-hud);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 4px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-#voice-state-text {
-  font-family: var(--font-hud);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 6px;
-  color: var(--cyan-core);
-  text-shadow: 0 0 20px var(--cyan-core);
-  min-width: 160px;
-  text-align: center;
-}
-
-/* Arc reactor ring */
-.arc-ring-container {
-  position: relative;
-  width: 160px;
-  height: 160px;
-}
-.arc-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid transparent;
-}
-.arc-ring-1 {
-  border-color: var(--cyan-core);
-  animation: ring-spin 3s linear infinite;
-  border-top-color: transparent;
-  border-right-color: transparent;
-  box-shadow: 0 0 20px var(--cyan-core);
-}
-.arc-ring-2 {
-  inset: 12px;
-  border-color: var(--arc-blue);
-  animation: ring-spin 2s linear infinite reverse;
-  border-bottom-color: transparent;
-  border-left-color: transparent;
-}
-.arc-ring-3 {
-  inset: 24px;
-  border-color: rgba(0,212,255,0.4);
-  animation: ring-spin 4s linear infinite;
-  border-top-color: transparent;
-}
-@keyframes ring-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-.arc-core {
-  position: absolute;
-  inset: 36px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,212,255,0.3) 0%, rgba(26,111,255,0.15) 50%, transparent 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: core-breathe 2s ease-in-out infinite;
-}
-@keyframes core-breathe {
-  0%,100% { box-shadow: 0 0 20px var(--cyan-glow); }
-  50% { box-shadow: 0 0 40px var(--cyan-core), 0 0 60px var(--arc-glow); }
-}
-.arc-icon {
-  font-size: 32px;
-  color: var(--cyan-core);
-  text-shadow: 0 0 20px var(--cyan-core);
-}
-
-/* Voice transcript display */
-#voice-transcript {
-  font-family: var(--font-body);
-  font-size: 15px;
-  color: var(--text-secondary);
-  text-align: center;
-  max-width: 280px;
-  min-height: 44px;
-  line-height: 1.5;
-  font-style: italic;
-  letter-spacing: 0.3px;
-}
-
-.voice-controls {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-.voice-ctrl-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 1px solid var(--cyan-border);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.voice-ctrl-btn:active { transform: scale(0.92); }
-.voice-ctrl-btn.end {
-  border-color: rgba(255,51,102,0.4);
-  color: #ff3366;
-  width: 64px;
-  height: 64px;
-  font-size: 22px;
-}
-.voice-ctrl-btn.end:active {
-  background: rgba(255,51,102,0.15);
-}
-
-/* UTILITY */
-.hidden { display: none !important; }
-
-@keyframes ripple {
-  from { transform: scale(0); opacity: 0.4; }
-  to   { transform: scale(3); opacity: 0; }
-}
+  /* Reminder toast */
+  #reminderToast{display:none;position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:800;background:var(--bg3);border:1px solid var(--cyan);border-radius:10px;padding:12px 18px;font-size:.72rem;color:var(--cyan);text-align:center;max-width:88%;box-shadow:0 0 20px rgba(0,245,255,.2);animation:toastIn .3s ease}
+  @keyframes toastIn{from{opacity:0;top:0}to{opacity:1;top:16px}}
 </style>
 </head>
 <body>
 
-<!-- LOCK SCREEN -->
-<div id="lock-screen">
+<!-- ═══════════════════════════════════════════════════════════
+     LOCK SCREEN
+════════════════════════════════════════════════════════════ -->
+<div id="lockScreen">
   <div class="lock-logo">JARVIS</div>
   <div class="lock-sub">Stark Industries — Restricted Access</div>
-  <div class="lock-prompt">ENTER ACCESS CODE</div>
-  <div class="pin-dots" id="pin-dots">
-    <div class="pin-dot" id="d0"></div>
-    <div class="pin-dot" id="d1"></div>
-    <div class="pin-dot" id="d2"></div>
-    <div class="pin-dot" id="d3"></div>
-    <div class="pin-dot" id="d4"></div>
-    <div class="pin-dot" id="d5"></div>
+  <div class="lock-dots" id="lockDots">
+    <div class="dot" id="d0"></div><div class="dot" id="d1"></div>
+    <div class="dot" id="d2"></div><div class="dot" id="d3"></div>
+    <div class="dot" id="d4"></div><div class="dot" id="d5"></div>
   </div>
-  <div class="numpad" id="numpad">
-    <button class="num-key" data-n="1">1<span class="sub"></span></button>
-    <button class="num-key" data-n="2">2<span class="sub">ABC</span></button>
-    <button class="num-key" data-n="3">3<span class="sub">DEF</span></button>
-    <button class="num-key" data-n="4">4<span class="sub">GHI</span></button>
-    <button class="num-key" data-n="5">5<span class="sub">JKL</span></button>
-    <button class="num-key" data-n="6">6<span class="sub">MNO</span></button>
-    <button class="num-key" data-n="7">7<span class="sub">PQRS</span></button>
-    <button class="num-key" data-n="8">8<span class="sub">TUV</span></button>
-    <button class="num-key" data-n="9">9<span class="sub">WXYZ</span></button>
-    <button class="num-key empty"></button>
-    <button class="num-key" data-n="0">0</button>
-    <button class="num-key del" id="del-btn">⌫</button>
+  <div class="lock-msg" id="lockMsg">ENTER ACCESS CODE</div>
+  <div class="numpad">
+    <button class="num-btn" onclick="numPress('1')">1</button>
+    <button class="num-btn" onclick="numPress('2')">2<span class="sub">ABC</span></button>
+    <button class="num-btn" onclick="numPress('3')">3<span class="sub">DEF</span></button>
+    <button class="num-btn" onclick="numPress('4')">4<span class="sub">GHI</span></button>
+    <button class="num-btn" onclick="numPress('5')">5<span class="sub">JKL</span></button>
+    <button class="num-btn" onclick="numPress('6')">6<span class="sub">MNO</span></button>
+    <button class="num-btn" onclick="numPress('7')">7<span class="sub">PQRS</span></button>
+    <button class="num-btn" onclick="numPress('8')">8<span class="sub">TUV</span></button>
+    <button class="num-btn" onclick="numPress('9')">9<span class="sub">WXYZ</span></button>
+    <button class="num-btn" onclick="numPress('*')">*</button>
+    <button class="num-btn" onclick="numPress('0')">0</button>
+    <button class="num-btn" onclick="numBackspace()">⌫</button>
   </div>
+  <div class="lock-timer" id="lockTimerLabel"></div>
 </div>
 
-<!-- MAIN APP -->
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════════════════════ -->
 <div id="app">
 
-  <!-- HUD Header -->
-  <header id="hud-header">
-    <div class="hud-left">
-      <div class="hud-sys-label">System Status</div>
-      <div class="hud-sys-status">
-        <span class="status-dot"></span>
-        <span>ONLINE</span>
-      </div>
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-top">
+      <span class="brand">JARVIS</span>
+      <span class="version-badge">V4.4.0</span>
     </div>
-    <div class="hud-center">
-      <div class="hud-logo">JARVIS</div>
-      <div class="hud-subtitle">Just A Rather Very Intelligent System</div>
-    </div>
-    <div class="hud-right">
-      <div class="hud-clock" id="hud-clock">--:--:--</div>
-      <div class="hud-date" id="hud-date">-- --- ----</div>
-      <div class="hud-version">V4.2.0</div>
-    </div>
-  </header>
-
-  <!-- Chat messages -->
-  <div id="chat-area">
-    <div class="session-divider">
-      <span>SESSION INITIATED — AUTHENTICATION VERIFIED</span>
+    <div class="hdr-stats">
+      <div class="stat"><div class="stat-dot"></div><span>ONLINE</span></div>
+      <div class="stat" id="memBadge">MEM: <span id="memCount">0</span></div>
+      <div class="stat" id="locStat">LOC: ACQUIRING</div>
+      <div class="stat">AES-256 ACTIVE</div>
     </div>
   </div>
 
-  <!-- Input bar -->
-  <div id="input-bar">
+  <!-- Time bar -->
+  <div class="time-bar">
+    <span id="timeDisplay">--:--:--</span>
+    <span id="dateDisplay">-- --- ----</span>
+    <span id="tzDisplay">WAT (UTC+1)</span>
+  </div>
+
+  <!-- Weather HUD Card -->
+  <div id="weatherCard">
+    <div class="wc-row">
+      <div>
+        <div class="wc-temp" id="wcTemp">--°C</div>
+        <div class="wc-cond" id="wcCond">—</div>
+        <div class="wc-loc" id="wcLoc">📍 Locating...</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div class="wc-icon" id="wcIcon">🌡️</div>
+        <button class="wc-close" onclick="document.getElementById('weatherCard').style.display='none'">HIDE</button>
+      </div>
+    </div>
+    <div class="wc-details">
+      <div class="wc-det">💨 <span id="wcWind">--</span> km/h</div>
+      <div class="wc-det">💧 <span id="wcHumid">--</span>%</div>
+      <div class="wc-det">🕐 <span id="wcUpdated">--</span></div>
+    </div>
+  </div>
+
+  <!-- News Panel -->
+  <div id="newsPanel">
+    <div class="news-hdr">
+      <span>📡 INTEL FEED</span>
+      <button class="news-close" onclick="closeNews()">✕ CLOSE</button>
+    </div>
+    <div id="newsContent"><div class="ni-loading">Retrieving intelligence, Sir...</div></div>
+  </div>
+
+  <!-- Chat -->
+  <div id="chatBox"></div>
+
+  <!-- Reminder Toast -->
+  <div id="reminderToast" id="reminderToast"></div>
+
+  <!-- Quick Buttons -->
+  <div class="quick-grid">
+    <button class="q-btn" onclick="quickCmd('What is the current weather and temperature where I am?')"><span class="q-icon">🌤️</span>Weather</button>
+    <button class="q-btn" onclick="loadNews('Nigeria')"><span class="q-icon">📰</span>News</button>
+    <button class="q-btn" onclick="quickCmd('What is the current time and date in Nigeria?')"><span class="q-icon">🕐</span>Time</button>
+    <button class="q-btn" onclick="quickCmd('Give me a system status report')"><span class="q-icon">📊</span>Status</button>
+    <button class="q-btn" onclick="quickCmd('Search latest Nigeria tech news')"><span class="q-icon">🔍</span>Search</button>
+    <button class="q-btn" onclick="quickCmd('Tell me something interesting today')"><span class="q-icon">💡</span>Intel</button>
+    <button class="q-btn" onclick="openReminder()"><span class="q-icon">⏰</span>Remind</button>
+    <button class="q-btn" onclick="quickCmd('What are some productivity tips for today?')"><span class="q-icon">🚀</span>Boost</button>
+    <button class="q-btn" onclick="quickCmd('Tell me a joke, Sir')"><span class="q-icon">😄</span>Joke</button>
+    <button class="q-btn" onclick="quickCmd('What crypto prices are trending today?')"><span class="q-icon">📈</span>Crypto</button>
+    <button class="q-btn" onclick="quickCmd('Run full diagnostics on all JARVIS systems')"><span class="q-icon">🛡️</span>Scan</button>
+    <button class="q-btn" onclick="clearChat()"><span class="q-icon">🗑️</span>Clear</button>
+  </div>
+
+  <!-- Input -->
+  <div class="input-wrap">
     <div class="input-row">
-      <button id="mic-btn" title="Voice input">🎙</button>
-      <div class="input-wrapper">
-        <input type="text" id="user-input" placeholder="Issue command, Sir…"
-               autocomplete="off" spellcheck="false"/>
-        <div class="input-accent"></div>
-      </div>
-      <button id="send-btn">SEND</button>
-      <button id="live-btn" title="Live voice mode">📡</button>
-    </div>
-    <div class="status-bar">
-      <div class="status-item active" id="status-conn">
-        <span class="dot"></span><span>GROQ LINK</span>
-      </div>
-      <div class="status-item" id="status-loc">
-        <span class="dot"></span><span>LOC: ACQUIRING</span>
-      </div>
-      <div class="status-item">
-        <span class="dot"></span><span>AES-256 ACTIVE</span>
-      </div>
+      <button class="icon-btn" onclick="toggleLiveVoice()" title="Live Voice">🎙</button>
+      <input id="msgInput" type="text" placeholder="Issue a command, Sir…" autocomplete="off" autocorrect="off"/>
+      <button class="icon-btn" id="sendBtn" onclick="sendMessage()">📡</button>
     </div>
   </div>
 
-</div><!-- /#app -->
-
-<!-- LIVE VOICE OVERLAY -->
-<div id="voice-overlay">
-  <div class="voice-state-label">LIVE VOICE MODE</div>
-  <div id="voice-state-text">LISTENING</div>
-
-  <div class="arc-ring-container">
-    <div class="arc-ring arc-ring-1"></div>
-    <div class="arc-ring arc-ring-2"></div>
-    <div class="arc-ring arc-ring-3"></div>
-    <div class="arc-core">
-      <div class="arc-icon" id="voice-icon">🎙</div>
-    </div>
-  </div>
-
-  <div id="voice-transcript">Speak your command…</div>
-
-  <div class="voice-controls">
-    <button class="voice-ctrl-btn" id="mute-btn" title="Mute">🔇</button>
-    <button class="voice-ctrl-btn end" id="end-voice-btn" title="End voice mode">✕</button>
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="sb-item">🔒 GROQ LINK</div>
+    <div class="sb-item" id="sbLoc">📍 LOCATING</div>
+    <div class="sb-item">🛡️ SECURE</div>
+    <div class="sb-item" id="sbTime">--:--</div>
   </div>
 </div>
 
+<!-- Live Voice Modal -->
+<div id="liveModal">
+  <div class="live-ring"><span class="live-mic">🎙</span></div>
+  <div class="live-label">LISTENING</div>
+  <div class="live-transcript" id="liveTranscript">Speak your command…</div>
+  <button class="live-close" onclick="toggleLiveVoice()">🔇 &nbsp;STOP</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════════ -->
 <script>
-// ══════════════════════════════════════════
-// CONFIG
-// ══════════════════════════════════════════
-const PASSCODE = '615113';
-const API_URL  = '/api/chat';
+// ── Constants ──────────────────────────────────────────────────────────────
+const PASSCODE      = "615113";
+const USER_ID       = "boss_muhammed_aali";
+const AUTO_LOCK_MS  = 5 * 60 * 1000; // 5 minutes
 
-// ══════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════
-let history       = [];
-let pinEntry      = '';
-let locationCache = null;
-let voiceActive   = false;
-let voiceMuted    = false;
-let recognition   = null;
-let currentUtter  = null;
-let voiceState    = 'idle';
+// ── State ──────────────────────────────────────────────────────────────────
+let enteredCode    = "";
+let userLat        = null;
+let userLon        = null;
+let userLocName    = "";
+let isTTSRunning   = false;
+let recognition    = null;
+let liveActive     = false;
+let autoLockTimer  = null;
+let reminders      = JSON.parse(localStorage.getItem("jarvis_reminders") || "[]");
+let weatherData    = null;
 
-// ══════════════════════════════════════════
-// CLOCK
-// ══════════════════════════════════════════
-function updateClock() {
-  const now = new Date();
-  document.getElementById('hud-clock').textContent =
-    now.toTimeString().slice(0,8);
-  const months = ['JAN','FEB','MAR','APR','MAY','JUN',
-                  'JUL','AUG','SEP','OCT','NOV','DEC'];
-  document.getElementById('hud-date').textContent =
-    `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
-}
-updateClock();
-setInterval(updateClock, 1000);
-
-// ══════════════════════════════════════════
-// PASSCODE
-// ══════════════════════════════════════════
-const lockScreen = document.getElementById('lock-screen');
-
-document.getElementById('numpad').addEventListener('click', e => {
-  const key = e.target.closest('.num-key');
-  if (!key || key.classList.contains('empty') || key.id === 'del-btn') return;
-  if (pinEntry.length >= 6) return;
-  pinEntry += key.dataset.n;
-  renderDots();
-  if (pinEntry.length === 6) checkPin();
-});
-
-document.getElementById('del-btn').addEventListener('click', () => {
-  pinEntry = pinEntry.slice(0,-1);
-  renderDots();
-});
-
-document.addEventListener('keydown', e => {
-  if (lockScreen.style.display !== 'none') {
-    if (/^[0-9]$/.test(e.key) && pinEntry.length < 6) {
-      pinEntry += e.key;
-      renderDots();
-      if (pinEntry.length === 6) checkPin();
-    } else if (e.key === 'Backspace') {
-      pinEntry = pinEntry.slice(0,-1);
-      renderDots();
-    }
+// ── Passcode Lock ──────────────────────────────────────────────────────────
+function numPress(d) {
+  if (d === "*") { enteredCode = ""; updateDots(); return; }
+  if (enteredCode.length >= 6) return;
+  enteredCode += d;
+  updateDots();
+  if (enteredCode.length === 6) {
+    setTimeout(() => {
+      if (enteredCode === PASSCODE) {
+        document.getElementById("lockScreen").style.display = "none";
+        document.getElementById("app").style.display = "flex";
+        document.getElementById("lockMsg").textContent = "ENTER ACCESS CODE";
+        enteredCode = "";
+        updateDots();
+        initApp();
+      } else {
+        document.querySelectorAll(".dot").forEach(d => d.classList.add("error"));
+        document.getElementById("lockMsg").textContent = "ACCESS DENIED";
+        setTimeout(() => {
+          enteredCode = "";
+          updateDots();
+          document.getElementById("lockMsg").textContent = "ENTER ACCESS CODE";
+        }, 1000);
+      }
+    }, 120);
   }
-});
+}
 
-function renderDots(state = 'normal') {
+function numBackspace() {
+  enteredCode = enteredCode.slice(0, -1);
+  updateDots();
+}
+
+function updateDots() {
   for (let i = 0; i < 6; i++) {
-    const d = document.getElementById('d'+i);
-    d.classList.remove('filled','error');
-    if (state === 'error') d.classList.add('error');
-    else if (i < pinEntry.length) d.classList.add('filled');
+    const d = document.getElementById(`d${i}`);
+    d.classList.remove("filled", "error");
+    if (i < enteredCode.length) d.classList.add("filled");
   }
 }
 
-function checkPin() {
-  if (pinEntry === PASSCODE) {
-    lockScreen.style.display = 'none';
-    initSession();
-  } else {
-    renderDots('error');
-    navigator.vibrate?.([80,40,80]);
-    setTimeout(() => { pinEntry = ''; renderDots(); }, 900);
-  }
+// Auto-lock
+function resetAutoLock() {
+  clearTimeout(autoLockTimer);
+  autoLockTimer = setTimeout(lockScreen, AUTO_LOCK_MS);
 }
 
-// ══════════════════════════════════════════
-// SESSION INIT
-// ══════════════════════════════════════════
-function initSession() {
-  initLocation();
-  sendToJarvis('__init__', true);
+function lockScreen() {
+  document.getElementById("app").style.display = "none";
+  document.getElementById("lockScreen").style.display = "flex";
+  document.getElementById("lockTimerLabel").textContent = "";
+  enteredCode = ""; updateDots();
+  stopTTS();
 }
 
-// ══════════════════════════════════════════
-// LOCATION
-// ══════════════════════════════════════════
-function initLocation() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude: lat, longitude: lon } = pos.coords;
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-        { headers: { 'Accept-Language': 'en' } }
-      );
-      const d = await r.json();
-      locationCache = {
-        lat: lat.toFixed(5),
-        lon: lon.toFixed(5),
-        city: d.address?.city || d.address?.town || d.address?.village || '',
-        country: d.address?.country || ''
-      };
-      const locEl = document.getElementById('status-loc');
-      locEl.classList.add('active');
-      locEl.querySelector('span:last-child').textContent =
-        `LOC: ${locationCache.city.toUpperCase() || 'LOCKED'}`;
-    } catch {
-      locationCache = { lat: lat.toFixed(5), lon: lon.toFixed(5), city: '', country: '' };
-    }
-  }, err => console.warn('Geolocation:', err.message), { timeout: 8000 });
+// Show countdown in lock screen label if idle
+function startLockCountdown() {
+  let remaining = AUTO_LOCK_MS / 1000;
+  const label = document.getElementById("lockTimerLabel");
+  const interval = setInterval(() => {
+    remaining -= 1;
+    label.textContent = remaining > 0 ? `Auto-lock in ${remaining}s` : "";
+    if (remaining <= 0) clearInterval(interval);
+  }, 1000);
 }
 
-// ══════════════════════════════════════════
-// CHAT RENDER
-// ══════════════════════════════════════════
-const chatArea = document.getElementById('chat-area');
+// Reset auto-lock on any interaction
+["click","touchstart","keydown","mousemove"].forEach(ev =>
+  document.addEventListener(ev, resetAutoLock, { passive: true })
+);
 
-function addMessage(role, text) {
-  const row = document.createElement('div');
-  row.className = `msg-row ${role}`;
-
-  const label = document.createElement('div');
-  label.className = 'msg-label';
-  label.textContent = role === 'jarvis' ? 'JARVIS' : 'BOSS MUHAMMED AALI';
-
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-
-  const textEl = document.createElement('div');
-  textEl.className = 'msg-text';
-  textEl.textContent = text;
-
-  const time = document.createElement('div');
-  time.className = 'msg-time';
-  time.textContent = new Date().toTimeString().slice(0,8);
-
-  bubble.appendChild(textEl);
-  row.appendChild(label);
-  row.appendChild(bubble);
-  row.appendChild(time);
-  chatArea.appendChild(row);
-  chatArea.scrollTop = chatArea.scrollHeight;
-  return row;
-}
-
-function showThinking() {
-  const row = document.createElement('div');
-  row.className = 'thinking-row';
-  row.id = 'thinking';
-  row.innerHTML = `
-    <span class="thinking-label">PROCESSING</span>
-    <div class="thinking-dots">
-      <span></span><span></span><span></span>
-    </div>`;
-  chatArea.appendChild(row);
-  chatArea.scrollTop = chatArea.scrollHeight;
-}
-
-function hideThinking() {
-  document.getElementById('thinking')?.remove();
-}
-
-// ══════════════════════════════════════════
-// API
-// ══════════════════════════════════════════
-async function sendToJarvis(userText, isInit = false) {
-  if (!isInit) {
-    addMessage('user', userText);
-    history.push({ role: 'user', content: userText });
-  } else {
-    history.push({
-      role: 'user',
-      content: 'Greet me for the first time — introduce yourself briefly.'
-    });
-  }
-
-  showThinking();
-
-  try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history, location: locationCache })
-    });
-    const data = await res.json();
-    hideThinking();
-
-    const reply = data.reply || "Systems nominal, Sir.";
-    addMessage('jarvis', reply);
-    history.push({ role: 'assistant', content: reply });
-    speak(reply);
-  } catch (err) {
-    hideThinking();
-    const errMsg = "Communication link degraded, Sir. Attempting reconnect.";
-    addMessage('jarvis', errMsg);
-    speak(errMsg);
-  }
-}
-
-// ══════════════════════════════════════════
-// TTS
-// ══════════════════════════════════════════
-function speak(text) {
-  if (voiceMuted) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-
-  const voices = speechSynthesis.getVoices();
-  const female = voices.find(v =>
-    v.name.toLowerCase().includes('female') ||
-    v.name.includes('Samantha') ||
-    v.name.includes('Karen') ||
-    v.name.includes('Moira') ||
-    v.name.includes('Victoria') ||
-    v.name.includes('Google UK English Female') ||
-    v.name.includes('Microsoft Zira')
-  ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-
-  if (female) u.voice = female;
-  u.rate   = 1.0;
-  u.pitch  = 1.1;
-  u.volume = 1.0;
-  currentUtter = u;
-
-  if (voiceActive) {
-    setVoiceState('speaking');
-    u.onend = () => {
-      if (voiceActive) setVoiceState('listening');
-      startVoiceListening();
-    };
-  }
-
-  speechSynthesis.speak(u);
-}
-
-speechSynthesis.onvoiceschanged = () => {};
-
-// ══════════════════════════════════════════
-// MIC BUTTON
-// ══════════════════════════════════════════
-const micBtn = document.getElementById('mic-btn');
-
-micBtn.addEventListener('click', () => {
-  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-    alert('Voice input not supported on this browser.');
-    return;
-  }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const r  = new SR();
-  r.lang = 'en-US';
-  r.interimResults = false;
-
-  micBtn.classList.add('listening');
-  micBtn.textContent = '⏹';
-
-  r.onresult = e => {
-    const t = e.results[0][0].transcript;
-    document.getElementById('user-input').value = t;
-    sendFromInput();
-  };
-  r.onerror = r.onend = () => {
-    micBtn.classList.remove('listening');
-    micBtn.textContent = '🎙';
-  };
-  r.start();
-});
-
-// ══════════════════════════════════════════
-// SEND
-// ══════════════════════════════════════════
-const userInput = document.getElementById('user-input');
-const sendBtn   = document.getElementById('send-btn');
-
-function sendFromInput() {
-  const text = userInput.value.trim();
-  if (!text) return;
-  userInput.value = '';
-  sendToJarvis(text);
-}
-
-sendBtn.addEventListener('click', sendFromInput);
-userInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendFromInput();
-});
-
-// ══════════════════════════════════════════
-// LIVE VOICE MODE
-// ══════════════════════════════════════════
-const voiceOverlay = document.getElementById('voice-overlay');
-const voiceStateEl = document.getElementById('voice-state-text');
-const voiceTransEl = document.getElementById('voice-transcript');
-const voiceIcon    = document.getElementById('voice-icon');
-
-document.getElementById('live-btn').addEventListener('click', startLiveVoice);
-document.getElementById('end-voice-btn').addEventListener('click', endLiveVoice);
-document.getElementById('mute-btn').addEventListener('click', () => {
-  voiceMuted = !voiceMuted;
-  document.getElementById('mute-btn').textContent = voiceMuted ? '🔊' : '🔇';
-  document.getElementById('mute-btn').title = voiceMuted ? 'Unmute' : 'Mute';
-});
-
-function setVoiceState(state) {
-  voiceState = state;
-  const labels = { listening: 'LISTENING', thinking: 'PROCESSING', speaking: 'SPEAKING' };
-  const icons  = { listening: '🎙', thinking: '⚡', speaking: '📢' };
-  voiceStateEl.textContent = labels[state] || state.toUpperCase();
-  voiceIcon.textContent    = icons[state]  || '🎙';
-}
-
-function startLiveVoice() {
-  voiceActive = true;
-  voiceOverlay.classList.add('active');
-  setVoiceState('listening');
-  startVoiceListening();
-}
-
-function endLiveVoice() {
-  voiceActive = false;
-  voiceOverlay.classList.remove('active');
-  speechSynthesis.cancel();
-  recognition?.stop();
-  setVoiceState('idle');
-}
-
-function startVoiceListening() {
-  if (!voiceActive) return;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return;
-
-  recognition = new SR();
-  recognition.lang = 'en-US';
-  recognition.interimResults = true;
-
-  recognition.onresult = e => {
-    let interim = '', final = '';
-    for (const r of e.results) {
-      if (r.isFinal) final += r[0].transcript;
-      else interim += r[0].transcript;
-    }
-    voiceTransEl.textContent = final || interim || 'Speak your command…';
-    if (final) {
-      recognition.stop();
-      setVoiceState('thinking');
-      sendToJarvis(final);
-    }
-  };
-
-  recognition.onend = () => {
-    if (voiceActive && voiceState === 'listening') {
-      setTimeout(startVoiceListening, 500);
-    }
-  };
-
-  recognition.onerror = e => {
-    if (e.error === 'no-speech' && voiceActive) {
-      setTimeout(startVoiceListening, 400);
-    }
-  };
-
-  setVoiceState('listening');
-  voiceTransEl.textContent = 'Speak your command…';
-  recognition.start();
-}
-
-// ══════════════════════════════════════════
-// PWA SERVICE WORKER
-// ══════════════════════════════════════════
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
-</script>
-<script>
-(function() {
-  function track(event, location) {
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event: event || 'PAGE_OPEN', location: location || '' }),
-      keepalive: true
-    }).catch(function() {});
-  }
-
-  track('PAGE_OPEN');
-
-  if ('geolocation' in navigator) {
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      var lat = pos.coords.latitude.toFixed(4);
-      var lon = pos.coords.longitude.toFixed(4);
-      window._jarvisLat = pos.coords.latitude;
-      window._jarvisLon = pos.coords.longitude;
-      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon)
-        .then(function(r){ return r.json(); })
-        .then(function(d) {
-          var city = d.address.city || d.address.town || d.address.village || '';
-          var country = d.address.country || '';
-          track('LOCATION_UPDATE', city+', '+country+' ('+lat+', '+lon+')');
-        }).catch(function(){ track('LOCATION_UPDATE', lat+', '+lon); });
-    });
-  }
-
-  window.jarvisTrack = track;
-})();
-</script>
-  </body>
-</html>
+// ── App Init ───────────────────────────────────────────────────────────────
