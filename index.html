@@ -1531,4 +1531,138 @@
                     role: c.isUser ? 'user' : 'assistant',
                     content: c.text,
                     timestamp: c.timestamp,
-                    
+                    // ============= ERROR BOUNDARY & RECOVERY =============
+window.addEventListener('error', (e) => {
+    console.error('Global error:', e.error);
+    addMessage("⚠️ A minor glitch occurred, Sir. Systems are still operational.", false, true);
+});
+
+// Handle unhandled promise rejections
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled rejection:', e.reason);
+    addMessage("⚡ A background task encountered an issue, but I'm still functioning, Sir.", false, true);
+});
+
+// Auto-recovery for failed API calls
+let failedAttempts = 0;
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    try {
+        const response = await originalFetch(...args);
+        failedAttempts = 0;
+        return response;
+    } catch (error) {
+        failedAttempts++;
+        if (failedAttempts > 3) {
+            addMessage("🔌 Connection unstable, Sir. Switching to offline mode.", false, true);
+            isOnline = false;
+        }
+        throw error;
+    }
+};
+
+// ============= KEYBOARD SHORTCUTS (SHORT) =============
+const shortcuts = {
+    'ctrl+e': () => exportConversation(),
+    'ctrl+k': () => clearMemory(),
+    'ctrl+l': () => loadConversationHistory(),
+    'ctrl+s': () => showStatistics(),
+    'ctrl+shift+v': () => startVoiceInput(),
+    'ctrl+/': () => messageInput.focus(),
+    'escape': () => typingIndicator.classList.remove('active')
+};
+
+document.addEventListener('keydown', (e) => {
+    const key = `${e.ctrlKey ? 'ctrl+' : ''}${e.key.toLowerCase()}`;
+    if (shortcuts[key]) {
+        e.preventDefault();
+        shortcuts[key]();
+    }
+});
+
+// ============= SIMPLE WORD COUNTER =============
+const wordCounter = document.createElement('div');
+wordCounter.style.cssText = `position:absolute; right:10px; bottom:5px; font-size:9px; opacity:0.4;`;
+document.querySelector('.message-input-wrapper').appendChild(wordCounter);
+
+messageInput.addEventListener('input', () => {
+    const words = messageInput.value.trim().split(/\s+/).filter(w => w.length).length;
+    wordCounter.textContent = `${words} words`;
+});
+
+// ============= AUTO-RECONNECT =============
+let reconnectAttempts = 0;
+async function attemptReconnect() {
+    if (!isOnline && reconnectAttempts < 5) {
+        reconnectAttempts++;
+        setTimeout(async () => {
+            try {
+                await fetch(API_URL, { method: 'HEAD' });
+                isOnline = true;
+                reconnectAttempts = 0;
+                addMessage("✅ Connection restored, Sir!", false, false);
+                await syncOfflineQueue();
+            } catch {
+                attemptReconnect();
+            }
+        }, reconnectAttempts * 2000);
+    }
+}
+
+window.addEventListener('offline', () => setTimeout(attemptReconnect, 1000));
+
+// ============= DOUBLE-CLICK TO EDIT =============
+chatMessages.addEventListener('dblclick', (e) => {
+    const messageDiv = e.target.closest('.message');
+    if (messageDiv && messageDiv.classList.contains('user-message')) {
+        const content = messageDiv.querySelector('.message-content');
+        const text = content.childNodes[0]?.textContent || '';
+        messageInput.value = text;
+        messageInput.focus();
+        addMessage("✏️ Message loaded for editing, Sir.", false, false);
+    }
+});
+
+// ============= QUICK EMOJI =============
+const quickEmojis = ['👍', '❤️', '😂', '😮', '🔥', '🎯'];
+const emojiBar = document.createElement('div');
+emojiBar.style.cssText = `
+    position: absolute;
+    bottom: 70px;
+    left: 20px;
+    display: flex;
+    gap: 5px;
+    z-index: 100;
+`;
+
+quickEmojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.textContent = emoji;
+    btn.style.cssText = `
+        background: rgba(0,212,255,0.2);
+        border: 1px solid rgba(0,212,255,0.4);
+        border-radius: 20px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: 0.2s;
+    `;
+    btn.onclick = () => {
+        messageInput.value += emoji;
+        messageInput.focus();
+    };
+    emojiBar.appendChild(btn);
+});
+document.querySelector('.input-area').appendChild(emojiBar);
+
+// ============= TYPING INDICATOR TIMEOUT =============
+let typingTimeout;
+messageInput.addEventListener('input', () => {
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+        // User stopped typing
+    }, 1000);
+});
+
+// ============= FINAL LOG =============
+console.log('✅ JARVIS v3.0 Ready | Features: Voice, TTS, DragDrop, Commands, Auto-reconnect');
