@@ -638,4 +638,461 @@
             try {
                 const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
                 const geoData = await geoRes.json();
+                const city = geoData.address?.city || geoData.address?.town || 'Unknown';
                 
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current_weather=true`);
+                const weatherData = await weatherRes.json();
+                
+                if (weatherData.current_weather) {
+                    const temp = weatherData.current_weather.temperature;
+                    const wind = weatherData.current_weather.windspeed;
+                    weatherInfo.innerHTML = `
+                        <span>📍 ${city}</span><br>
+                        <span>🌡️ ${temp}°C</span><br>
+                        <span>💨 ${wind} km/h</span>
+                    `;
+                }
+            } catch (err) {
+                console.error('Weather fetch error:', err);
+                weatherInfo.innerHTML = '<span>⚠️ Weather unavailable</span>';
+            }
+        }
+        
+        // ============= MESSAGE HANDLING =============
+        function addMessage(text, isUser = false, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'jarvis-message'}`;
+            
+            // Format markdown-style text (bold, links, code)
+            let formattedText = escapeHtml(text);
+            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formattedText = formattedText.replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">$1</code>');
+            formattedText = formattedText.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: #00d4ff;">$1</a>');
+            formattedText = formattedText.replace(/\n/g, '<br>');
+            
+            if (isError) {
+                formattedText = `<span style="color: #ff6666;">⚠️ ${formattedText}</span>`;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${isUser ? '👤' : '🔵'}</div>
+                <div class="message-content">
+                    ${formattedText}
+                    <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            
+            // Save to localStorage
+            saveConversationToLocal(text, isUser);
+            
+            return messageDiv;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Save conversation locally
+        function saveConversationToLocal(message, isUser) {
+            const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
+            conversations.push({
+                text: message,
+                isUser: isUser,
+                timestamp: Date.now(),
+                userId: USER_ID
+            });
+            // Keep last 200 messages
+            if (conversations.length > 200) conversations.shift();
+            localStorage.setItem('jarvis_conversations', JSON.stringify(conversations));
+        }
+        
+        async function sendMessage(message, retryCount = 0) {
+            if (!message.trim()) return;
+            
+            // Add user message to UI
+            addMessage(message, true);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            // Show typing indicator
+            typingIndicator.classList.add('active');
+            
+            // Set timeout for request
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            
+            try {
+                const payload = {
+                    message: message,
+                    userId: USER_ID,
+                    conversationId: conversationId,
+                    lat: currentLat,
+                    lon: currentLon,
+                    pendingQueue: !isOnline ? messageQueue : [],
+                    timestamp: Date.now()
+                };
+                
+                const startTime = Date.now();
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                const latency = Date.now() - startTime;
+                updateLatency(latency);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove typing indicator
+                typingIndicator.classList.remove('active');
+                
+                // Add JARVIS response
+                addMessage(data.response, false, false);
+                
+                // Update memory stats
+                if (data.memoryUpdated) {
+                    updateMemoryStats();
+                }
+                
+                // Update rate limit info
+                if (data.rateLimit) {
+                    const rateInfo = document.getElementById('rateLimitInfo');
+                    rateInfo.innerHTML = `Rate limit: ${data.rateLimit.remaining}/${data.rateLimit.limit} remaining`;
+                    if (data.rateLimit.remaining < 5) {
+                        rateInfo.style.color = '#ffaa00';
+                    } else {
+                        rateInfo.style.color = '';
+                    }
+                }
+                
+                // Play response sound (optional)
+                playSound('message');
+                
+                // Clear queue if synced
+                if (data.synced) {
+                    messageQueue = [];
+                    localStorage.removeItem('jarvis_queue');
+                    offlineBanner.classList.remove('active');
+                    addMessage(`✅ ${data.synced}`, false, false);
+                }
+                
+            } catch (error) {
+                clearTimeout(timeoutId);
+                console.error('Send error:', error);
+                typingIndicator.classList.remove('active');
+                
+                if (error.name === 'AbortError') {
+                    addMessage("Request timeout, Sir. The servers might be busy. I'll queue this message.", false, true);
+                }
+                
+                if (!isOnline || retryCount < 2) {
+                    // Queue message for offline
+                    messageQueue.push(message);
+                    localStorage.setItem('jarvis_queue', JSON.stringify(messageQueue));
+                    offlineBanner.classList.add('active');
+                    addMessage("📡 Network issue detected, Sir. I've queued your message (${messageQueue.length} pending).", false, true);
+                } else {
+                    addMessage("❌ Connection failed, Sir. Please check your internet and try again.", false, true);
+                }
+            }
+        }
+        
+        // ============= OFFLINE SYNC =============
+        async function syncOfflineQueue() {
+            const savedQueue = localStorage.getItem('jarvis_queue');
+            if (savedQueue) {
+                messageQueue = JSON.parse(savedQueue);
+                if (messageQueue.length > 0 && isOnline) {
+                    addMessage(`🔄 Syncing ${messageQueue.length} offline message${messageQueue.length > 1 ? 's' : ''}...`, false, false);
+                    
+                    // Process queue sequentially
+                    for (let i = 0; i < messageQueue.length; i++) {
+                        const msg = messageQueue[i];
+                        await sendMessage(msg);
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limit protection
+                    }
+                    
+                    messageQueue = [];
+                    localStorage.removeItem('jarvis_queue');
+                    offlineBanner.classList.remove('active');
+                    addMessage("✨ All offline messages synced successfully!", false, false);
+                }
+            }
+        }
+        
+        // ============= MEMORY MANAGEMENT =============
+        async function loadConversationCount() {
+            try {
+                // Try to get from localStorage first
+                const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
+                const userConversations = conversations.filter(c => c.userId === USER_ID);
+                convCountSpan.textContent = Math.floor(userConversations.length / 2) || 0;
+                
+                // Try API if online
+                if (isOnline) {
+                    const response = await fetch(`${API_URL}?userId=${USER_ID}&action=count`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        convCountSpan.textContent = data.count || userConversations.length / 2;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load count:', err);
+            }
+        }
+        
+        function updateMemoryStats() {
+            const currentCount = parseInt(convCountSpan.textContent || '0');
+            convCountSpan.textContent = currentCount + 1;
+            document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
+            
+            // Animate memory update
+            const memorySpan = document.getElementById('memoryStatus');
+            memorySpan.style.opacity = '0.5';
+            setTimeout(() => {
+                memorySpan.style.opacity = '1';
+            }, 300);
+        }
+        
+        async function clearMemory() {
+            if (confirm('Clear all conversation memory, Sir? This cannot be undone.')) {
+                try {
+                    // Clear local storage
+                    localStorage.removeItem('jarvis_conversations');
+                    localStorage.removeItem('jarvis_queue');
+                    
+                    // Clear API memory
+                    if (isOnline) {
+                        await fetch(`${API_URL}?userId=${USER_ID}&action=clear`, { 
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    }
+                    
+                    // Reset UI
+                    conversationId = `conv_${Date.now()}`;
+                    chatMessages.innerHTML = '';
+                    addMessage("🧠 Memory cleared, Sir. I'm ready for a fresh conversation.", false, false);
+                    convCountSpan.textContent = '0';
+                    document.getElementById('lastSync').textContent = 'Never';
+                    messageQueue = [];
+                    
+                    // Play clear sound
+                    playSound('clear');
+                    
+                } catch (err) {
+                    console.error('Clear memory error:', err);
+                    addMessage("Failed to clear remote memory, but local memory has been reset.", false, true);
+                }
+            }
+        }
+        
+        // ============= VOICE RECOGNITION =============
+        let recognition = null;
+        let isListening = false;
+        
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+            
+            recognition.onstart = () => {
+                isListening = true;
+                voiceBtn.style.background = 'rgba(0, 212, 255, 0.4)';
+                voiceBtn.style.animation = 'pulse 0.5s infinite';
+                addMessage("🎤 Listening...", false, false);
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                messageInput.value = transcript;
+                
+                if (event.results[0].isFinal) {
+                    sendMessage(transcript);
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Voice recognition error:', event.error);
+                if (event.error !== 'no-speech') {
+                    addMessage("🎤 Voice recognition failed, Sir. Please try again.", false, true);
+                }
+                stopVoiceInput();
+            };
+            
+            recognition.onend = () => {
+                stopVoiceInput();
+            };
+        }
+        
+        function stopVoiceInput() {
+            isListening = false;
+            voiceBtn.style.background = '';
+            voiceBtn.style.animation = '';
+        }
+        
+        function startVoiceInput() {
+            if (recognition && !isListening) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error('Recognition start error:', e);
+                    addMessage("🎤 Voice input already active or not supported.", false, true);
+                }
+            } else if (!recognition) {
+                addMessage("🎤 Voice input not supported in your browser, Sir. Please use Chrome, Edge, or Safari.", false, true);
+            }
+        }
+        
+        // ============= SOUND EFFECTS =============
+        function playSound(type) {
+            // Optional: Add sound effects
+            // Create a simple beep using Web Audio API
+            if (type === 'message' && false) { // Disabled by default, enable if wanted
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.value = 880;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } catch(e) { console.log('Audio disabled'); }
+            }
+        }
+        
+        // ============= UTILITIES =============
+        function updateLatency(ms) {
+            latencySpan.textContent = `${ms}ms`;
+            if (ms > 800) {
+                latencySpan.style.color = '#ff6666';
+            } else if (ms > 300) {
+                latencySpan.style.color = '#ffaa66';
+            } else {
+                latencySpan.style.color = '#66ff66';
+            }
+        }
+        
+        function startHeartbeat() {
+            setInterval(async () => {
+                const wasOnline = isOnline;
+                const start = Date.now();
+                try {
+                    await fetch(API_URL, { 
+                        method: 'HEAD',
+                        signal: AbortSignal.timeout(5000)
+                    });
+                    const latency = Date.now() - start;
+                    updateLatency(latency);
+                    
+                    isOnline = true;
+                    connectionStatus.innerHTML = 'Online';
+                    connectionStatus.style.color = '#66ff66';
+                    document.querySelector('.online-dot').style.background = '#66ff66';
+                    
+                    // If came back online, sync queue
+                    if (!wasOnline) {
+                        await syncOfflineQueue();
+                    }
+                } catch (err) {
+                    isOnline = false;
+                    connectionStatus.innerHTML = 'Offline';
+                    connectionStatus.style.color = '#ff6666';
+                    document.querySelector('.online-dot').style.background = '#ff6666';
+                }
+            }, 30000); // Check every 30 seconds
+        }
+        
+        function exportConversation() {
+            const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
+            const userConvos = conversations.filter(c => c.userId === USER_ID);
+            
+            if (userConvos.length === 0) {
+                addMessage("No conversation history to export, Sir.", false, true);
+                return;
+            }
+            
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                userId: USER_ID,
+                conversationId: conversationId,
+                messages: userConvos.map(c => ({
+                    role: c.isUser ? 'user' : 'assistant',
+                    message: c.text,
+                    timestamp: c.timestamp,
+                    time: new Date(c.timestamp).toLocaleString()
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `jarvis_conversation_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addMessage("📁 Conversation exported successfully, Sir.", false, false);
+        }
+        
+        function setupEventListeners() {
+            sendBtn.addEventListener('click', () => {
+                const message = messageInput.value.trim();
+                if (message) sendMessage(message);
+            });
+            
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    const message = messageInput.value.trim();
+                    if (message) sendMessage(message);
+                }
+            });
+            
+            voiceBtn.addEventListener('click', startVoiceInput);
+            
+            emojiBtn.addEventListener('click', () => {
+                // Simple emoji picker modal
+                const emojis = ['😊', '😂', '❤️', '👍', '🎉', '🔥', '✨', '🚀', '💡', '🤖', '🎯', '🌟', '💪', '🎨', '📚', '🎵'];
+                const emojiContainer = document.createElement('div');
+                emojiContainer.style.cssText = `
+                    position: fixed;
+                    bottom: 80px;
+                    right: 20px;
+                    background: rgba(10, 14, 26, 0.95);
+                    backdrop-filter: blur(20px);
+                    border-radius: 15px;
+                    padding: 15px;
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 10px;
+                    z-index: 2000;
+                    border: 1px solid rgba(0, 212, 255, 0.3);
+                    max-width: 200px;
+                `;
+                
+                emojis.forEach(emoji => {
+                    
