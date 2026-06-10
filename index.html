@@ -12,7 +12,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
     --cyan: #00e5ff;
     --cyan-dim: #0097a7;
@@ -26,7 +25,6 @@
     --danger: #ff1744;
     --online: #00e676;
   }
-
   html, body {
     height: 100%; width: 100%;
     background: var(--bg);
@@ -36,41 +34,35 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* ── PASSCODE SCREEN ── */
+  /* PASSCODE */
   #passcode-screen {
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 28px;
+    gap: 24px;
   }
-  #passcode-screen .lock-title {
+  .lock-title {
     font-family: 'Orbitron', sans-serif;
     font-size: 2.2rem; font-weight: 900;
     color: var(--cyan);
     text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan);
     letter-spacing: 0.15em;
   }
-  #passcode-screen .lock-sub {
-    font-size: 0.75rem; letter-spacing: 0.2em;
-    color: var(--text-dim); text-align: center;
+  .lock-sub {
+    font-size: 0.72rem; letter-spacing: 0.2em;
+    color: var(--text-dim); text-align: center; line-height: 1.6;
   }
-  .pin-dots {
-    display: flex; gap: 14px;
-  }
+  .pin-dots { display: flex; gap: 14px; }
   .pin-dot {
     width: 16px; height: 16px; border-radius: 50%;
-    border: 2px solid var(--cyan);
-    background: transparent;
+    border: 2px solid var(--cyan); background: transparent;
     transition: background 0.15s, box-shadow 0.15s;
   }
-  .pin-dot.filled {
-    background: var(--cyan);
-    box-shadow: 0 0 10px var(--cyan);
-  }
+  .pin-dot.filled { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
   .pin-grid {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 14px; width: 240px;
+    gap: 12px; width: 260px;
   }
   .pin-btn {
     background: var(--bg-card);
@@ -78,277 +70,109 @@
     color: var(--cyan);
     font-family: 'Orbitron', sans-serif;
     font-size: 1.3rem; font-weight: 700;
-    padding: 18px 0; border-radius: 8px;
+    padding: 18px 0; border-radius: 10px;
     cursor: pointer;
     transition: background 0.15s, box-shadow 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
-  .pin-btn:active { background: var(--cyan-glow); box-shadow: 0 0 12px var(--cyan); }
-  .pin-btn.del { font-size: 1rem; }
+  .pin-btn:active { background: var(--cyan-glow); box-shadow: 0 0 14px var(--cyan); }
+  .pin-btn.fn { font-size: 0.85rem; letter-spacing: 0.05em; }
   #pin-error {
-    color: var(--danger); font-size: 0.75rem;
-    letter-spacing: 0.15em; min-height: 18px;
+    color: var(--danger); font-size: 0.72rem;
+    letter-spacing: 0.15em; min-height: 18px; text-align: center;
   }
 
-  /* ── MAIN APP ── */
+  /* APP */
   #app {
-    display: none;
-    flex-direction: column;
+    display: none; flex-direction: column;
     height: 100vh; height: 100dvh;
-    width: 100%;
-    position: relative;
+    width: 100%; position: relative;
   }
   #app.unlocked { display: flex; }
 
-  /* ── HEADER ── */
+  /* HEADER */
   .hud-header {
     flex-shrink: 0;
     background: linear-gradient(180deg, #041e30 0%, var(--bg) 100%);
     border-bottom: 1px solid var(--cyan-border);
     padding: 10px 14px 8px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: start;
-    gap: 4px;
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: start; gap: 4px;
   }
-  .hud-status {
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .hud-status-label {
-    font-size: 0.55rem; letter-spacing: 0.18em;
-    color: var(--text-dim); line-height: 1.2;
-  }
-  .hud-online {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 0.65rem; letter-spacing: 0.15em;
-    color: var(--online); font-weight: 600;
-  }
+  .hud-status { display: flex; flex-direction: column; gap: 2px; }
+  .hud-status-label { font-size: 0.55rem; letter-spacing: 0.18em; color: var(--text-dim); line-height: 1.2; }
+  .hud-online { display: flex; align-items: center; gap: 5px; font-size: 0.65rem; letter-spacing: 0.15em; color: var(--online); font-weight: 600; }
   .hud-online-dot {
     width: 7px; height: 7px; border-radius: 50%;
-    background: var(--online);
-    box-shadow: 0 0 6px var(--online);
+    background: var(--online); box-shadow: 0 0 6px var(--online);
     animation: pulse 2s infinite;
   }
-  @keyframes pulse {
-    0%,100% { opacity: 1; } 50% { opacity: 0.4; }
-  }
-  .hud-center {
-    display: flex; flex-direction: column; align-items: center; gap: 1px;
-  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .hud-center { display: flex; flex-direction: column; align-items: center; gap: 1px; }
   .hud-logo {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.9rem; font-weight: 900;
-    color: var(--cyan);
-    letter-spacing: 0.12em;
-    text-shadow: 0 0 16px var(--cyan), 0 0 32px rgba(0,229,255,0.4);
-    line-height: 1;
+    font-family: 'Orbitron', sans-serif; font-size: 1.9rem; font-weight: 900;
+    color: var(--cyan); letter-spacing: 0.12em;
+    text-shadow: 0 0 16px var(--cyan), 0 0 32px rgba(0,229,255,0.4); line-height: 1;
   }
-  .hud-tagline {
-    font-size: 0.42rem; letter-spacing: 0.22em;
-    color: var(--text-dim); text-align: center; line-height: 1.3;
-  }
-  .hud-right {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-  }
-  #hud-clock {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.05rem; font-weight: 700;
-    color: var(--cyan);
-    letter-spacing: 0.08em;
-    text-shadow: 0 0 8px var(--cyan);
-  }
-  #hud-date {
-    font-size: 0.6rem; letter-spacing: 0.12em;
-    color: var(--text-dim);
-  }
-  #hud-version {
-    font-size: 0.5rem; letter-spacing: 0.12em;
-    color: rgba(0,229,255,0.4);
-  }
+  .hud-tagline { font-size: 0.42rem; letter-spacing: 0.22em; color: var(--text-dim); text-align: center; line-height: 1.3; }
+  .hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  #hud-clock { font-family: 'Orbitron', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--cyan); letter-spacing: 0.08em; text-shadow: 0 0 8px var(--cyan); }
+  #hud-date { font-size: 0.6rem; letter-spacing: 0.12em; color: var(--text-dim); }
+  #hud-version { font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(0,229,255,0.4); }
   .hud-scan-line {
-    height: 2px;
+    height: 2px; flex-shrink: 0;
     background: linear-gradient(90deg, transparent, var(--cyan), transparent);
     animation: scan 3s ease-in-out infinite;
-    flex-shrink: 0;
   }
-  @keyframes scan {
-    0%,100% { opacity: 0.3; transform: scaleX(0.3); }
-    50% { opacity: 1; transform: scaleX(1); }
-  }
+  @keyframes scan { 0%,100%{opacity:0.3;transform:scaleX(0.3)} 50%{opacity:1;transform:scaleX(1)} }
 
-  /* ── CHAT AREA ── */
+  /* CHAT */
   #chat {
-    flex: 1;
-    overflow-y: auto;
-    padding: 14px 12px;
+    flex: 1; overflow-y: auto;
+    padding: 14px 12px 14px;
     display: flex; flex-direction: column; gap: 14px;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
   }
   #chat::-webkit-scrollbar { width: 3px; }
-  #chat::-webkit-scrollbar-track { background: transparent; }
   #chat::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
-
   .msg-row { display: flex; flex-direction: column; gap: 4px; }
   .msg-row.jarvis { align-items: flex-start; }
   .msg-row.user { align-items: flex-end; }
-
-  .msg-sender {
-    font-size: 0.58rem; letter-spacing: 0.2em;
-    color: var(--text-dim); padding: 0 4px;
-  }
+  .msg-sender { font-size: 0.58rem; letter-spacing: 0.2em; color: var(--text-dim); padding: 0 4px; }
   .msg-row.user .msg-sender { color: var(--cyan); }
-
   .msg-bubble {
-    max-width: 85%;
-    padding: 12px 14px;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    line-height: 1.55;
-    position: relative;
+    max-width: 85%; padding: 12px 14px;
+    border-radius: 10px; font-size: 0.9rem; line-height: 1.55; position: relative;
   }
-  .msg-bubble.jarvis-bubble {
-    background: var(--bg-card);
-    border: 1px solid var(--cyan-border);
-    color: var(--text);
-    border-top-left-radius: 2px;
+  .jarvis-bubble {
+    background: var(--bg-card); border: 1px solid var(--cyan-border);
+    color: var(--text); border-top-left-radius: 2px;
     box-shadow: inset 0 0 20px rgba(0,229,255,0.04);
   }
-  .msg-bubble.user-bubble {
-    background: #0a2a3d;
-    border: 1px solid rgba(0,229,255,0.5);
-    color: var(--text);
-    border-bottom-right-radius: 2px;
+  .user-bubble {
+    background: #0a2a3d; border: 1px solid rgba(0,229,255,0.5);
+    color: var(--text); border-bottom-right-radius: 2px;
   }
   .msg-corner {
     position: absolute; top: 6px; right: 8px;
     width: 6px; height: 6px;
-    border-top: 1px solid var(--cyan);
-    border-right: 1px solid var(--cyan);
-    opacity: 0.5;
+    border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); opacity: 0.5;
   }
-  .msg-time {
-    font-size: 0.55rem; letter-spacing: 0.1em;
-    color: rgba(0,229,255,0.35); padding: 0 4px;
-  }
-
-  /* typing indicator */
+  .msg-time { font-size: 0.55rem; letter-spacing: 0.1em; color: rgba(0,229,255,0.35); padding: 0 4px; }
   .typing-bubble {
-    background: var(--bg-card);
-    border: 1px solid var(--cyan-border);
+    background: var(--bg-card); border: 1px solid var(--cyan-border);
     border-radius: 10px; border-top-left-radius: 2px;
-    padding: 14px 18px;
-    display: flex; gap: 6px; align-items: center;
+    padding: 14px 18px; display: flex; gap: 6px; align-items: center;
   }
-  .typing-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--cyan);
-    animation: tdot 1.2s infinite;
-  }
-  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes tdot {
-    0%,60%,100% { opacity: 0.2; transform: scale(0.8); }
-    30% { opacity: 1; transform: scale(1.1); }
-  }
+  .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); animation: tdot 1.2s infinite; }
+  .typing-dot:nth-child(2){animation-delay:0.2s} .typing-dot:nth-child(3){animation-delay:0.4s}
+  @keyframes tdot { 0%,60%,100%{opacity:0.2;transform:scale(0.8)} 30%{opacity:1;transform:scale(1.1)} }
 
-  /* ── INPUT AREA ── */
-  .input-area {
-    flex-shrink: 0;
-    background: linear-gradient(0deg, #041e30 0%, var(--bg) 100%);
-    border-top: 1px solid var(--cyan-border);
-    padding: 10px 8px 14px;
-    display: flex; flex-direction: column; gap: 8px;
-    overflow: hidden;
-  }
-  .input-row {
-    display: flex; gap: 5px; align-items: center;
-  }
-  .icon-btn {
-    flex-shrink: 0;
-    width: 42px; height: 46px;
-    border-radius: 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--cyan-border);
-    color: var(--cyan);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: background 0.15s, box-shadow 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .icon-btn:active, .icon-btn.active {
-    background: var(--cyan-glow);
-    box-shadow: 0 0 12px var(--cyan);
-  }
-  .icon-btn.recording {
-    background: rgba(255,23,68,0.15);
-    border-color: var(--danger);
-    color: var(--danger);
-    box-shadow: 0 0 12px var(--danger);
-    animation: rec-pulse 1s infinite;
-  }
-  @keyframes rec-pulse {
-    0%,100% { box-shadow: 0 0 8px var(--danger); }
-    50% { box-shadow: 0 0 18px var(--danger); }
-  }
-  #msg-input {
-    flex: 1; height: 46px;
-    background: var(--bg-card2);
-    border: 1px solid var(--cyan-border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.85rem;
-    padding: 0 14px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  #msg-input::placeholder { color: rgba(0,229,255,0.35); }
-  #msg-input:focus {
-    border-color: var(--cyan);
-    box-shadow: 0 0 8px var(--cyan-glow);
-  }
-  #send-btn {
-    flex-shrink: 0;
-    height: 46px; padding: 0 13px;
-    background: var(--bg-card);
-    border: 1px solid var(--cyan);
-    border-radius: 8px;
-    color: var(--cyan);
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.12em;
-    cursor: pointer;
-    transition: background 0.15s, box-shadow 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  #send-btn:active {
-    background: var(--cyan-glow);
-    box-shadow: 0 0 14px var(--cyan);
-  }
-
-  .status-bar {
-    display: flex; justify-content: space-between;
-    padding: 0 4px;
-  }
-  .status-item {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 0.55rem; letter-spacing: 0.14em;
-    color: var(--text-dim);
-  }
-  .status-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--online);
-    box-shadow: 0 0 5px var(--online);
-  }
-
-  /* live voice overlay */
+  /* VOICE OVERLAY */
   #voice-overlay {
-    display: none;
-    position: fixed; inset: 0; z-index: 8000;
+    display: none; position: fixed; inset: 0; z-index: 8000;
     background: rgba(0,13,26,0.95);
-    flex-direction: column; align-items: center; justify-content: center;
-    gap: 28px;
+    flex-direction: column; align-items: center; justify-content: center; gap: 28px;
   }
   #voice-overlay.active { display: flex; }
   .voice-ring {
@@ -357,72 +181,95 @@
     display: flex; align-items: center; justify-content: center;
     animation: ring-pulse 1.5s infinite;
   }
-  @keyframes ring-pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.4); }
-    50% { box-shadow: 0 0 0 20px rgba(0,229,255,0); }
-  }
+  @keyframes ring-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,0.4)} 50%{box-shadow:0 0 0 20px rgba(0,229,255,0)} }
   .voice-icon { font-size: 3rem; }
-  .voice-label {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.8rem; letter-spacing: 0.2em;
-    color: var(--cyan);
-  }
-  #voice-transcript {
-    font-size: 0.85rem; color: var(--text);
-    max-width: 80%; text-align: center; min-height: 24px;
-    line-height: 1.5;
-  }
+  .voice-label { font-family:'Orbitron',sans-serif; font-size:0.8rem; letter-spacing:0.2em; color:var(--cyan); }
+  #voice-transcript { font-size:0.85rem; color:var(--text); max-width:80%; text-align:center; min-height:24px; line-height:1.5; }
   .voice-stop {
-    padding: 12px 32px;
-    background: transparent;
-    border: 1px solid var(--danger);
-    border-radius: 8px;
-    color: var(--danger);
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.7rem; letter-spacing: 0.15em;
-    cursor: pointer;
+    padding: 12px 32px; background: transparent;
+    border: 1px solid var(--danger); border-radius: 8px;
+    color: var(--danger); font-family:'Orbitron',sans-serif;
+    font-size:0.7rem; letter-spacing:0.15em; cursor:pointer;
   }
-  /* floating live voice button */
+
+  /* LIVE FAB — round button, no SVG */
   #live-fab {
-    position: fixed;
-    bottom: 90px; right: 14px;
-    width: 48px; height: 48px;
-    border-radius: 50%;
+    position: fixed; bottom: 88px; right: 12px;
+    width: 46px; height: 46px; border-radius: 50%;
     background: var(--bg-card);
-    border: 1.5px solid var(--cyan);
-    color: var(--cyan);
+    border: 2px solid var(--cyan);
+    color: var(--cyan); font-size: 1.25rem;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 0 12px rgba(0,229,255,0.3);
-    transition: background 0.15s, box-shadow 0.15s;
-    z-index: 100;
+    cursor: pointer; z-index: 200;
+    box-shadow: 0 0 10px rgba(0,229,255,0.25);
     -webkit-tap-highlight-color: transparent;
-  }
-  #live-fab:active, #live-fab.active {
-    background: var(--cyan-glow);
-    box-shadow: 0 0 20px var(--cyan);
+    transition: box-shadow 0.15s;
   }
   #live-fab.active {
     border-color: var(--danger);
-    color: var(--danger);
-    box-shadow: 0 0 16px var(--danger);
+    box-shadow: 0 0 14px var(--danger);
     animation: rec-pulse 1s infinite;
   }
+  @keyframes rec-pulse { 0%,100%{box-shadow:0 0 8px var(--danger)} 50%{box-shadow:0 0 20px var(--danger)} }
+
+  /* INPUT AREA */
+  .input-area {
+    flex-shrink: 0;
+    background: linear-gradient(0deg, #041e30 0%, var(--bg) 100%);
+    border-top: 1px solid var(--cyan-border);
+    padding: 8px 8px 12px; display: flex; flex-direction: column; gap: 7px;
+  }
+  .input-row { display: flex; gap: 5px; align-items: center; width: 100%; }
+  .icon-btn {
+    flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--cyan-border);
+    color: var(--cyan); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1.2rem;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .icon-btn:active { background: var(--cyan-glow); box-shadow: 0 0 12px var(--cyan); }
+  .icon-btn.recording {
+    background: rgba(255,23,68,0.15); border-color: var(--danger);
+    color: var(--danger); box-shadow: 0 0 12px var(--danger);
+    animation: rec-pulse 1s infinite;
+  }
+  #msg-input {
+    flex: 1; height: 44px;
+    background: var(--bg-card2); border: 1px solid var(--cyan-border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 0.85rem;
+    padding: 0 12px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-width: 0;
+  }
+  #msg-input::placeholder { color: rgba(0,229,255,0.35); }
+  #msg-input:focus { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+  #send-btn {
+    flex-shrink: 0; height: 44px; padding: 0 12px;
+    background: var(--bg-card); border: 1px solid var(--cyan);
+    border-radius: 8px; color: var(--cyan);
+    font-family: 'Orbitron', sans-serif; font-size: 0.65rem; font-weight: 700;
+    letter-spacing: 0.1em; cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #send-btn:active { background: var(--cyan-glow); box-shadow: 0 0 14px var(--cyan); }
+  .status-bar { display: flex; justify-content: space-between; padding: 0 2px; }
+  .status-item { display: flex; align-items: center; gap: 4px; font-size: 0.52rem; letter-spacing: 0.12em; color: var(--text-dim); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--online); box-shadow: 0 0 5px var(--online); }
 </style>
 </head>
 <body>
 
-<!-- ══ PASSCODE SCREEN ══════════════════════════════════════════════ -->
+<!-- PASSCODE -->
 <div id="passcode-screen">
   <div class="lock-title">JARVIS</div>
   <div class="lock-sub">SECURE ACCESS REQUIRED<br>ENTER 6-DIGIT PASSCODE</div>
-  <div class="pin-dots" id="pin-dots">
-    <div class="pin-dot" id="d0"></div>
-    <div class="pin-dot" id="d1"></div>
-    <div class="pin-dot" id="d2"></div>
-    <div class="pin-dot" id="d3"></div>
-    <div class="pin-dot" id="d4"></div>
-    <div class="pin-dot" id="d5"></div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+    <div class="pin-dot" id="d4"></div><div class="pin-dot" id="d5"></div>
   </div>
   <div class="pin-grid">
     <button class="pin-btn" onclick="pinPress('1')">1</button>
@@ -434,17 +281,15 @@
     <button class="pin-btn" onclick="pinPress('7')">7</button>
     <button class="pin-btn" onclick="pinPress('8')">8</button>
     <button class="pin-btn" onclick="pinPress('9')">9</button>
-    <button class="pin-btn del" onclick="pinClear()">CL</button>
+    <button class="pin-btn fn" onclick="pinClear()">CL</button>
     <button class="pin-btn" onclick="pinPress('0')">0</button>
-    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+    <button class="pin-btn fn" onclick="pinDel()">&#9003;</button>
   </div>
   <div id="pin-error"></div>
 </div>
 
-<!-- ══ MAIN APP ═════════════════════════════════════════════════════ -->
+<!-- APP -->
 <div id="app">
-
-  <!-- Header -->
   <header class="hud-header">
     <div class="hud-status">
       <div class="hud-status-label">SYSTEM<br>STATUS</div>
@@ -462,351 +307,154 @@
   </header>
   <div class="hud-scan-line"></div>
 
-  <!-- Chat -->
   <div id="chat"></div>
 
-  <!-- Voice Overlay -->
   <div id="voice-overlay">
-    <div class="voice-ring"><span class="voice-icon">🎙</span></div>
-    <div class="voice-label">LISTENING…</div>
+    <div class="voice-ring"><span class="voice-icon">&#127897;</span></div>
+    <div class="voice-label">LISTENING&#8230;</div>
     <div id="voice-transcript">Speak now, Sir.</div>
     <button class="voice-stop" onclick="stopLiveVoice()">STOP LISTENING</button>
   </div>
 
-  <!-- Floating Live Voice FAB -->
-  <button id="live-fab" onclick="toggleLiveVoice()" title="Live voice mode">🎙</button>
+  <!-- FAB: plain text emoji, no SVG -->
+  <button id="live-fab" onclick="toggleLiveVoice()" title="Live voice">&#127897;</button>
 
-  <!-- Input -->
   <div class="input-area">
     <div class="input-row">
-      <button class="icon-btn" id="mic-btn" onclick="toggleVoice()" title="Voice input">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2zm-5 9a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7zm0 2v2h-2v-2h2z"/>
-        </svg>
-      </button>
-      <input id="msg-input" type="text" placeholder="Issue command, Sir…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button class="icon-btn" id="mic-btn" onclick="toggleVoice()">&#127908;</button>
+      <input id="msg-input" type="text" placeholder="Issue command, Sir&#8230;" autocomplete="off" autocorrect="off" spellcheck="false"/>
       <button id="send-btn" onclick="sendMessage()">SEND</button>
     </div>
     <div class="status-bar">
       <div class="status-item"><span class="status-dot"></span>GROQ LINK</div>
-      <div class="status-item" id="loc-status"><span class="status-dot"></span>LOC: LOCKING…</div>
+      <div class="status-item" id="loc-status"><span class="status-dot"></span>LOC: LOCKING&#8230;</div>
       <div class="status-item"><span class="status-dot"></span>AES-256 ACTIVE</div>
     </div>
   </div>
 </div>
 
 <script>
-// ══ PASSCODE ══════════════════════════════════════════════════════════
+// PASSCODE
 const CORRECT_PIN = '615113';
 let pinEntry = '';
-
 function pinPress(d) {
-  if (d === '' || pinEntry.length >= 6) return;
-  pinEntry += d;
-  updateDots();
+  if (pinEntry.length >= 6) return;
+  pinEntry += d; updateDots();
   if (pinEntry.length === 6) checkPin();
 }
-function pinDel() {
-  pinEntry = pinEntry.slice(0, -1);
-  updateDots();
-  document.getElementById('pin-error').textContent = '';
-}
-function pinClear() {
-  pinEntry = '';
-  updateDots();
-  document.getElementById('pin-error').textContent = '';
-}
-function updateDots() {
-  for (let i = 0; i < 6; i++) {
-    document.getElementById('d'+i).classList.toggle('filled', i < pinEntry.length);
-  }
-}
+function pinDel() { pinEntry = pinEntry.slice(0,-1); updateDots(); document.getElementById('pin-error').textContent=''; }
+function pinClear() { pinEntry=''; updateDots(); document.getElementById('pin-error').textContent=''; }
+function updateDots() { for(let i=0;i<6;i++) document.getElementById('d'+i).classList.toggle('filled', i<pinEntry.length); }
 function checkPin() {
   if (pinEntry === CORRECT_PIN) {
-    document.getElementById('passcode-screen').style.display = 'none';
+    document.getElementById('passcode-screen').style.display='none';
     document.getElementById('app').classList.add('unlocked');
     startClock(); getLocation(); boot();
   } else {
-    document.getElementById('pin-error').textContent = 'INVALID PASSCODE — ACCESS DENIED';
-    pinEntry = '';
-    updateDots();
+    document.getElementById('pin-error').textContent='INVALID PASSCODE — ACCESS DENIED';
+    pinEntry=''; updateDots();
   }
 }
 
-// ══ CLOCK ════════════════════════════════════════════════════════════
+// CLOCK
 function startClock() {
   function tick() {
     const now = new Date();
-    const t = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Africa/Lagos' });
-    const d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric', timeZone:'Africa/Lagos' }).toUpperCase();
-    document.getElementById('hud-clock').textContent = t;
-    document.getElementById('hud-date').textContent = d;
+    document.getElementById('hud-clock').textContent = now.toLocaleTimeString('en-US',{hour12:false,timeZone:'Africa/Lagos'});
+    document.getElementById('hud-date').textContent = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Africa/Lagos'}).toUpperCase();
   }
-  tick(); setInterval(tick, 1000);
+  tick(); setInterval(tick,1000);
 }
 
-// ══ LOCATION ═════════════════════════════════════════════════════════
-let userLocation = null;
-let userWeather = null;
-
+// LOCATION & WEATHER
+let userLocation=null, userWeather=null;
 function getLocation() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(async pos => {
-    const { latitude: lat, longitude: lon } = pos.coords;
+    const {latitude:lat, longitude:lon} = pos.coords;
     try {
       const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
       const j = await r.json();
-      const city = j.address.city || j.address.town || j.address.village || 'Unknown';
-      const country = j.address.country || '';
-      userLocation = { lat, lon, city, country };
-      document.getElementById('loc-status').innerHTML = `<span class="status-dot"></span>LOC: LOCKED`;
-      getWeather(lat, lon);
+      userLocation = {lat,lon,city:j.address.city||j.address.town||j.address.village||'Unknown',country:j.address.country||''};
+      document.getElementById('loc-status').innerHTML='<span class="status-dot"></span>LOC: LOCKED';
+      getWeather(lat,lon);
     } catch {}
-  }, () => {
-    document.getElementById('loc-status').innerHTML = `<span class="status-dot"></span>LOC: OFFLINE`;
-  });
+  }, () => { document.getElementById('loc-status').innerHTML='<span class="status-dot"></span>LOC: OFFLINE'; });
 }
-
-async function getWeather(lat, lon) {
+async function getWeather(lat,lon) {
   try {
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
     const j = await r.json();
-    const temp = j.current_weather?.temperature;
-    const wmo = j.current_weather?.weathercode;
-    const desc = wmoDesc(wmo);
-    userWeather = { temp, description: desc };
+    userWeather = {temp:j.current_weather?.temperature, description:wmoDesc(j.current_weather?.weathercode)};
   } catch {}
 }
-
-function wmoDesc(code) {
-  if (code === 0) return 'Clear sky';
-  if (code <= 2) return 'Partly cloudy';
-  if (code <= 3) return 'Overcast';
-  if (code <= 67) return 'Rainy';
-  if (code <= 77) return 'Snow';
-  if (code <= 99) return 'Thunderstorm';
-  return 'Unknown';
+function wmoDesc(c) {
+  if(c===0) return 'Clear sky'; if(c<=2) return 'Partly cloudy'; if(c<=3) return 'Overcast';
+  if(c<=67) return 'Rainy'; if(c<=77) return 'Snow'; if(c<=99) return 'Thunderstorm'; return 'Unknown';
 }
 
-// ══ CHAT STATE ════════════════════════════════════════════════════════
-const conversationHistory = [];
-
-function getTime() {
-  return new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false, timeZone: 'Africa/Lagos' });
+// CHAT
+const conversationHistory=[];
+function getTime() { return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Africa/Lagos'}); }
+function addMessage(role,text) {
+  const chat=document.getElementById('chat');
+  const row=document.createElement('div'); row.className=`msg-row ${role}`;
+  const sender=document.createElement('div'); sender.className='msg-sender';
+  sender.textContent=role==='jarvis'?'JARVIS':'BOSS MUHAMMED AALI';
+  const bubble=document.createElement('div'); bubble.className=`msg-bubble ${role}-bubble`;
+  bubble.textContent=text;
+  if(role==='jarvis'){const c=document.createElement('div');c.className='msg-corner';bubble.appendChild(c);}
+  const t=document.createElement('div'); t.className='msg-time'; t.textContent=getTime();
+  row.appendChild(sender); row.appendChild(bubble); row.appendChild(t);
+  chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
 }
-
-function addMessage(role, text) {
-  const chat = document.getElementById('chat');
-  const row = document.createElement('div');
-  row.className = `msg-row ${role}`;
-
-  const sender = document.createElement('div');
-  sender.className = 'msg-sender';
-  sender.textContent = role === 'jarvis' ? 'JARVIS' : 'BOSS MUHAMMED AALI';
-
-  const bubble = document.createElement('div');
-  bubble.className = `msg-bubble ${role}-bubble`;
-  bubble.textContent = text;
-
-  if (role === 'jarvis') {
-    const corner = document.createElement('div');
-    corner.className = 'msg-corner';
-    bubble.appendChild(corner);
-  }
-
-  const timeEl = document.createElement('div');
-  timeEl.className = 'msg-time';
-  timeEl.textContent = getTime();
-
-  row.appendChild(sender);
-  row.appendChild(bubble);
-  row.appendChild(timeEl);
-  chat.appendChild(row);
-  chat.scrollTop = chat.scrollHeight;
-  return bubble;
-}
-
 function showTyping() {
-  const chat = document.getElementById('chat');
-  const row = document.createElement('div');
-  row.className = 'msg-row jarvis';
-  row.id = 'typing-row';
-
-  const sender = document.createElement('div');
-  sender.className = 'msg-sender';
-  sender.textContent = 'JARVIS';
-
-  const bubble = document.createElement('div');
-  bubble.className = 'typing-bubble';
-  bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-
-  row.appendChild(sender);
-  row.appendChild(bubble);
-  chat.appendChild(row);
-  chat.scrollTop = chat.scrollHeight;
+  const chat=document.getElementById('chat');
+  const row=document.createElement('div'); row.className='msg-row jarvis'; row.id='typing-row';
+  const sender=document.createElement('div'); sender.className='msg-sender'; sender.textContent='JARVIS';
+  const bubble=document.createElement('div'); bubble.className='typing-bubble';
+  bubble.innerHTML='<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  row.appendChild(sender); row.appendChild(bubble); chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
 }
+function removeTyping() { const el=document.getElementById('typing-row'); if(el) el.remove(); }
 
-function removeTyping() {
-  const el = document.getElementById('typing-row');
-  if (el) el.remove();
-}
-
-// ══ SEND / RECEIVE ════════════════════════════════════════════════════
+// SEND
 async function sendMessage(text) {
-  const input = document.getElementById('msg-input');
-  const msg = (text || input.value).trim();
-  if (!msg) return;
-  input.value = '';
-
-  addMessage('user', msg);
-  conversationHistory.push({ role: 'user', content: msg });
+  const input=document.getElementById('msg-input');
+  const msg=(text||input.value).trim(); if(!msg) return;
+  input.value='';
+  addMessage('user',msg);
+  conversationHistory.push({role:'user',content:msg});
   showTyping();
-
   try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-      body: JSON.stringify({
-        messages: conversationHistory,
-        location: userLocation,
-        weather: userWeather,
-      })
+    const res=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},
+      body:JSON.stringify({messages:conversationHistory,location:userLocation,weather:userWeather})
     });
-
-    const data = await res.json();
-    removeTyping();
-
-    const reply = data.reply || "I didn't receive a response, Sir.";
-    addMessage('jarvis', reply);
-    conversationHistory.push({ role: 'assistant', content: reply });
+    const data=await res.json(); removeTyping();
+    const reply=data.reply||"I didn't receive a response, Sir.";
+    addMessage('jarvis',reply);
+    conversationHistory.push({role:'assistant',content:reply});
     speak(reply);
-  } catch (err) {
+  } catch {
     removeTyping();
-    const errMsg = "Connection lost, Sir. Please check your network.";
-    addMessage('jarvis', errMsg);
-    speak(errMsg);
+    const e="Connection lost, Sir. Please check your network.";
+    addMessage('jarvis',e); speak(e);
   }
 }
-
-// Enter key
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('msg-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') sendMessage();
-  });
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('msg-input').addEventListener('keydown',e=>{ if(e.key==='Enter') sendMessage(); });
 });
 
-// ══ BOOT MESSAGE ══════════════════════════════════════════════════════
+// BOOT
 function boot() {
-  const hour = new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Africa/Lagos' });
-  const h = parseInt(hour);
-  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const msg = `${greeting}, Boss Muhammed Aali. I'm JARVIS, your personal AI assistant, here to help you with any information or tasks you need assistance with, Sir.`;
-  addMessage('jarvis', msg);
-  conversationHistory.push({ role: 'assistant', content: msg });
-  setTimeout(() => speak(msg), 600);
+  const h=parseInt(new Date().toLocaleString('en-US',{hour:'numeric',hour12:false,timeZone:'Africa/Lagos'}));
+  const greeting=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  const msg=`${greeting}, Boss Muhammed Aali. I'm JARVIS, your personal AI assistant, here to help you with any information or tasks you need assistance with, Sir.`;
+  addMessage('jarvis',msg);
+  conversationHistory.push({role:'assistant',content:msg});
+  setTimeout(()=>speak(msg),600);
 }
 
-// ══ TTS (Female voice) ════════════════════════════════════════════════
-let ttsEnabled = true;
-function speak(text) {
-  if (!ttsEnabled || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const clean = text.replace(/[*_`#]/g, '');
-  const utter = new SpeechSynthesisUtterance(clean);
-  utter.rate = 0.95; utter.pitch = 1.1; utter.volume = 1;
-
-  function setVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    const female = voices.find(v =>
-      /female|woman|zira|samantha|karen|moira|tessa|victoria|google uk english female/i.test(v.name)
-    ) || voices.find(v => v.lang === 'en-US') || voices[0];
-    if (female) utter.voice = female;
-    window.speechSynthesis.speak(utter);
-  }
-
-  if (window.speechSynthesis.getVoices().length) setVoice();
-  else { window.speechSynthesis.onvoiceschanged = setVoice; }
-}
-
-// ══ VOICE INPUT ═══════════════════════════════════════════════════════
-let recognition = null;
-let isRecording = false;
-
-function toggleVoice() {
-  if (isRecording) { stopVoice(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMessage('jarvis', "Voice recognition is not supported in this browser, Sir."); return; }
-
-  recognition = new SR();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  recognition.onresult = e => {
-    const text = e.results[0][0].transcript;
-    document.getElementById('msg-input').value = text;
-    sendMessage(text);
-  };
-  recognition.onerror = () => stopVoice();
-  recognition.onend = () => stopVoice();
-
-  recognition.start();
-  isRecording = true;
-  document.getElementById('mic-btn').classList.add('recording');
-}
-
-function stopVoice() {
-  if (recognition) { try { recognition.stop(); } catch {} recognition = null; }
-  isRecording = false;
-  document.getElementById('mic-btn').classList.remove('recording');
-}
-
-// ══ LIVE VOICE MODE ═══════════════════════════════════════════════════
-let liveRecognition = null;
-let isLiveActive = false;
-
-function toggleLiveVoice() {
-  if (isLiveActive) { stopLiveVoice(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMessage('jarvis', "Live voice not supported in this browser, Sir."); return; }
-
-  document.getElementById('voice-overlay').classList.add('active');
-  document.getElementById('live-fab').classList.add('active');
-  isLiveActive = true;
-
-  liveRecognition = new SR();
-  liveRecognition.lang = 'en-US';
-  liveRecognition.continuous = true;
-  liveRecognition.interimResults = true;
-
-  liveRecognition.onresult = e => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    document.getElementById('voice-transcript').textContent = interim || final || 'Speak now, Sir.';
-    if (final.trim()) {
-      document.getElementById('voice-transcript').textContent = final.trim();
-      sendMessage(final.trim());
-    }
-  };
-  liveRecognition.onerror = () => stopLiveVoice();
-  liveRecognition.start();
-}
-
-function stopLiveVoice() {
-  if (liveRecognition) { try { liveRecognition.stop(); } catch {} liveRecognition = null; }
-  isLiveActive = false;
-  document.getElementById('voice-overlay').classList.remove('active');
-  document.getElementById('live-fab').classList.remove('active');
-  document.getElementById('voice-transcript').textContent = 'Speak now, Sir.';
-}
-
-// ══ SERVICE WORKER ════════════════════════════════════════════════════
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
-</script>
-</body>
-</html>
+ 
