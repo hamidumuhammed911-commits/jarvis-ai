@@ -1,100 +1,18 @@
-// JARVIS api/chat.js — V4.3.1
-// Fixes: "Systems nominal" ghost cache + Upstash Redis memory (save & recall)
-
-export const config = { runtime: "edge" };
-
-const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
-const UPSTASH_URL = process.env.KV_REST_API_URL;
-const UPSTASH_TOKEN = process.env.KV_REST_API_TOKEN;
-const MEMORY_KEY = "jarvis:memory:boss";
-const MAX_MEMORY_ITEMS = 30;
-
-// ── Upstash helpers ──────────────────────────────────────────────────────────
-
-async function memoryGet() {
-  try {
-    const res = await fetch(`${UPSTASH_URL}/get/${MEMORY_KEY}`, {
-      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
-    });
-    const json = await res.json();
-    if (!json.result) return [];
-    return JSON.parse(json.result);
-  } catch {
-    return [];
-  }
-}
-
-async function memorySet(items) {
-  try {
-    await fetch(`${UPSTASH_URL}/set/${MEMORY_KEY}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${UPSTASH_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(JSON.stringify(items.slice(-MAX_MEMORY_ITEMS))),
-    });
-  } catch {
-    // silent fail — never crash the response over memory
-  }
-}
-
-// ── Memory extraction from user message ─────────────────────────────────────
-
-function extractMemoryIntent(text) {
-  const lower = text.toLowerCase();
-  const savePatterns = [
-    /remember (?:that )?(.+)/i,
-    /note (?:that )?(.+)/i,
-    /don['']?t forget (?:that )?(.+)/i,
-    /store (?:that )?(.+)/i,
-    /keep in mind (?:that )?(.+)/i,
-  ];
-  for (const pattern of savePatterns) {
-    const m = text.match(pattern);
-    if (m) return { action: "save", fact: m[1].trim() };
-  }
-  if (/what do you (remember|know) about me/i.test(lower) ||
-      /recall|my memories|what have i told you/i.test(lower)) {
-    return { action: "recall" };
-  }
-  if (/forget everything|clear (?:my )?memory|reset memory/i.test(lower)) {
-    return { action: "clear" };
-  }
-  return null;
-}
-
-// ── Nigeria time helper ──────────────────────────────────────────────────────
-
-function getNigeriaTime() {
-  return new Date().toLocaleString("en-US", {
-    timeZone: "Africa/Lagos",
-    weekday: "long", year: "numeric", month: "long",
-    day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
-// ── Main handler ─────────────────────────────────────────────────────────────
+// api/chat.js — JARVIS AI Chat Handler V4.3.2 (Streaming + Image Gen)
+export const config = { runtime: "edge" }; // Edge runtime = faster cold starts
 
 export default async function handler(req) {
-  // Hard-block caching at every layer
-  const corsHeaders = {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-    "Pragma": "no-cache",
-    "Surrogate-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders(),
+    });
   }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405, headers: corsHeaders,
+      status: 405,
+      headers: { ...corsHeaders(), "Content-Type": "application/json" },
     });
   }
 
@@ -102,10 +20,117 @@ export default async function handler(req) {
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400, headers: corsHeaders,
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { ...corsHeaders(), "Content-Type": "application/json" },
     });
   }
+
+  const {
+    messages = [],
+    location = null,
+    weather = null,
+    memory = "",
+    stream = true, // default to streaming
+  } = body;
+
+  // Nigeria time
+  const now = new Date().toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    dateStyle: "full",
+    timeStyle: "medium",
+  });
+
+  // System prompt
+  const systemPrompt = `You are JARVIS — an advanced AI assistant built for Boss Muhammed Aali. Always address him as "Sir" or "Boss". You are intelligent, precise, and loyal, modeled after Tony Stark's JARVIS.
+
+Current Nigeria Time (Africa/Lagos): ${now}
+${location ? `Boss Location: ${location}` : ""}
+${weather ? `Current Weather: ${weather}` : ""}
+${memory ? `Memory about Boss: ${memory}` : ""}
+
+Rules:
+- Be concise but thorough. No fluff.
+- For image requests, respond ONLY with: IMAGE_GEN::prompt here (extract the image description)
+- For time questions, use the Nigeria time above.
+- If asked to search the web, respond with: SEARCH::[query]
+- Be proactive and suggest follow-ups when helpful.
+- Speak with confidence like JARVIS from Iron Man.`;
+
+  const groqMessages = [
+    { role: "system", content: systemPrompt },
+    ...messages.slice(-12), // keep last 12 messages for context, faster
+  ];
+
+  const GROQ_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_KEY) {
+    return new Response(JSON.stringify({ error: "GROQ_API_KEY not set" }), {
+      status: 500,
+      headers: { ...corsHeaders(), "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: groqMessages,
+        max_tokens: 700, // reduced for speed
+        temperature: 0.65,
+        stream: stream,
+      }),
+    });
+
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      console.error("Groq error:", err);
+      return new Response(JSON.stringify({ error: "Groq API error", detail: err }), {
+        status: 502,
+        headers: { ...corsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+
+    if (stream) {
+      // Stream the response directly to client
+      return new Response(groqRes.body, {
+        status: 200,
+        headers: {
+          ...corsHeaders(),
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    } else {
+      // Non-streaming fallback
+      const data = await groqRes.json();
+      const reply = data.choices?.[0]?.message?.content || "No response.";
+      return new Response(JSON.stringify({ reply }), {
+        status: 200,
+        headers: { ...corsHeaders(), "Content-Type": "application/json" },
+      });
+    }
+  } catch (err) {
+    console.error("Chat handler error:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders(), "Content-Type": "application/json" },
+    });
+  }
+}
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}  }
 
   const { messages = [], location, weather } = body;
   const userMessage = messages.findLast(m => m.role === "user")?.content || "";
