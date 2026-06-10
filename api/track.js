@@ -114,4 +114,4 @@ function parseUA(ua) {
   else if (/Safari\/([\d]+)/.test(ua))  browser = `Safari`;
 
   return `${os} / ${browser}`;
-                
+}
