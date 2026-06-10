@@ -1,8 +1,8 @@
-// JARVIS Service Worker — V4.3.1
+// JARVIS Service Worker — V4.3.2
 // KEY FIX: API routes (/api/*) are NEVER cached — always network-only.
 // This eliminates the "Systems nominal" ghost response bug.
 
-const CACHE_NAME = "jarvis-v4.3.1";
+const CACHE_NAME = "jarvis-v4.3.2";
 
 // Static assets that are safe to cache
 const STATIC_ASSETS = [
