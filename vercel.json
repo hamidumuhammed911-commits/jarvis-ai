@@ -1,36 +1,29 @@
+
 {
-  "version": 2,
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/api/$1",
+      "headers": {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Surrogate-Control": "no-store"
+      }
     }
   ],
   "headers": [
     {
-      "source": "/sw.js",
+      "source": "/api/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache"
-        },
-        {
-          "key": "Service-Worker-Allowed",
-          "value": "/"
-        }
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
+        { "key": "Pragma", "value": "no-cache" }
       ]
     },
     {
-      "source": "/api/(.*)",
+      "source": "/sw.js",
       "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
+        { "key": "Cache-Control", "value": "no-cache, max-age=0" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
       ]
     }
   ]
