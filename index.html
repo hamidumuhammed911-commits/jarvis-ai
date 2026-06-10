@@ -38,13 +38,11 @@ html, body {
   background: var(--bg);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 14px;
-  padding: 8px 0;
-  overflow: hidden;
+  gap: 24px;
 }
 .lock-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.9rem; font-weight: 900;
+  font-size: 2.2rem; font-weight: 900;
   color: var(--cyan);
   text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan);
   letter-spacing: 0.15em;
@@ -53,16 +51,16 @@ html, body {
   font-size: 0.72rem; letter-spacing: 0.2em;
   color: var(--text-dim); text-align: center; line-height: 1.6;
 }
-.pin-dots { display: flex; gap: 12px; }
+.pin-dots { display: flex; gap: 14px; }
 .pin-dot {
   width: 16px; height: 16px; border-radius: 50%;
   border: 2px solid var(--cyan); background: transparent;
   transition: background 0.15s, box-shadow 0.15s;
 }
-.pin-dot.filled { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.pin-dot.filled { background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
 .pin-grid {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 8px; width: min(280px, 88vw);
+  gap: 12px; width: 260px;
 }
 .pin-btn {
   background: var(--bg-card);
@@ -70,18 +68,20 @@ html, body {
   color: var(--cyan);
   font-family: 'Orbitron', sans-serif;
   font-size: 1.3rem; font-weight: 700;
-  padding: 14px 0; border-radius: 10px;
+  padding: 18px 0; border-radius: 10px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   line-height: 1;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
   user-select: none; -webkit-user-select: none;
 }
-.pin-btn:active { background: var(--cyan-glow); box-shadow: 0 0 14px var(--cyan); }
+.pin-btn:active { background: var(--cyan-glow); border-color: var(--cyan); box-shadow: 0 0 14px var(--cyan); }
 .pin-btn.fn {
-  font-size: 0 !important;
-  color: transparent !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.06em;
+  color: var(--cyan) !important;
+  font-weight: 700 !important;
 }
 #pin-error {
   color: var(--danger); font-size: 0.72rem;
@@ -212,10 +212,10 @@ html, body {
   margin:  0 !important;
   color: var(--cyan);
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.5rem !important;
+  font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  line-height: 1 !important;
+  line-height: 1;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -223,11 +223,9 @@ html, body {
   cursor: pointer;
   box-shadow: 0 0 10px rgba(0,229,255,0.3);
   -webkit-tap-highlight-color: transparent;
-  transition: box-shadow 0.15s, border-color 0.15s;
-  /* Kill any inherited pseudo content causing chevron */
-  text-indent: 0 !important;
-  word-spacing: normal !important;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
 }
+#live-fab:active { transform: scale(0.92); }
 #live-fab::before, #live-fab::after { display: none !important; content: none !important; }
 #live-fab.active {
   border-color: var(--danger) !important;
@@ -281,6 +279,7 @@ html, body {
 .status-bar { display: flex; justify-content: space-between; padding: 0 2px; }
 .status-item { display: flex; align-items: center; gap: 4px; font-size: 0.52rem; letter-spacing: 0.12em; color: var(--text-dim); }
 .status-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--online); box-shadow: 0 0 5px var(--online); }
+.status-dot.offline { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
 </style>
 </head>
 <body>
@@ -345,7 +344,7 @@ html, body {
     <button class="voice-stop" onclick="stopLiveVoice()">STOP LISTENING</button>
   </div>
 
-  <button id="live-fab" onclick="toggleLiveVoice()" title="Live voice" aria-label="Live voice"><span style="display:block;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;color:#00e5ff;line-height:1;pointer-events:none;letter-spacing:0.05em;">LIVE</span></button>
+  <button id="live-fab" onclick="toggleLiveVoice()" title="Live voice" aria-label="Live voice">LIVE</button>
 
   <div class="input-area">
     <div class="input-row">
@@ -395,7 +394,7 @@ function checkPin() {
     startClock();
     getLocation();
     boot();
-    sendTrackAlert(); /* TELEGRAM ALERT FIRES HERE ON UNLOCK */
+    sendTrackAlert();
   } else {
     document.getElementById('pin-error').textContent = 'INVALID PASSCODE — ACCESS DENIED';
     pinEntry = '';
@@ -419,11 +418,18 @@ function startClock() {
 let userLocation = null, userWeather = null;
 
 function getLocation() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    document.getElementById('loc-status').innerHTML = '<span class="status-dot offline"></span>LOC: UNSUPPORTED';
+    return;
+  }
+  
   navigator.geolocation.getCurrentPosition(async pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      // Added User-Agent and structured headers to prevent Nominatim endpoint from rejecting requests from Android WebViews
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'JARVIS-PWA-V4' }
+      });
       const j = await r.json();
       userLocation = {
         lat, lon,
@@ -432,10 +438,14 @@ function getLocation() {
       };
       document.getElementById('loc-status').innerHTML = '<span class="status-dot"></span>LOC: LOCKED';
       getWeather(lat, lon);
-    } catch {}
+    } catch (err) {
+      // Fallback display if Nominatim is completely down but coordinates exist
+      document.getElementById('loc-status').innerHTML = `<span class="status-dot"></span>LOC: GPS OK`;
+      getWeather(lat, lon);
+    }
   }, () => {
-    document.getElementById('loc-status').innerHTML = '<span class="status-dot"></span>LOC: OFFLINE';
-  });
+    document.getElementById('loc-status').innerHTML = '<span class="status-dot offline"></span>LOC: OFFLINE';
+  }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
 async function getWeather(lat, lon) {
@@ -491,188 +501,3 @@ function addMessage(role, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function showTyping() {
-  const chat = document.getElementById('chat');
-  const row = document.createElement('div');
-  row.className = 'msg-row jarvis';
-  row.id = 'typing-row';
-  const sender = document.createElement('div');
-  sender.className = 'msg-sender';
-  sender.textContent = 'JARVIS';
-  const bubble = document.createElement('div');
-  bubble.className = 'typing-bubble';
-  bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
-  row.appendChild(sender);
-  row.appendChild(bubble);
-  chat.appendChild(row);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function removeTyping() {
-  const el = document.getElementById('typing-row');
-  if (el) el.remove();
-}
-
-/* ── SEND MESSAGE ── */
-async function sendMessage(text) {
-  const input = document.getElementById('msg-input');
-  const msg = (text || input.value).trim();
-  if (!msg) return;
-  input.value = '';
-  addMessage('user', msg);
-  conversationHistory.push({ role: 'user', content: msg });
-  showTyping();
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-      body: JSON.stringify({ messages: conversationHistory, location: userLocation, weather: userWeather })
-    });
-    const data = await res.json();
-    removeTyping();
-    const reply = data.reply || "I didn't receive a response, Sir.";
-    addMessage('jarvis', reply);
-    conversationHistory.push({ role: 'assistant', content: reply });
-    speak(reply);
-  } catch {
-    removeTyping();
-    const e = "Connection lost, Sir. Please check your network.";
-    addMessage('jarvis', e);
-    speak(e);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('msg-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') sendMessage();
-  });
-});
-
-/* ── BOOT GREETING ── */
-function boot() {
-  const h = parseInt(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Africa/Lagos' }));
-  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const msg = `${greeting}, Boss Muhammed Aali. I'm JARVIS, your personal AI assistant, here to help you with any information or tasks you need assistance with, Sir.`;
-  addMessage('jarvis', msg);
-  conversationHistory.push({ role: 'assistant', content: msg });
-  setTimeout(() => speak(msg), 600);
-}
-
-/* ── TELEGRAM ACCESS ALERT ── */
-async function sendTrackAlert() {
-  try {
-    const body = { source: 'passcode-unlock' };
-    if (userLocation) {
-      body.city    = userLocation.city;
-      body.country = userLocation.country;
-      body.lat     = userLocation.lat;
-      body.lon     = userLocation.lon;
-    }
-    await fetch('/api/track', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body)
-    });
-  } catch (e) {
-    console.warn('[track] alert failed:', e.message);
-  }
-}
-
-/* ── TTS ── */
-let ttsEnabled = true;
-
-function speak(text) {
-  if (!ttsEnabled || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const clean = text.replace(/[*_`#]/g, '');
-  const utter = new SpeechSynthesisUtterance(clean);
-  utter.rate = 0.88; utter.pitch = 0.6; utter.volume = 1;
-  function setVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    const male =
-      voices.find(v => /daniel|george|james|uk english male/i.test(v.name) && /en/i.test(v.lang)) ||
-      voices.find(v => /male|man|david|mark|richard|alex|google uk english male/i.test(v.name)) ||
-      voices.find(v => /en-GB/i.test(v.lang)) ||
-      voices.find(v => /en-US/i.test(v.lang)) ||
-      voices[0];
-    if (male) utter.voice = male;
-    window.speechSynthesis.speak(utter);
-  }
-  if (window.speechSynthesis.getVoices().length) setVoice();
-  else window.speechSynthesis.onvoiceschanged = setVoice;
-}
-
-/* ── VOICE INPUT ── */
-let recognition = null, isRecording = false;
-
-function toggleVoice() {
-  if (isRecording) { stopVoice(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMessage('jarvis', 'Voice recognition not supported, Sir.'); return; }
-  recognition = new SR();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  recognition.onresult = e => {
-    const t = e.results[0][0].transcript;
-    document.getElementById('msg-input').value = t;
-    sendMessage(t);
-  };
-  recognition.onerror = () => stopVoice();
-  recognition.onend   = () => stopVoice();
-  recognition.start();
-  isRecording = true;
-  document.getElementById('mic-btn').classList.add('recording');
-}
-
-function stopVoice() {
-  if (recognition) { try { recognition.stop(); } catch {} recognition = null; }
-  isRecording = false;
-  document.getElementById('mic-btn').classList.remove('recording');
-}
-
-/* ── LIVE VOICE MODE ── */
-let liveRecognition = null, isLiveActive = false;
-
-function toggleLiveVoice() {
-  if (isLiveActive) { stopLiveVoice(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMessage('jarvis', 'Live voice not supported, Sir.'); return; }
-  document.getElementById('voice-overlay').classList.add('active');
-  document.getElementById('live-fab').classList.add('active');
-  isLiveActive = true;
-  liveRecognition = new SR();
-  liveRecognition.lang = 'en-US';
-  liveRecognition.continuous = true;
-  liveRecognition.interimResults = true;
-  liveRecognition.onresult = e => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    document.getElementById('voice-transcript').textContent = interim || final || 'Speak now, Sir.';
-    if (final.trim()) {
-      document.getElementById('voice-transcript').textContent = final.trim();
-      sendMessage(final.trim());
-    }
-  };
-  liveRecognition.onerror = () => stopLiveVoice();
-  liveRecognition.start();
-}
-
-function stopLiveVoice() {
-  if (liveRecognition) { try { liveRecognition.stop(); } catch {} liveRecognition = null; }
-  isLiveActive = false;
-  document.getElementById('voice-overlay').classList.remove('active');
-  document.getElementById('live-fab').classList.remove('active');
-  document.getElementById('voice-transcript').textContent = 'Speak now, Sir.';
-}
-
-/* ── SERVICE WORKER ── */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
-</script>
-</body>
-</html>
