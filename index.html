@@ -1,1668 +1,782 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>JARVIS AI Assistant | Tony Stark's Personal AI</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#000d1a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>JARVIS</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #0a0e1a 0%, #0f1420 50%, #1a1f2e 100%);
-            min-height: 100vh;
-            color: #e0e4f0;
-            overflow-x: hidden;
-        }
+  :root {
+    --cyan: #00e5ff;
+    --cyan-dim: #0097a7;
+    --cyan-glow: rgba(0,229,255,0.15);
+    --cyan-border: rgba(0,229,255,0.35);
+    --bg: #020e18;
+    --bg-card: #041624;
+    --bg-card2: #031120;
+    --text: #e0f7fa;
+    --text-dim: #4fc3f7;
+    --danger: #ff1744;
+    --online: #00e676;
+  }
 
-        /* Animated Background */
-        .bg-animation {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            overflow: hidden;
-        }
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-        .circle {
-            position: absolute;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, rgba(0, 255, 255, 0) 70%);
-            animation: float 20s infinite ease-in-out;
-        }
+  /* ── PASSCODE SCREEN ── */
+  #passcode-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 28px;
+  }
+  #passcode-screen .lock-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem; font-weight: 900;
+    color: var(--cyan);
+    text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan);
+    letter-spacing: 0.15em;
+  }
+  #passcode-screen .lock-sub {
+    font-size: 0.75rem; letter-spacing: 0.2em;
+    color: var(--text-dim); text-align: center;
+  }
+  .pin-dots {
+    display: flex; gap: 14px;
+  }
+  .pin-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--cyan);
+    background: transparent;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .pin-dot.filled {
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+  }
+  .pin-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; width: 240px;
+  }
+  .pin-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--cyan-border);
+    color: var(--cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem; font-weight: 700;
+    padding: 18px 0; border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pin-btn:active { background: var(--cyan-glow); box-shadow: 0 0 12px var(--cyan); }
+  .pin-btn.del { font-size: 1rem; }
+  #pin-error {
+    color: var(--danger); font-size: 0.75rem;
+    letter-spacing: 0.15em; min-height: 18px;
+  }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-        }
+  /* ── MAIN APP ── */
+  #app {
+    display: none;
+    flex-direction: column;
+    height: 100vh; height: 100dvh;
+    width: 100%;
+    position: relative;
+  }
+  #app.unlocked { display: flex; }
 
-        /* Main Container */
-        .app-container {
-            position: relative;
-            z-index: 1;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+  /* ── HEADER ── */
+  .hud-header {
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #041e30 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--cyan-border);
+    padding: 10px 14px 8px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+    gap: 4px;
+  }
+  .hud-status {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .hud-status-label {
+    font-size: 0.55rem; letter-spacing: 0.18em;
+    color: var(--text-dim); line-height: 1.2;
+  }
+  .hud-online {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.65rem; letter-spacing: 0.15em;
+    color: var(--online); font-weight: 600;
+  }
+  .hud-online-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--online);
+    box-shadow: 0 0 6px var(--online);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+  .hud-center {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+  }
+  .hud-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.9rem; font-weight: 900;
+    color: var(--cyan);
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 16px var(--cyan), 0 0 32px rgba(0,229,255,0.4);
+    line-height: 1;
+  }
+  .hud-tagline {
+    font-size: 0.42rem; letter-spacing: 0.22em;
+    color: var(--text-dim); text-align: center; line-height: 1.3;
+  }
+  .hud-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  }
+  #hud-clock {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 8px var(--cyan);
+  }
+  #hud-date {
+    font-size: 0.6rem; letter-spacing: 0.12em;
+    color: var(--text-dim);
+  }
+  #hud-version {
+    font-size: 0.5rem; letter-spacing: 0.12em;
+    color: rgba(0,229,255,0.4);
+  }
+  .hud-scan-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    animation: scan 3s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes scan {
+    0%,100% { opacity: 0.3; transform: scaleX(0.3); }
+    50% { opacity: 1; transform: scaleX(1); }
+  }
 
-        /* Header */
-        .header {
-            background: rgba(10, 14, 26, 0.8);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 20px 30px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(0, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
+  /* ── CHAT AREA ── */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 12px;
+    display: flex; flex-direction: column; gap: 14px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  #chat::-webkit-scrollbar { width: 3px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
 
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+  .msg-row { display: flex; flex-direction: column; gap: 4px; }
+  .msg-row.jarvis { align-items: flex-start; }
+  .msg-row.user { align-items: flex-end; }
 
-        .jarvis-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #00d4ff, #0066ff);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            animation: pulse 2s infinite;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
-        }
+  .msg-sender {
+    font-size: 0.58rem; letter-spacing: 0.2em;
+    color: var(--text-dim); padding: 0 4px;
+  }
+  .msg-row.user .msg-sender { color: var(--cyan); }
 
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
-            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); }
-        }
+  .msg-bubble {
+    max-width: 85%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    position: relative;
+  }
+  .msg-bubble.jarvis-bubble {
+    background: var(--bg-card);
+    border: 1px solid var(--cyan-border);
+    color: var(--text);
+    border-top-left-radius: 2px;
+    box-shadow: inset 0 0 20px rgba(0,229,255,0.04);
+  }
+  .msg-bubble.user-bubble {
+    background: #0a2a3d;
+    border: 1px solid rgba(0,229,255,0.5);
+    color: var(--text);
+    border-bottom-right-radius: 2px;
+  }
+  .msg-corner {
+    position: absolute; top: 6px; right: 8px;
+    width: 6px; height: 6px;
+    border-top: 1px solid var(--cyan);
+    border-right: 1px solid var(--cyan);
+    opacity: 0.5;
+  }
+  .msg-time {
+    font-size: 0.55rem; letter-spacing: 0.1em;
+    color: rgba(0,229,255,0.35); padding: 0 4px;
+  }
 
-        .logo-text h1 {
-            font-size: 28px;
-            background: linear-gradient(135deg, #00d4ff, #0066ff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: 2px;
-        }
+  /* typing indicator */
+  .typing-bubble {
+    background: var(--bg-card);
+    border: 1px solid var(--cyan-border);
+    border-radius: 10px; border-top-left-radius: 2px;
+    padding: 14px 18px;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .typing-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--cyan);
+    animation: tdot 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes tdot {
+    0%,60%,100% { opacity: 0.2; transform: scale(0.8); }
+    30% { opacity: 1; transform: scale(1.1); }
+  }
 
-        .logo-text p {
-            font-size: 12px;
-            opacity: 0.7;
-        }
+  /* ── INPUT AREA ── */
+  .input-area {
+    flex-shrink: 0;
+    background: linear-gradient(0deg, #041e30 0%, var(--bg) 100%);
+    border-top: 1px solid var(--cyan-border);
+    padding: 10px 12px 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .input-row {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .icon-btn {
+    flex-shrink: 0;
+    width: 46px; height: 46px;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--cyan-border);
+    color: var(--cyan);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .icon-btn:active, .icon-btn.active {
+    background: var(--cyan-glow);
+    box-shadow: 0 0 12px var(--cyan);
+  }
+  .icon-btn.recording {
+    background: rgba(255,23,68,0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+    box-shadow: 0 0 12px var(--danger);
+    animation: rec-pulse 1s infinite;
+  }
+  @keyframes rec-pulse {
+    0%,100% { box-shadow: 0 0 8px var(--danger); }
+    50% { box-shadow: 0 0 18px var(--danger); }
+  }
+  #msg-input {
+    flex: 1; height: 46px;
+    background: var(--bg-card2);
+    border: 1px solid var(--cyan-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  #msg-input::placeholder { color: rgba(0,229,255,0.35); }
+  #msg-input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan-glow);
+  }
+  #send-btn {
+    flex-shrink: 0;
+    height: 46px; padding: 0 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--cyan);
+    border-radius: 8px;
+    color: var(--cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #send-btn:active {
+    background: var(--cyan-glow);
+    box-shadow: 0 0 14px var(--cyan);
+  }
 
-        .status-bar {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+  .status-bar {
+    display: flex; justify-content: space-between;
+    padding: 0 4px;
+  }
+  .status-item {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.55rem; letter-spacing: 0.14em;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--online);
+    box-shadow: 0 0 5px var(--online);
+  }
 
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .online-dot {
-            width: 10px;
-            height: 10px;
-            background: #00ff00;
-            border-radius: 50%;
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        /* Main Layout */
-        .main-layout {
-            display: flex;
-            gap: 20px;
-            flex: 1;
-            min-height: 0;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: rgba(10, 14, 26, 0.6);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 20px;
-            border: 1px solid rgba(0, 255, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .sidebar-section {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 15px;
-        }
-
-        .sidebar-section h3 {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-            color: #00d4ff;
-        }
-
-        .weather-info, .location-info {
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-
-        .quick-btn {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            padding: 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-align: center;
-        }
-
-        .quick-btn:hover {
-            background: rgba(0, 212, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .memory-stats {
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
-        /* Chat Area */
-        .chat-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: rgba(10, 14, 26, 0.4);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(0, 255, 255, 0.1);
-            overflow: hidden;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        /* Custom Scrollbar */
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .chat-messages::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: rgba(0, 212, 255, 0.5);
-            border-radius: 10px;
-        }
-
-        /* Message Bubbles */
-        .message {
-            display: flex;
-            gap: 12px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .user-message {
-            flex-direction: row-reverse;
-        }
-
-        .message-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-        .user-message .message-avatar {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-        }
-
-        .jarvis-message .message-avatar {
-            background: linear-gradient(135deg, #00d4ff, #0066ff);
-            animation: rotate 4s linear infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .message-content {
-            max-width: 70%;
-            background: rgba(30, 35, 50, 0.9);
-            padding: 12px 18px;
-            border-radius: 18px;
-            line-height: 1.5;
-            font-size: 14px;
-        }
-
-        .user-message .message-content {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .jarvis-message .message-content {
-            border: 1px solid rgba(0, 212, 255, 0.3);
-        }
-
-        .message-time {
-            font-size: 10px;
-            opacity: 0.5;
-            margin-top: 5px;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-            display: none;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 20px;
-        }
-
-        .typing-indicator.active {
-            display: flex;
-        }
-
-        .typing-dots {
-            display: flex;
-            gap: 4px;
-        }
-
-        .typing-dots span {
-            width: 8px;
-            height: 8px;
-            background: #00d4ff;
-            border-radius: 50%;
-            animation: typing 1.4s infinite;
-        }
-
-        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-            30% { transform: translateY(-10px); opacity: 1; }
-        }
-
-        /* Input Area */
-        .input-area {
-            padding: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(10, 14, 26, 0.6);
-        }
-
-        .input-container {
-            display: flex;
-            gap: 12px;
-            align-items: flex-end;
-        }
-
-        .message-input-wrapper {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 25px;
-            padding: 10px 18px;
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            transition: all 0.3s;
-        }
-
-        .message-input-wrapper:focus-within {
-            border-color: #00d4ff;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
-        }
-
-        #messageInput {
-            width: 100%;
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 14px;
-            outline: none;
-            resize: none;
-            font-family: inherit;
-            max-height: 100px;
-        }
-
-        #messageInput::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .input-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .input-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            font-size: 18px;
-        }
-
-        .input-btn:hover {
-            background: rgba(0, 212, 255, 0.2);
-            transform: scale(1.05);
-        }
-
-        .send-btn {
-            background: linear-gradient(135deg, #00d4ff, #0066ff);
-            border: none;
-        }
-
-        .send-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
-        }
-
-        /* Offline Banner */
-        .offline-banner {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(255, 50, 50, 0.9);
-            backdrop-filter: blur(10px);
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 12px;
-            display: none;
-            z-index: 1000;
-        }
-
-        .offline-banner.active {
-            display: block;
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .main-layout {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                order: 2;
-            }
-            
-            .chat-area {
-                order: 1;
-            }
-            
-            .message-content {
-                max-width: 85%;
-            }
-            
-            .header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .status-bar {
-                justify-content: center;
-            }
-        }
-    </style>
+  /* live voice overlay */
+  #voice-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(0,13,26,0.95);
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 28px;
+  }
+  #voice-overlay.active { display: flex; }
+  .voice-ring {
+    width: 140px; height: 140px; border-radius: 50%;
+    border: 2px solid var(--cyan);
+    display: flex; align-items: center; justify-content: center;
+    animation: ring-pulse 1.5s infinite;
+  }
+  @keyframes ring-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.4); }
+    50% { box-shadow: 0 0 0 20px rgba(0,229,255,0); }
+  }
+  .voice-icon { font-size: 3rem; }
+  .voice-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem; letter-spacing: 0.2em;
+    color: var(--cyan);
+  }
+  #voice-transcript {
+    font-size: 0.85rem; color: var(--text);
+    max-width: 80%; text-align: center; min-height: 24px;
+    line-height: 1.5;
+  }
+  .voice-stop {
+    padding: 12px 32px;
+    background: transparent;
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    color: var(--danger);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem; letter-spacing: 0.15em;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-    <div class="bg-animation" id="bgAnimation"></div>
-    
-    <div class="app-container">
-        <div class="header">
-            <div class="logo-section">
-                <div class="jarvis-icon">🔵</div>
-                <div class="logo-text">
-                    <h1>JARVIS</h1>
-                    <p>Just A Rather Very Intelligent System</p>
-                </div>
-            </div>
-            <div class="status-bar">
-                <div class="status-item">
-                    <div class="online-dot"></div>
-                    <span id="connectionStatus">Online</span>
-                </div>
-                <div class="status-item">
-                    <span>📡</span>
-                    <span id="latency">0ms</span>
-                </div>
-                <div class="status-item">
-                    <span>💾</span>
-                    <span id="memoryStatus">Active</span>
-                </div>
-            </div>
-        </div>
 
-        <div class="main-layout">
-            <div class="sidebar">
-                <div class="sidebar-section">
-                    <h3>📍 Location & Weather</h3>
-                    <div class="weather-info" id="weatherInfo">
-                        <span>🌍 Fetching location...</span>
-                    </div>
-                </div>
+<!-- ══ PASSCODE SCREEN ══════════════════════════════════════════════ -->
+<div id="passcode-screen">
+  <div class="lock-title">JARVIS</div>
+  <div class="lock-sub">SECURE ACCESS REQUIRED<br>ENTER 6-DIGIT PASSCODE</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+    <div class="pin-dot" id="d4"></div>
+    <div class="pin-dot" id="d5"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn" onclick="pinPress('')"></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+  </div>
+  <div id="pin-error"></div>
+</div>
 
-                <div class="sidebar-section">
-                    <h3>⚡ Quick Actions</h3>
-                    <div class="quick-actions">
-                        <div class="quick-btn" data-command="What's the weather like?">🌤️ Weather</div>
-                        <div class="quick-btn" data-command="Tell me the latest news">📰 News</div>
-                        <div class="quick-btn" data-command="What time is it in Lagos?">⏰ Time</div>
-                        <div class="quick-btn" data-command="Search for top AI news">🔍 Search</div>
-                        <div class="quick-btn" data-command="Remember my name is Boss">📝 Remember</div>
-                        <div class="quick-btn" data-command="What do you remember about me?">🧠 Recall</div>
-                    </div>
-                </div>
+<!-- ══ MAIN APP ═════════════════════════════════════════════════════ -->
+<div id="app">
 
-                <div class="sidebar-section">
-                    <h3>🧠 Memory Stats</h3>
-                    <div class="memory-stats" id="memoryStats">
-                        Conversations: <span id="convCount">0</span><br>
-                        Last sync: <span id="lastSync">Never</span>
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3>🔧 System</h3>
-                    <div class="memory-stats">
-                        <div id="rateLimitInfo">Rate limit: 30/min</div>
-                        <div>Model: Llama 3.3 70B</div>
-                        <button id="clearMemoryBtn" style="margin-top: 10px; background: rgba(255,0,0,0.2); border: 1px solid rgba(255,0,0,0.3); padding: 5px 10px; border-radius: 5px; cursor: pointer; width: 100%;">Clear Memory</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="chat-area">
-                <div class="chat-messages" id="chatMessages">
-                    <div class="message jarvis-message">
-                        <div class="message-avatar">🔵</div>
-                        <div class="message-content">
-                            Good day, Sir! JARVIS at your service. How may I assist you today?
-                            <div class="message-time">Just now</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="typing-indicator" id="typingIndicator">
-                    <div class="message-avatar">🔵</div>
-                    <div class="typing-dots">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
-
-                <div class="input-area">
-                    <div class="input-container">
-                        <div class="message-input-wrapper">
-                            <textarea id="messageInput" placeholder="Message JARVIS..." rows="1"></textarea>
-                        </div>
-                        <div class="input-buttons">
-                            <button class="input-btn" id="voiceBtn" title="Voice Input">🎤</button>
-                            <button class="input-btn" id="emojiBtn" title="Emoji">😊</button>
-                            <button class="input-btn send-btn" id="sendBtn">➤</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- Header -->
+  <header class="hud-header">
+    <div class="hud-status">
+      <div class="hud-status-label">SYSTEM<br>STATUS</div>
+      <div class="hud-online"><span class="hud-online-dot"></span>ONLINE</div>
     </div>
-
-    <div class="offline-banner" id="offlineBanner">
-        📡 Offline Mode - Messages will be queued
+    <div class="hud-center">
+      <div class="hud-logo">JARVIS</div>
+      <div class="hud-tagline">JUST A RATHER VERY<br>INTELLIGENT SYSTEM</div>
     </div>
+    <div class="hud-right">
+      <div id="hud-clock">00:00:00</div>
+      <div id="hud-date">-- --- ----</div>
+      <div id="hud-version">V4.3.1</div>
+    </div>
+  </header>
+  <div class="hud-scan-line"></div>
 
-    <script>
-        // ============= CONFIGURATION =============
-        const API_URL = '/api/chat'; // Replace with your actual endpoint
-        const USER_ID = `user_${Math.random().toString(36).substr(2, 9)}`;
-        
-        let messageQueue = [];
-        let isOnline = navigator.onLine;
-        let conversationId = `conv_${Date.now()}`;
-        let currentLat = null;
-        let currentLon = null;
-        
-        // DOM Elements
-        const chatMessages = document.getElementById('chatMessages');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const voiceBtn = document.getElementById('voiceBtn');
-        const emojiBtn = document.getElementById('emojiBtn');
-        const typingIndicator = document.getElementById('typingIndicator');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const latencySpan = document.getElementById('latency');
-        const weatherInfo = document.getElementById('weatherInfo');
-        const convCountSpan = document.getElementById('convCount');
-        const offlineBanner = document.getElementById('offlineBanner');
-        const clearMemoryBtn = document.getElementById('clearMemoryBtn');
-        
-        // ============= INITIALIZATION =============
-        async function init() {
-            await getLocation();
-            await syncOfflineQueue();
-            setupEventListeners();
-            startHeartbeat();
-            loadConversationCount();
-            
-            // Auto-resize textarea
-            messageInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-            });
-        }
-        
-        // ============= LOCATION & WEATHER =============
-        function getLocation() {
-            if ('geolocation' in navigator) {
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    currentLat = position.coords.latitude;
-                    currentLon = position.coords.longitude;
-                    await updateWeatherInfo();
-                }, (error) => {
-                    console.error('Geolocation error:', error);
-                    weatherInfo.innerHTML = '<span>🌍 Location access denied</span>';
-                });
-            } else {
-                weatherInfo.innerHTML = '<span>🌍 Geolocation not supported</span>';
-            }
-        }
-        
-        async function updateWeatherInfo() {
-            if (!currentLat || !currentLon) return;
-            
-            try {
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
-                const geoData = await geoRes.json();
-                const city = geoData.address?.city || geoData.address?.town || 'Unknown';
-                
-                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current_weather=true`);
-                const weatherData = await weatherRes.json();
-                
-                if (weatherData.current_weather) {
-                    const temp = weatherData.current_weather.temperature;
-                    const wind = weatherData.current_weather.windspeed;
-                    weatherInfo.innerHTML = `
-                        <span>📍 ${city}</span><br>
-                        <span>🌡️ ${temp}°C</span><br>
-                        <span>💨 ${wind} km/h</span>
-                    `;
-                }
-            } catch (err) {
-                console.error('Weather fetch error:', err);
-                weatherInfo.innerHTML = '<span>⚠️ Weather unavailable</span>';
-            }
-        }
-        
-        // ============= MESSAGE HANDLING =============
-        function addMessage(text, isUser = false, isError = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : 'jarvis-message'}`;
-            
-            // Format markdown-style text (bold, links, code)
-            let formattedText = escapeHtml(text);
-            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            formattedText = formattedText.replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">$1</code>');
-            formattedText = formattedText.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: #00d4ff;">$1</a>');
-            formattedText = formattedText.replace(/\n/g, '<br>');
-            
-            if (isError) {
-                formattedText = `<span style="color: #ff6666;">⚠️ ${formattedText}</span>`;
-            }
-            
-            messageDiv.innerHTML = `
-                <div class="message-avatar">${isUser ? '👤' : '🔵'}</div>
-                <div class="message-content">
-                    ${formattedText}
-                    <div class="message-time">${new Date().toLocaleTimeString()}</div>
-                </div>
-            `;
-            chatMessages.appendChild(messageDiv);
-            messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            
-            // Save to localStorage
-            saveConversationToLocal(text, isUser);
-            
-            return messageDiv;
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Save conversation locally
-        function saveConversationToLocal(message, isUser) {
-            const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
-            conversations.push({
-                text: message,
-                isUser: isUser,
-                timestamp: Date.now(),
-                userId: USER_ID
-            });
-            // Keep last 200 messages
-            if (conversations.length > 200) conversations.shift();
-            localStorage.setItem('jarvis_conversations', JSON.stringify(conversations));
-        }
-        
-        async function sendMessage(message, retryCount = 0) {
-            if (!message.trim()) return;
-            
-            // Add user message to UI
-            addMessage(message, true);
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            
-            // Show typing indicator
-            typingIndicator.classList.add('active');
-            
-            // Set timeout for request
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
-            
-            try {
-                const payload = {
-                    message: message,
-                    userId: USER_ID,
-                    conversationId: conversationId,
-                    lat: currentLat,
-                    lon: currentLon,
-                    pendingQueue: !isOnline ? messageQueue : [],
-                    timestamp: Date.now()
-                };
-                
-                const startTime = Date.now();
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                const latency = Date.now() - startTime;
-                updateLatency(latency);
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `HTTP ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                // Remove typing indicator
-                typingIndicator.classList.remove('active');
-                
-                // Add JARVIS response
-                addMessage(data.response, false, false);
-                
-                // Update memory stats
-                if (data.memoryUpdated) {
-                    updateMemoryStats();
-                }
-                
-                // Update rate limit info
-                if (data.rateLimit) {
-                    const rateInfo = document.getElementById('rateLimitInfo');
-                    rateInfo.innerHTML = `Rate limit: ${data.rateLimit.remaining}/${data.rateLimit.limit} remaining`;
-                    if (data.rateLimit.remaining < 5) {
-                        rateInfo.style.color = '#ffaa00';
-                    } else {
-                        rateInfo.style.color = '';
-                    }
-                }
-                
-                // Play response sound (optional)
-                playSound('message');
-                
-                // Clear queue if synced
-                if (data.synced) {
-                    messageQueue = [];
-                    localStorage.removeItem('jarvis_queue');
-                    offlineBanner.classList.remove('active');
-                    addMessage(`✅ ${data.synced}`, false, false);
-                }
-                
-            } catch (error) {
-                clearTimeout(timeoutId);
-                console.error('Send error:', error);
-                typingIndicator.classList.remove('active');
-                
-                if (error.name === 'AbortError') {
-                    addMessage("Request timeout, Sir. The servers might be busy. I'll queue this message.", false, true);
-                }
-                
-                if (!isOnline || retryCount < 2) {
-                    // Queue message for offline
-                    messageQueue.push(message);
-                    localStorage.setItem('jarvis_queue', JSON.stringify(messageQueue));
-                    offlineBanner.classList.add('active');
-                    addMessage("📡 Network issue detected, Sir. I've queued your message (${messageQueue.length} pending).", false, true);
-                } else {
-                    addMessage("❌ Connection failed, Sir. Please check your internet and try again.", false, true);
-                }
-            }
-        }
-        
-        // ============= OFFLINE SYNC =============
-        async function syncOfflineQueue() {
-            const savedQueue = localStorage.getItem('jarvis_queue');
-            if (savedQueue) {
-                messageQueue = JSON.parse(savedQueue);
-                if (messageQueue.length > 0 && isOnline) {
-                    addMessage(`🔄 Syncing ${messageQueue.length} offline message${messageQueue.length > 1 ? 's' : ''}...`, false, false);
-                    
-                    // Process queue sequentially
-                    for (let i = 0; i < messageQueue.length; i++) {
-                        const msg = messageQueue[i];
-                        await sendMessage(msg);
-                        await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limit protection
-                    }
-                    
-                    messageQueue = [];
-                    localStorage.removeItem('jarvis_queue');
-                    offlineBanner.classList.remove('active');
-                    addMessage("✨ All offline messages synced successfully!", false, false);
-                }
-            }
-        }
-        
-        // ============= MEMORY MANAGEMENT =============
-        async function loadConversationCount() {
-            try {
-                // Try to get from localStorage first
-                const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
-                const userConversations = conversations.filter(c => c.userId === USER_ID);
-                convCountSpan.textContent = Math.floor(userConversations.length / 2) || 0;
-                
-                // Try API if online
-                if (isOnline) {
-                    const response = await fetch(`${API_URL}?userId=${USER_ID}&action=count`, {
-                        method: 'GET',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        convCountSpan.textContent = data.count || userConversations.length / 2;
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to load count:', err);
-            }
-        }
-        
-        function updateMemoryStats() {
-            const currentCount = parseInt(convCountSpan.textContent || '0');
-            convCountSpan.textContent = currentCount + 1;
-            document.getElementById('lastSync').textContent = new Date().toLocaleTimeString();
-            
-            // Animate memory update
-            const memorySpan = document.getElementById('memoryStatus');
-            memorySpan.style.opacity = '0.5';
-            setTimeout(() => {
-                memorySpan.style.opacity = '1';
-            }, 300);
-        }
-        
-        async function clearMemory() {
-            if (confirm('Clear all conversation memory, Sir? This cannot be undone.')) {
-                try {
-                    // Clear local storage
-                    localStorage.removeItem('jarvis_conversations');
-                    localStorage.removeItem('jarvis_queue');
-                    
-                    // Clear API memory
-                    if (isOnline) {
-                        await fetch(`${API_URL}?userId=${USER_ID}&action=clear`, { 
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // Reset UI
-                    conversationId = `conv_${Date.now()}`;
-                    chatMessages.innerHTML = '';
-                    addMessage("🧠 Memory cleared, Sir. I'm ready for a fresh conversation.", false, false);
-                    convCountSpan.textContent = '0';
-                    document.getElementById('lastSync').textContent = 'Never';
-                    messageQueue = [];
-                    
-                    // Play clear sound
-                    playSound('clear');
-                    
-                } catch (err) {
-                    console.error('Clear memory error:', err);
-                    addMessage("Failed to clear remote memory, but local memory has been reset.", false, true);
-                }
-            }
-        }
-        
-        // ============= VOICE RECOGNITION =============
-        let recognition = null;
-        let isListening = false;
-        
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
-            recognition.maxAlternatives = 1;
-            
-            recognition.onstart = () => {
-                isListening = true;
-                voiceBtn.style.background = 'rgba(0, 212, 255, 0.4)';
-                voiceBtn.style.animation = 'pulse 0.5s infinite';
-                addMessage("🎤 Listening...", false, false);
-            };
-            
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                messageInput.value = transcript;
-                
-                if (event.results[0].isFinal) {
-                    sendMessage(transcript);
-                }
-            };
-            
-            recognition.onerror = (event) => {
-                console.error('Voice recognition error:', event.error);
-                if (event.error !== 'no-speech') {
-                    addMessage("🎤 Voice recognition failed, Sir. Please try again.", false, true);
-                }
-                stopVoiceInput();
-            };
-            
-            recognition.onend = () => {
-                stopVoiceInput();
-            };
-        }
-        
-        function stopVoiceInput() {
-            isListening = false;
-            voiceBtn.style.background = '';
-            voiceBtn.style.animation = '';
-        }
-        
-        function startVoiceInput() {
-            if (recognition && !isListening) {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    console.error('Recognition start error:', e);
-                    addMessage("🎤 Voice input already active or not supported.", false, true);
-                }
-            } else if (!recognition) {
-                addMessage("🎤 Voice input not supported in your browser, Sir. Please use Chrome, Edge, or Safari.", false, true);
-            }
-        }
-        
-        // ============= SOUND EFFECTS =============
-        function playSound(type) {
-            // Optional: Add sound effects
-            // Create a simple beep using Web Audio API
-            if (type === 'message' && false) { // Disabled by default, enable if wanted
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    oscillator.frequency.value = 880;
-                    gainNode.gain.value = 0.1;
-                    oscillator.start();
-                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-                    oscillator.stop(audioContext.currentTime + 0.5);
-                } catch(e) { console.log('Audio disabled'); }
-            }
-        }
-        
-        // ============= UTILITIES =============
-        function updateLatency(ms) {
-            latencySpan.textContent = `${ms}ms`;
-            if (ms > 800) {
-                latencySpan.style.color = '#ff6666';
-            } else if (ms > 300) {
-                latencySpan.style.color = '#ffaa66';
-            } else {
-                latencySpan.style.color = '#66ff66';
-            }
-        }
-        
-        function startHeartbeat() {
-            setInterval(async () => {
-                const wasOnline = isOnline;
-                const start = Date.now();
-                try {
-                    await fetch(API_URL, { 
-                        method: 'HEAD',
-                        signal: AbortSignal.timeout(5000)
-                    });
-                    const latency = Date.now() - start;
-                    updateLatency(latency);
-                    
-                    isOnline = true;
-                    connectionStatus.innerHTML = 'Online';
-                    connectionStatus.style.color = '#66ff66';
-                    document.querySelector('.online-dot').style.background = '#66ff66';
-                    
-                    // If came back online, sync queue
-                    if (!wasOnline) {
-                        await syncOfflineQueue();
-                    }
-                } catch (err) {
-                    isOnline = false;
-                    connectionStatus.innerHTML = 'Offline';
-                    connectionStatus.style.color = '#ff6666';
-                    document.querySelector('.online-dot').style.background = '#ff6666';
-                }
-            }, 30000); // Check every 30 seconds
-        }
-        
-        function exportConversation() {
-            const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
-            const userConvos = conversations.filter(c => c.userId === USER_ID);
-            
-            if (userConvos.length === 0) {
-                addMessage("No conversation history to export, Sir.", false, true);
-                return;
-            }
-            
-            const exportData = {
-                exportDate: new Date().toISOString(),
-                userId: USER_ID,
-                conversationId: conversationId,
-                messages: userConvos.map(c => ({
-                    role: c.isUser ? 'user' : 'assistant',
-                    message: c.text,
-                    timestamp: c.timestamp,
-                    time: new Date(c.timestamp).toLocaleString()
-                }))
-            };
-            
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `jarvis_conversation_${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            addMessage("📁 Conversation exported successfully, Sir.", false, false);
-        }
-        
-        function setupEventListeners() {
-            sendBtn.addEventListener('click', () => {
-                const message = messageInput.value.trim();
-                if (message) sendMessage(message);
-            });
-            
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    const message = messageInput.value.trim();
-                    if (message) sendMessage(message);
-                }
-            });
-            
-            voiceBtn.addEventListener('click', startVoiceInput);
-            
-            emojiBtn.addEventListener('click', () => {
-                // Simple emoji picker modal
-                const emojis = ['😊', '😂', '❤️', '👍', '🎉', '🔥', '✨', '🚀', '💡', '🤖', '🎯', '🌟', '💪', '🎨', '📚', '🎵'];
-                const emojiContainer = document.createElement('div');
-                emojiContainer.style.cssText = `
-                    position: fixed;
-                    bottom: 80px;
-                    right: 20px;
-                    background: rgba(10, 14, 26, 0.95);
-                    backdrop-filter: blur(20px);
-                    border-radius: 15px;
-                    padding: 15px;
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 10px;
-                    z-index: 2000;
-                    border: 1px solid rgba(0, 212, 255, 0.3);
-                    max-width: 200px;
-                `;
-                
-                emojis.forEach(emoji => {
-                                        const btn = document.createElement('button');
-                    btn.textContent = emoji;
-                    btn.style.cssText = `
-                        background: rgba(0, 212, 255, 0.1);
-                        border: 1px solid rgba(0, 212, 255, 0.3);
-                        border-radius: 10px;
-                        padding: 10px;
-                        font-size: 20px;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                        color: white;
-                    `;
-                    
-                    btn.onmouseenter = () => {
-                        btn.style.background = 'rgba(0, 212, 255, 0.3)';
-                        btn.style.transform = 'scale(1.05)';
-                    };
-                    btn.onmouseleave = () => {
-                        btn.style.background = 'rgba(0, 212, 255, 0.1)';
-                        btn.style.transform = 'scale(1)';
-                    };
-                    
-                    btn.onclick = () => {
-                        messageInput.value += emoji;
-                        messageInput.focus();
-                        // Trigger input event for auto-resize
-                        const event = new Event('input', { bubbles: true });
-                        messageInput.dispatchEvent(event);
-                        emojiContainer.remove();
-                    };
-                    emojiContainer.appendChild(btn);
-                });
-                
-                // Add frequently used section
-                const freqLabel = document.createElement('div');
-                freqLabel.textContent = '⚡ Recent';
-                freqLabel.style.cssText = `
-                    grid-column: span 4;
-                    font-size: 10px;
-                    color: #00d4ff;
-                    text-align: center;
-                    margin-top: 5px;
-                    letter-spacing: 1px;
-                `;
-                emojiContainer.appendChild(freqLabel);
-                
-                // Get recently used emojis from localStorage
-                const recentEmojis = JSON.parse(localStorage.getItem('jarvis_recent_emojis') || '[]');
-                const recentToShow = recentEmojis.slice(0, 4);
-                
-                recentToShow.forEach(emoji => {
-                    const btn = document.createElement('button');
-                    btn.textContent = emoji;
-                    btn.style.cssText = `
-                        background: rgba(0, 212, 255, 0.2);
-                        border: 1px solid rgba(0, 212, 255, 0.5);
-                        border-radius: 10px;
-                        padding: 8px;
-                        font-size: 18px;
-                        cursor: pointer;
-                        transition: all 0.2s;
-                    `;
-                    btn.onclick = () => {
-                        messageInput.value += emoji;
-                        messageInput.focus();
-                        messageInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        emojiContainer.remove();
-                    };
-                    emojiContainer.appendChild(btn);
-                });
-                
-                // Add recent if we have them
-                if (recentToShow.length < 4) {
-                    for (let i = 0; i < 4 - recentToShow.length; i++) {
-                        const placeholder = document.createElement('div');
-                        placeholder.style.cssText = 'opacity: 0.3; text-align: center; padding: 8px; font-size: 12px;';
-                        placeholder.textContent = '⭐';
-                        emojiContainer.appendChild(placeholder);
-                    }
-                }
-                
-                const closeBtn = document.createElement('button');
-                closeBtn.textContent = '✖ Close';
-                closeBtn.style.cssText = `
-                    background: rgba(255, 50, 50, 0.3);
-                    border: 1px solid rgba(255, 50, 50, 0.5);
-                    border-radius: 10px;
-                    padding: 10px;
-                    cursor: pointer;
-                    grid-column: span 4;
-                    font-size: 12px;
-                    transition: all 0.2s;
-                `;
-                closeBtn.onmouseenter = () => {
-                    closeBtn.style.background = 'rgba(255, 50, 50, 0.5)';
-                };
-                closeBtn.onmouseleave = () => {
-                    closeBtn.style.background = 'rgba(255, 50, 50, 0.3)';
-                };
-                closeBtn.onclick = () => emojiContainer.remove();
-                emojiContainer.appendChild(closeBtn);
-                
-                document.body.appendChild(emojiContainer);
-                
-                // Animate entrance
-                emojiContainer.style.transform = 'scale(0.9)';
-                emojiContainer.style.opacity = '0';
-                emojiContainer.style.transition = 'all 0.2s ease';
-                setTimeout(() => {
-                    emojiContainer.style.transform = 'scale(1)';
-                    emojiContainer.style.opacity = '1';
-                }, 10);
-                
-                // Close on click outside
-                setTimeout(() => {
-                    const closeHandler = (e) => {
-                        if (!emojiContainer.contains(e.target) && e.target !== emojiBtn) {
-                            emojiContainer.remove();
-                            document.removeEventListener('click', closeHandler);
-                        }
-                    };
-                    document.addEventListener('click', closeHandler);
-                }, 100);
-            });
-            
-            // Add image upload feature
-            const imageUploadBtn = document.createElement('button');
-            imageUploadBtn.innerHTML = '🖼️';
-            imageUploadBtn.className = 'input-btn';
-            imageUploadBtn.title = 'Upload Image';
-            imageUploadBtn.style.cssText = `
-                background: rgba(0, 212, 255, 0.1);
-                border: 1px solid rgba(0, 212, 255, 0.3);
-            `;
-            
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = 'image/*';
-            fileInput.style.display = 'none';
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    await handleImageUpload(file);
-                }
-                fileInput.value = '';
-            };
-            
-            imageUploadBtn.onclick = () => fileInput.click();
-            document.body.appendChild(fileInput);
-            
-            // Insert image button before voice button
-            const inputButtons = document.querySelector('.input-buttons');
-            inputButtons.insertBefore(imageUploadBtn, voiceBtn);
-            
-            clearMemoryBtn.addEventListener('click', clearMemory);
-            
-            // Image upload handler
-            async function handleImageUpload(file) {
-                if (!file.type.startsWith('image/')) {
-                    addMessage("Please upload an image file, Sir.", false, true);
-                    return;
-                }
-                
-                if (file.size > 5 * 1024 * 1024) {
-                    addMessage("Image too large, Sir. Maximum 5MB.", false, true);
-                    return;
-                }
-                
-                addMessage(`📸 Uploading image: ${file.name}`, false, false);
-                
-                // Convert to base64
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    const base64Image = reader.result;
-                    
-                    // Show image preview in chat
-                    const imagePreview = document.createElement('div');
-                    imagePreview.className = 'message user-message';
-                    imagePreview.innerHTML = `
-                        <div class="message-avatar">👤</div>
-                        <div class="message-content">
-                            <img src="${base64Image}" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-bottom: 5px;">
-                            <div>📷 ${file.name}</div>
-                            <div class="message-time">${new Date().toLocaleTimeString()}</div>
-                        </div>
-                    `;
-                    chatMessages.appendChild(imagePreview);
-                    imagePreview.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                    
-                    // Send to API for analysis
-                    typingIndicator.classList.add('active');
-                    
-                    try {
-                        const response = await fetch(API_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                message: `[IMAGE UPLOAD] ${file.name}`,
-                                image: base64Image,
-                                userId: USER_ID,
-                                conversationId: conversationId,
-                                lat: currentLat,
-                                lon: currentLon
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        typingIndicator.classList.remove('active');
-                        addMessage(data.response || "Image processed, Sir.", false, false);
-                    } catch (err) {
-                        typingIndicator.classList.remove('active');
-                        addMessage("Failed to process image, Sir. The vision module may be offline.", false, true);
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-            
-            // Add theme toggle
-            const themeToggle = document.createElement('button');
-            themeToggle.innerHTML = '🌙';
-            themeToggle.className = 'input-btn';
-            themeToggle.title = 'Toggle Theme';
-            themeToggle.style.cssText = `
-                background: rgba(0, 212, 255, 0.1);
-                border: 1px solid rgba(0, 212, 255, 0.3);
-            `;
-            
-            let isDarkTheme = true;
-            themeToggle.onclick = () => {
-                isDarkTheme = !isDarkTheme;
-                if (isDarkTheme) {
-                    document.body.style.background = 'linear-gradient(135deg, #0a0e1a 0%, #0f1420 50%, #1a1f2e 100%)';
-                    themeToggle.innerHTML = '🌙';
-                    themeToggle.title = 'Switch to Light Theme';
-                } else {
-                    document.body.style.background = 'linear-gradient(135deg, #e0e4f0 0%, #c8d0e0 50%, #b0b8d0 100%)';
-                    document.body.style.color = '#1a1f2e';
-                    themeToggle.innerHTML = '☀️';
-                    themeToggle.title = 'Switch to Dark Theme';
-                    
-                    // Update component colors for light theme
-                    document.querySelectorAll('.message-content').forEach(el => {
-                        if (!el.closest('.user-message')) {
-                            el.style.background = 'rgba(255, 255, 255, 0.9)';
-                            el.style.color = '#1a1f2e';
-                        }
-                    });
-                }
-                // Reset colors on theme change
-                if (!isDarkTheme) {
-                    const style = document.createElement('style');
-                    style.textContent = `
-                        .jarvis-message .message-content { background: rgba(255, 255, 255, 0.9) !important; color: #1a1f2e !important; }
-                        .sidebar, .header, .chat-area { background: rgba(255, 255, 255, 0.7) !important; }
-                        .message-input-wrapper { background: rgba(255, 255, 255, 0.8) !important; }
-                        #messageInput { color: #1a1f2e !important; }
-                        .status-item { background: rgba(255, 255, 255, 0.8) !important; color: #1a1f2e !important; }
-                        .quick-btn { background: rgba(0, 100, 200, 0.1) !important; color: #1a1f2e !important; }
-                    `;
-                    document.head.appendChild(style);
-                } else {
-                    const existingStyle = document.querySelector('style[data-theme]');
-                    if (existingStyle) existingStyle.remove();
-                }
-            };
-            
-            inputButtons.insertBefore(themeToggle, imageUploadBtn);
-            
-            // Add typing sound effect toggle
-            let typingSounds = false;
-            const soundToggle = document.createElement('button');
-            soundToggle.innerHTML = '🔇';
-            soundToggle.className = 'input-btn';
-            soundToggle.title = 'Typing Sounds (Off)';
-            soundToggle.style.cssText = `
-                background: rgba(0, 212, 255, 0.1);
-                border: 1px solid rgba(0, 212, 255, 0.3);
-            `;
-            
-            soundToggle.onclick = () => {
-                typingSounds = !typingSounds;
-                if (typingSounds) {
-                    soundToggle.innerHTML = '🔊';
-                    soundToggle.title = 'Typing Sounds (On)';
-                    // Initialize audio context on user gesture
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    const audioCtx = new AudioContext();
-                    audioCtx.resume();
-                } else {
-                    soundToggle.innerHTML = '🔇';
-                    soundToggle.title = 'Typing Sounds (Off)';
-                }
-            };
-            
-            inputButtons.insertBefore(soundToggle, themeToggle);
-            
-            // Add character counter
-            const charCounter = document.createElement('div');
-            charCounter.style.cssText = `
-                position: absolute;
-                bottom: 5px;
-                right: 10px;
-                font-size: 10px;
-                opacity: 0.5;
-                pointer-events: none;
-            `;
-            document.querySelector('.message-input-wrapper').style.position = 'relative';
-            document.querySelector('.message-input-wrapper').appendChild(charCounter);
-            
-            messageInput.addEventListener('input', () => {
-                const length = messageInput.value.length;
-                charCounter.textContent = `${length}/2000`;
-                if (length > 1800) {
-                    charCounter.style.color = '#ffaa00';
-                } else if (length > 1900) {
-                    charCounter.style.color = '#ff6666';
-                } else {
-                    charCounter.style.color = '';
-                }
-            });
-            
-            // Add maxlength attribute
-            messageInput.maxLength = 2000;
-            
-            // Quick action buttons
-            document.querySelectorAll('.quick-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const command = btn.getAttribute('data-command');
-                    if (command) sendMessage(command);
-                });
-            });
-            
-            // Add keyboard shortcut help
-            const shortcutHelp = document.createElement('div');
-            shortcutHelp.style.cssText = `
-                position: fixed;
-                bottom: 80px;
-                left: 20px;
-                background: rgba(0, 0, 0, 0.7);
-                backdrop-filter: blur(10px);
-                padding: 8px 12px;
-                border-radius: 8px;
-                font-size: 10px;
-                font-family: monospace;
-                z-index: 999;
-                cursor: pointer;
-                transition: all 0.3s;
-            `;
-            shortcutHelp.innerHTML = '⌨️ Ctrl+E Export | Ctrl+K Clear';
-            shortcutHelp.onclick = () => {
-                shortcutHelp.style.opacity = '0';
-                setTimeout(() => {
-                    shortcutHelp.remove();
-                }, 500);
-            };
-            document.body.appendChild(shortcutHelp);
-            
-            setTimeout(() => {
-                shortcutHelp.style.opacity = '0.7';
-            }, 3000);
-            
-            // Export shortcut (Ctrl+E)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'e') {
-                    e.preventDefault();
-                    exportConversation();
-                }
-                if (e.ctrlKey && e.key === 'k') {
-                    e.preventDefault();
-                    clearMemory();
-                }
-                if (e.ctrlKey && e.key === 'l') {
-                    e.preventDefault();
-                    loadConversationHistory();
-                }
-            });
-            
-            // Online/Offline detection
-            window.addEventListener('online', async () => {
-                isOnline = true;
-                offlineBanner.classList.remove('active');
-                addMessage("🌐 Connection restored, Sir. Syncing offline messages...", false, false);
-                await syncOfflineQueue();
-            });
-            
-            window.addEventListener('offline', () => {
-                isOnline = false;
-                offlineBanner.classList.add('active');
-                addMessage("📡 Connection lost, Sir. Messages will be saved offline.", false, true);
-            });
-            
-            // Load conversation history
-            const loadHistoryBtn = document.createElement('button');
-            loadHistoryBtn.textContent = '📜 Load History';
-            loadHistoryBtn.className = 'quick-btn';
-            loadHistoryBtn.style.marginTop = '10px';
-            loadHistoryBtn.onclick = loadConversationHistory;
-            document.querySelector('.sidebar-section:last-child').appendChild(loadHistoryBtn);
-            
-            // Add clear queue button
-            const clearQueueBtn = document.createElement('button');
-            clearQueueBtn.textContent = '🗑️ Clear Queue';
-            clearQueueBtn.className = 'quick-btn';
-            clearQueueBtn.style.marginTop = '5px';
-            clearQueueBtn.style.background = 'rgba(255, 50, 50, 0.2)';
-            clearQueueBtn.onclick = () => {
-                if (confirm('Clear all queued offline messages?')) {
-                    messageQueue = [];
-                    localStorage.removeItem('jarvis_queue');
-                    offlineBanner.classList.remove('active');
-                    addMessage("✅ Offline queue cleared, Sir.", false, false);
-                }
-            };
-            document.querySelector('.sidebar-section:last-child').appendChild(clearQueueBtn);
-        }
-        
-        // Export conversation function
-        function exportConversation() {
-            const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
-            const userConvos = conversations.filter(c => c.userId === USER_ID);
-            
-            if (userConvos.length === 0) {
-                addMessage("No conversation history to export, Sir.", false, true);
-                return;
-            }
-            
-            const exportData = {
-                exportDate: new Date().toISOString(),
-                version: '2.0',
-                userId: USER_ID,
-                conversationId: conversationId,
-                totalMessages: userConvos.length,
-                messages: userConvos.map(c => ({
-                    role: c.isUser ? 'user' : 'assistant',
-                    content: c.text,
-                    timestamp: c.timestamp,
-                    // ============= ERROR BOUNDARY & RECOVERY =============
-window.addEventListener('error', (e) => {
-    console.error('Global error:', e.error);
-    addMessage("⚠️ A minor glitch occurred, Sir. Systems are still operational.", false, true);
-});
+  <!-- Chat -->
+  <div id="chat"></div>
 
-// Handle unhandled promise rejections
-window.addEventListener('unhandledrejection', (e) => {
-    console.error('Unhandled rejection:', e.reason);
-    addMessage("⚡ A background task encountered an issue, but I'm still functioning, Sir.", false, true);
-});
+  <!-- Voice Overlay -->
+  <div id="voice-overlay">
+    <div class="voice-ring"><span class="voice-icon">🎙</span></div>
+    <div class="voice-label">LISTENING…</div>
+    <div id="voice-transcript">Speak now, Sir.</div>
+    <button class="voice-stop" onclick="stopLiveVoice()">STOP LISTENING</button>
+  </div>
 
-// Auto-recovery for failed API calls
-let failedAttempts = 0;
-const originalFetch = window.fetch;
-window.fetch = async function(...args) {
-    try {
-        const response = await originalFetch(...args);
-        failedAttempts = 0;
-        return response;
-    } catch (error) {
-        failedAttempts++;
-        if (failedAttempts > 3) {
-            addMessage("🔌 Connection unstable, Sir. Switching to offline mode.", false, true);
-            isOnline = false;
-        }
-        throw error;
-    }
-};
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-row">
+      <button class="icon-btn" id="mic-btn" onclick="toggleVoice()" title="Voice input">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0h-2zm-5 9a7 7 0 0 0 7-7h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 7 7zm0 2v2h-2v-2h2z"/>
+        </svg>
+      </button>
+      <input id="msg-input" type="text" placeholder="Issue command, Sir…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button id="send-btn" onclick="sendMessage()">SEND</button>
+      <button class="icon-btn" id="live-btn" onclick="toggleLiveVoice()" title="Live voice mode">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20 12a8 8 0 0 1-16 0H2a10 10 0 0 0 20 0h-2zm-8 10v-2h2v2h-2zm-2 0v-2h2v2h-2zM12 2a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="status-bar">
+      <div class="status-item"><span class="status-dot"></span>GROQ LINK</div>
+      <div class="status-item" id="loc-status"><span class="status-dot"></span>LOC: LOCKING…</div>
+      <div class="status-item"><span class="status-dot"></span>AES-256 ACTIVE</div>
+    </div>
+  </div>
+</div>
 
-// ============= KEYBOARD SHORTCUTS (SHORT) =============
-const shortcuts = {
-    'ctrl+e': () => exportConversation(),
-    'ctrl+k': () => clearMemory(),
-    'ctrl+l': () => loadConversationHistory(),
-    'ctrl+s': () => showStatistics(),
-    'ctrl+shift+v': () => startVoiceInput(),
-    'ctrl+/': () => messageInput.focus(),
-    'escape': () => typingIndicator.classList.remove('active')
-};
+<script>
+// ══ PASSCODE ══════════════════════════════════════════════════════════
+const CORRECT_PIN = '615113';
+let pinEntry = '';
 
-document.addEventListener('keydown', (e) => {
-    const key = `${e.ctrlKey ? 'ctrl+' : ''}${e.key.toLowerCase()}`;
-    if (shortcuts[key]) {
-        e.preventDefault();
-        shortcuts[key]();
-    }
-});
-
-// ============= SIMPLE WORD COUNTER =============
-const wordCounter = document.createElement('div');
-wordCounter.style.cssText = `position:absolute; right:10px; bottom:5px; font-size:9px; opacity:0.4;`;
-document.querySelector('.message-input-wrapper').appendChild(wordCounter);
-
-messageInput.addEventListener('input', () => {
-    const words = messageInput.value.trim().split(/\s+/).filter(w => w.length).length;
-    wordCounter.textContent = `${words} words`;
-});
-
-// ============= AUTO-RECONNECT =============
-let reconnectAttempts = 0;
-async function attemptReconnect() {
-    if (!isOnline && reconnectAttempts < 5) {
-        reconnectAttempts++;
-        setTimeout(async () => {
-            try {
-                await fetch(API_URL, { method: 'HEAD' });
-                isOnline = true;
-                reconnectAttempts = 0;
-                addMessage("✅ Connection restored, Sir!", false, false);
-                await syncOfflineQueue();
-            } catch {
-                attemptReconnect();
-            }
-        }, reconnectAttempts * 2000);
-    }
+function pinPress(d) {
+  if (d === '' || pinEntry.length >= 6) return;
+  pinEntry += d;
+  updateDots();
+  if (pinEntry.length === 6) checkPin();
+}
+function pinDel() {
+  pinEntry = pinEntry.slice(0, -1);
+  updateDots();
+  document.getElementById('pin-error').textContent = '';
+}
+function updateDots() {
+  for (let i = 0; i < 6; i++) {
+    document.getElementById('d'+i).classList.toggle('filled', i < pinEntry.length);
+  }
+}
+function checkPin() {
+  if (pinEntry === CORRECT_PIN) {
+    document.getElementById('passcode-screen').style.display = 'none';
+    document.getElementById('app').classList.add('unlocked');
+    startClock(); getLocation(); boot();
+  } else {
+    document.getElementById('pin-error').textContent = 'INVALID PASSCODE — ACCESS DENIED';
+    pinEntry = '';
+    updateDots();
+  }
 }
 
-window.addEventListener('offline', () => setTimeout(attemptReconnect, 1000));
+// ══ CLOCK ════════════════════════════════════════════════════════════
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const t = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Africa/Lagos' });
+    const d = now.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric', timeZone:'Africa/Lagos' }).toUpperCase();
+    document.getElementById('hud-clock').textContent = t;
+    document.getElementById('hud-date').textContent = d;
+  }
+  tick(); setInterval(tick, 1000);
+}
 
-// ============= DOUBLE-CLICK TO EDIT =============
-chatMessages.addEventListener('dblclick', (e) => {
-    const messageDiv = e.target.closest('.message');
-    if (messageDiv && messageDiv.classList.contains('user-message')) {
-        const content = messageDiv.querySelector('.message-content');
-        const text = content.childNodes[0]?.textContent || '';
-        messageInput.value = text;
-        messageInput.focus();
-        addMessage("✏️ Message loaded for editing, Sir.", false, false);
+// ══ LOCATION ═════════════════════════════════════════════════════════
+let userLocation = null;
+let userWeather = null;
+
+function getLocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const j = await r.json();
+      const city = j.address.city || j.address.town || j.address.village || 'Unknown';
+      const country = j.address.country || '';
+      userLocation = { lat, lon, city, country };
+      document.getElementById('loc-status').innerHTML = `<span class="status-dot"></span>LOC: LOCKED`;
+      getWeather(lat, lon);
+    } catch {}
+  }, () => {
+    document.getElementById('loc-status').innerHTML = `<span class="status-dot"></span>LOC: OFFLINE`;
+  });
+}
+
+async function getWeather(lat, lon) {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+    const j = await r.json();
+    const temp = j.current_weather?.temperature;
+    const wmo = j.current_weather?.weathercode;
+    const desc = wmoDesc(wmo);
+    userWeather = { temp, description: desc };
+  } catch {}
+}
+
+function wmoDesc(code) {
+  if (code === 0) return 'Clear sky';
+  if (code <= 2) return 'Partly cloudy';
+  if (code <= 3) return 'Overcast';
+  if (code <= 67) return 'Rainy';
+  if (code <= 77) return 'Snow';
+  if (code <= 99) return 'Thunderstorm';
+  return 'Unknown';
+}
+
+// ══ CHAT STATE ════════════════════════════════════════════════════════
+const conversationHistory = [];
+
+function getTime() {
+  return new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false, timeZone: 'Africa/Lagos' });
+}
+
+function addMessage(role, text) {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  sender.textContent = role === 'jarvis' ? 'JARVIS' : 'BOSS MUHAMMED AALI';
+
+  const bubble = document.createElement('div');
+  bubble.className = `msg-bubble ${role}-bubble`;
+  bubble.textContent = text;
+
+  if (role === 'jarvis') {
+    const corner = document.createElement('div');
+    corner.className = 'msg-corner';
+    bubble.appendChild(corner);
+  }
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'msg-time';
+  timeEl.textContent = getTime();
+
+  row.appendChild(sender);
+  row.appendChild(bubble);
+  row.appendChild(timeEl);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return bubble;
+}
+
+function showTyping() {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'msg-row jarvis';
+  row.id = 'typing-row';
+
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  sender.textContent = 'JARVIS';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'typing-bubble';
+  bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+
+  row.appendChild(sender);
+  row.appendChild(bubble);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-row');
+  if (el) el.remove();
+}
+
+// ══ SEND / RECEIVE ════════════════════════════════════════════════════
+async function sendMessage(text) {
+  const input = document.getElementById('msg-input');
+  const msg = (text || input.value).trim();
+  if (!msg) return;
+  input.value = '';
+
+  addMessage('user', msg);
+  conversationHistory.push({ role: 'user', content: msg });
+  showTyping();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify({
+        messages: conversationHistory,
+        location: userLocation,
+        weather: userWeather,
+      })
+    });
+
+    const data = await res.json();
+    removeTyping();
+
+    const reply = data.reply || "I didn't receive a response, Sir.";
+    addMessage('jarvis', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    speak(reply);
+  } catch (err) {
+    removeTyping();
+    const errMsg = "Connection lost, Sir. Please check your network.";
+    addMessage('jarvis', errMsg);
+    speak(errMsg);
+  }
+}
+
+// Enter key
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msg-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+});
+
+// ══ BOOT MESSAGE ══════════════════════════════════════════════════════
+function boot() {
+  const hour = new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Africa/Lagos' });
+  const h = parseInt(hour);
+  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const msg = `${greeting}, Boss Muhammed Aali. I'm JARVIS, your personal AI assistant, here to help you with any information or tasks you need assistance with, Sir.`;
+  addMessage('jarvis', msg);
+  conversationHistory.push({ role: 'assistant', content: msg });
+  setTimeout(() => speak(msg), 600);
+}
+
+// ══ TTS (Female voice) ════════════════════════════════════════════════
+let ttsEnabled = true;
+function speak(text) {
+  if (!ttsEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const clean = text.replace(/[*_`#]/g, '');
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.rate = 0.95; utter.pitch = 1.1; utter.volume = 1;
+
+  function setVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    const female = voices.find(v =>
+      /female|woman|zira|samantha|karen|moira|tessa|victoria|google uk english female/i.test(v.name)
+    ) || voices.find(v => v.lang === 'en-US') || voices[0];
+    if (female) utter.voice = female;
+    window.speechSynthesis.speak(utter);
+  }
+
+  if (window.speechSynthesis.getVoices().length) setVoice();
+  else { window.speechSynthesis.onvoiceschanged = setVoice; }
+}
+
+// ══ VOICE INPUT ═══════════════════════════════════════════════════════
+let recognition = null;
+let isRecording = false;
+
+function toggleVoice() {
+  if (isRecording) { stopVoice(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMessage('jarvis', "Voice recognition is not supported in this browser, Sir."); return; }
+
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = e => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('msg-input').value = text;
+    sendMessage(text);
+  };
+  recognition.onerror = () => stopVoice();
+  recognition.onend = () => stopVoice();
+
+  recognition.start();
+  isRecording = true;
+  document.getElementById('mic-btn').classList.add('recording');
+}
+
+function stopVoice() {
+  if (recognition) { try { recognition.stop(); } catch {} recognition = null; }
+  isRecording = false;
+  document.getElementById('mic-btn').classList.remove('recording');
+}
+
+// ══ LIVE VOICE MODE ═══════════════════════════════════════════════════
+let liveRecognition = null;
+let isLiveActive = false;
+
+function toggleLiveVoice() {
+  if (isLiveActive) { stopLiveVoice(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMessage('jarvis', "Live voice not supported in this browser, Sir."); return; }
+
+  document.getElementById('voice-overlay').classList.add('active');
+  document.getElementById('live-btn').classList.add('active');
+  isLiveActive = true;
+
+  liveRecognition = new SR();
+  liveRecognition.lang = 'en-US';
+  liveRecognition.continuous = true;
+  liveRecognition.interimResults = true;
+
+  liveRecognition.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
     }
-});
+    document.getElementById('voice-transcript').textContent = interim || final || 'Speak now, Sir.';
+    if (final.trim()) {
+      document.getElementById('voice-transcript').textContent = final.trim();
+      sendMessage(final.trim());
+    }
+  };
+  liveRecognition.onerror = () => stopLiveVoice();
+  liveRecognition.start();
+}
 
-// ============= QUICK EMOJI =============
-const quickEmojis = ['👍', '❤️', '😂', '😮', '🔥', '🎯'];
-const emojiBar = document.createElement('div');
-emojiBar.style.cssText = `
-    position: absolute;
-    bottom: 70px;
-    left: 20px;
-    display: flex;
-    gap: 5px;
-    z-index: 100;
-`;
+function stopLiveVoice() {
+  if (liveRecognition) { try { liveRecognition.stop(); } catch {} liveRecognition = null; }
+  isLiveActive = false;
+  document.getElementById('voice-overlay').classList.remove('active');
+  document.getElementById('live-btn').classList.remove('active');
+  document.getElementById('voice-transcript').textContent = 'Speak now, Sir.';
+}
 
-quickEmojis.forEach(emoji => {
-    const btn = document.createElement('button');
-    btn.textContent = emoji;
-    btn.style.cssText = `
-        background: rgba(0,212,255,0.2);
-        border: 1px solid rgba(0,212,255,0.4);
-        border-radius: 20px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: 0.2s;
-    `;
-    btn.onclick = () => {
-        messageInput.value += emoji;
-        messageInput.focus();
-    };
-    emojiBar.appendChild(btn);
-});
-document.querySelector('.input-area').appendChild(emojiBar);
-
-// ============= TYPING INDICATOR TIMEOUT =============
-let typingTimeout;
-messageInput.addEventListener('input', () => {
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-        // User stopped typing
-    }, 1000);
-});
-
-// ============= FINAL LOG =============
-console.log('✅ JARVIS v3.0 Ready | Features: Voice, TTS, DragDrop, Commands, Auto-reconnect');
+// ══ SERVICE WORKER ════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
