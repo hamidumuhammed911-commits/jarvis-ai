@@ -1,693 +1,641 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="theme-color" content="#020d1a"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>JARVIS — Stark Industries</title>
-<link rel="manifest" href="/manifest.json"/>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
-<style>
-  :root {
-    --cyan: #00f5ff;
-    --cyan-dim: #00b8cc;
-    --cyan-glow: rgba(0,245,255,0.15);
-    --bg: #020d1a;
-    --bg2: #041525;
-    --bg3: #061e30;
-    --red: #ff3b5c;
-    --amber: #ffb700;
-    --green: #00ff88;
-    --text: #c8eeff;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>JARVIS AI Assistant | Tony Stark's Personal AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  /* ── LOCK SCREEN ── */
-  #lockScreen{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
-  .lock-logo{font-family:'Orbitron',sans-serif;font-size:2.2rem;font-weight:900;color:var(--cyan);text-shadow:0 0 30px var(--cyan);letter-spacing:6px}
-  .lock-sub{font-size:.7rem;color:var(--cyan-dim);letter-spacing:4px;text-transform:uppercase}
-  .lock-dots{display:flex;gap:12px;margin:10px 0}
-  .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--cyan-dim);background:transparent;transition:.2s}
-  .dot.filled{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
-  .dot.error{background:var(--red);border-color:var(--red)}
-  .lock-msg{font-size:.65rem;color:var(--cyan-dim);height:16px;letter-spacing:2px}
-  .numpad{display:grid;grid-template-columns:repeat(3,72px);gap:10px}
-  .num-btn{height:72px;border-radius:8px;border:1px solid rgba(0,245,255,.25);background:rgba(0,245,255,.04);color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:1.1rem;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-  .num-btn:active{background:rgba(0,245,255,.15);transform:scale(.95)}
-  .num-btn .sub{font-family:'Share Tech Mono',monospace;font-size:.45rem;color:var(--cyan-dim);letter-spacing:2px}
-  .lock-timer{font-size:.6rem;color:rgba(0,245,255,.3);letter-spacing:2px;margin-top:4px}
+        body {
+            font-family: 'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #0f1420 50%, #1a1f2e 100%);
+            min-height: 100vh;
+            color: #e0e4f0;
+            overflow-x: hidden;
+        }
 
-  /* ── MAIN APP ── */
-  #app{display:none;flex-direction:column;height:100vh;max-width:480px;margin:0 auto;position:relative}
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
 
-  /* Header */
-  .hdr{padding:8px 14px 6px;border-bottom:1px solid rgba(0,245,255,.12);background:var(--bg2)}
-  .hdr-top{display:flex;align-items:center;justify-content:space-between}
-  .brand{font-family:'Orbitron',sans-serif;font-size:1.05rem;font-weight:900;color:var(--cyan);text-shadow:0 0 16px var(--cyan);letter-spacing:4px}
-  .version-badge{font-size:.55rem;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.3);color:var(--cyan-dim);padding:2px 7px;border-radius:10px;letter-spacing:2px}
-  .hdr-stats{display:flex;gap:10px;margin-top:5px;font-size:.58rem;color:var(--cyan-dim);letter-spacing:1px}
-  .stat{display:flex;align-items:center;gap:4px}
-  .stat-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
-  #memBadge{background:rgba(0,245,255,.08);border:1px solid rgba(0,245,255,.2);padding:1px 6px;border-radius:8px}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.1) 0%, rgba(0, 255, 255, 0) 70%);
+            animation: float 20s infinite ease-in-out;
+        }
 
-  /* Time bar */
-  .time-bar{display:flex;justify-content:space-between;align-items:center;padding:4px 14px;background:rgba(0,245,255,.03);font-size:.6rem;color:var(--cyan-dim);border-bottom:1px solid rgba(0,245,255,.08)}
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
 
-  /* Weather HUD Card */
-  #weatherCard{display:none;margin:8px 10px 0;border:1px solid rgba(0,245,255,.2);border-radius:10px;background:linear-gradient(135deg,rgba(0,245,255,.05),rgba(0,184,204,.08));padding:10px 14px;animation:fadeIn .4s ease}
-  .wc-row{display:flex;align-items:center;justify-content:space-between}
-  .wc-temp{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:700;color:var(--cyan)}
-  .wc-cond{font-size:.7rem;color:var(--text);margin-top:2px}
-  .wc-loc{font-size:.58rem;color:var(--cyan-dim);letter-spacing:1px}
-  .wc-icon{font-size:2.2rem}
-  .wc-details{display:flex;gap:14px;margin-top:6px;font-size:.6rem;color:var(--cyan-dim)}
-  .wc-det{display:flex;align-items:center;gap:4px}
-  .wc-close{font-size:.6rem;color:var(--cyan-dim);cursor:pointer;opacity:.6;padding:2px 6px;border:1px solid rgba(0,245,255,.15);border-radius:6px;background:none}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+        /* Main Container */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-  /* Chat */
-  #chatBox{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
-  #chatBox::-webkit-scrollbar{width:3px}
-  #chatBox::-webkit-scrollbar-track{background:transparent}
-  #chatBox::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:2px}
-  .msg{max-width:88%;padding:9px 12px;border-radius:10px;font-size:.78rem;line-height:1.5;animation:msgIn .25s ease}
-  @keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .msg.user{align-self:flex-end;background:rgba(0,245,255,.1);border:1px solid rgba(0,245,255,.25);color:var(--cyan);border-bottom-right-radius:3px}
-  .msg.bot{align-self:flex-start;background:rgba(4,21,37,.9);border:1px solid rgba(0,245,255,.15);color:var(--text);border-bottom-left-radius:3px}
-  .msg.system{align-self:center;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.1);color:var(--cyan-dim);font-size:.65rem;text-align:center;border-radius:20px;padding:5px 14px}
-  .msg-label{font-size:.55rem;color:var(--cyan-dim);margin-bottom:3px;letter-spacing:1px}
+        /* Header */
+        .header {
+            background: rgba(10, 14, 26, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
 
-  /* News Panel */
-  #newsPanel{display:none;margin:0 10px 8px;border:1px solid rgba(0,245,255,.2);border-radius:10px;background:var(--bg2);overflow:hidden;animation:fadeIn .3s ease;max-height:220px;overflow-y:auto}
-  .news-hdr{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(0,245,255,.06);border-bottom:1px solid rgba(0,245,255,.1);font-size:.65rem;color:var(--cyan);letter-spacing:2px;font-family:'Orbitron',sans-serif}
-  .news-close{cursor:pointer;opacity:.6;font-size:.7rem;background:none;border:none;color:var(--cyan-dim)}
-  .news-item{padding:8px 12px;border-bottom:1px solid rgba(0,245,255,.06);cursor:pointer;transition:.15s}
-  .news-item:hover{background:rgba(0,245,255,.04)}
-  .news-item:last-child{border-bottom:none}
-  .ni-title{font-size:.7rem;color:var(--text);line-height:1.4}
-  .ni-meta{font-size:.58rem;color:var(--cyan-dim);margin-top:2px;display:flex;gap:8px}
-  .ni-loading{padding:16px;text-align:center;font-size:.65rem;color:var(--cyan-dim)}
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
 
-  /* Input area */
-  .input-wrap{padding:8px 10px;background:var(--bg2);border-top:1px solid rgba(0,245,255,.12)}
-  .input-row{display:flex;gap:8px;align-items:center}
-  #msgInput{flex:1;background:rgba(0,245,255,.05);border:1px solid rgba(0,245,255,.2);border-radius:8px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:.8rem;padding:10px 12px;outline:none;transition:.2s}
-  #msgInput:focus{border-color:var(--cyan);box-shadow:0 0 10px rgba(0,245,255,.1)}
-  #msgInput::placeholder{color:rgba(0,245,255,.3)}
-  .icon-btn{width:40px;height:40px;border-radius:8px;border:1px solid rgba(0,245,255,.2);background:rgba(0,245,255,.05);color:var(--cyan);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
-  .icon-btn:active{background:rgba(0,245,255,.15);transform:scale(.93)}
-  #sendBtn{background:rgba(0,245,255,.12);border-color:var(--cyan)}
+        .jarvis-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
 
-  /* Status bar */
-  .status-bar{display:flex;justify-content:space-around;padding:4px 10px;font-size:.55rem;color:var(--cyan-dim);letter-spacing:1px;border-top:1px solid rgba(0,245,255,.06)}
-  .sb-item{display:flex;align-items:center;gap:3px}
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); }
+        }
 
-  /* Quick buttons */
-  .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:6px 10px 4px}
-  .q-btn{padding:6px 4px;border:1px solid rgba(0,245,255,.18);border-radius:7px;background:rgba(0,245,255,.03);color:var(--cyan-dim);font-size:.58rem;text-align:center;cursor:pointer;transition:.15s;font-family:'Share Tech Mono',monospace;line-height:1.4}
-  .q-btn:active{background:rgba(0,245,255,.12);color:var(--cyan);transform:scale(.95)}
-  .q-btn .q-icon{display:block;font-size:.85rem;margin-bottom:2px}
+        .logo-text h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 2px;
+        }
 
-  /* Live Voice Modal */
-  #liveModal{display:none;position:fixed;inset:0;z-index:500;background:rgba(2,13,26,.95);flex-direction:column;align-items:center;justify-content:center;gap:16px}
-  #liveModal.active{display:flex}
-  .live-ring{width:120px;height:120px;border-radius:50%;border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;position:relative}
-  .live-ring::before{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(0,245,255,.3);animation:ringPulse 1.5s infinite}
-  .live-ring::after{content:'';position:absolute;inset:-16px;border-radius:50%;border:1px solid rgba(0,245,255,.15);animation:ringPulse 1.5s .5s infinite}
-  @keyframes ringPulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.2);opacity:0}}
-  .live-mic{font-size:2.5rem}
-  .live-label{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--cyan);letter-spacing:3px}
-  .live-transcript{font-size:.7rem;color:var(--text);max-width:280px;text-align:center;min-height:20px}
-  .live-close{margin-top:8px;padding:8px 24px;border:1px solid rgba(0,245,255,.3);border-radius:8px;background:none;color:var(--cyan-dim);font-family:'Orbitron',sans-serif;font-size:.65rem;cursor:pointer;letter-spacing:2px}
+        .logo-text p {
+            font-size: 12px;
+            opacity: 0.7;
+        }
 
-  /* Typing indicator */
-  .typing{display:flex;gap:5px;align-items:center;padding:10px 12px}
-  .typing span{width:7px;height:7px;border-radius:50%;background:var(--cyan-dim);animation:bounce .9s infinite}
-  .typing span:nth-child(2){animation-delay:.2s}
-  .typing span:nth-child(3){animation-delay:.4s}
-  @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-  /* Reminder toast */
-  #reminderToast{display:none;position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:800;background:var(--bg3);border:1px solid var(--cyan);border-radius:10px;padding:12px 18px;font-size:.72rem;color:var(--cyan);text-align:center;max-width:88%;box-shadow:0 0 20px rgba(0,245,255,.2);animation:toastIn .3s ease}
-  @keyframes toastIn{from{opacity:0;top:0}to{opacity:1;top:16px}}
-</style>
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .online-dot {
+            width: 10px;
+            height: 10px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: rgba(10, 14, 26, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-section {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            color: #00d4ff;
+        }
+
+        .weather-info, .location-info {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .quick-btn {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .quick-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .memory-stats {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(10, 14, 26, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Custom Scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.5);
+            border-radius: 10px;
+        }
+
+        /* Message Bubbles */
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-message {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .user-message .message-avatar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .jarvis-message .message-avatar {
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .message-content {
+            max-width: 70%;
+            background: rgba(30, 35, 50, 0.9);
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .user-message .message-content {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .jarvis-message .message-content {
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .message-time {
+            font-size: 10px;
+            opacity: 0.5;
+            margin-top: 5px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+        }
+
+        .typing-indicator.active {
+            display: flex;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #00d4ff;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(10, 14, 26, 0.6);
+        }
+
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .message-input-wrapper {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 25px;
+            padding: 10px 18px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            transition: all 0.3s;
+        }
+
+        .message-input-wrapper:focus-within {
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        #messageInput {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            max-height: 100px;
+        }
+
+        #messageInput::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .input-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 18px;
+        }
+
+        .input-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            border: none;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Offline Banner */
+        .offline-banner {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 50, 50, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 12px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .offline-banner.active {
+            display: block;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+            
+            .chat-area {
+                order: 1;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .status-bar {
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="bg-animation" id="bgAnimation"></div>
+    
+    <div class="app-container">
+        <div class="header">
+            <div class="logo-section">
+                <div class="jarvis-icon">🔵</div>
+                <div class="logo-text">
+                    <h1>JARVIS</h1>
+                    <p>Just A Rather Very Intelligent System</p>
+                </div>
+            </div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="online-dot"></div>
+                    <span id="connectionStatus">Online</span>
+                </div>
+                <div class="status-item">
+                    <span>📡</span>
+                    <span id="latency">0ms</span>
+                </div>
+                <div class="status-item">
+                    <span>💾</span>
+                    <span id="memoryStatus">Active</span>
+                </div>
+            </div>
+        </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     LOCK SCREEN
-════════════════════════════════════════════════════════════ -->
-<div id="lockScreen">
-  <div class="lock-logo">JARVIS</div>
-  <div class="lock-sub">Stark Industries — Restricted Access</div>
-  <div class="lock-dots" id="lockDots">
-    <div class="dot" id="d0"></div><div class="dot" id="d1"></div>
-    <div class="dot" id="d2"></div><div class="dot" id="d3"></div>
-    <div class="dot" id="d4"></div><div class="dot" id="d5"></div>
-  </div>
-  <div class="lock-msg" id="lockMsg">ENTER ACCESS CODE</div>
-  <div class="numpad">
-    <button class="num-btn" onclick="numPress('1')">1</button>
-    <button class="num-btn" onclick="numPress('2')">2<span class="sub">ABC</span></button>
-    <button class="num-btn" onclick="numPress('3')">3<span class="sub">DEF</span></button>
-    <button class="num-btn" onclick="numPress('4')">4<span class="sub">GHI</span></button>
-    <button class="num-btn" onclick="numPress('5')">5<span class="sub">JKL</span></button>
-    <button class="num-btn" onclick="numPress('6')">6<span class="sub">MNO</span></button>
-    <button class="num-btn" onclick="numPress('7')">7<span class="sub">PQRS</span></button>
-    <button class="num-btn" onclick="numPress('8')">8<span class="sub">TUV</span></button>
-    <button class="num-btn" onclick="numPress('9')">9<span class="sub">WXYZ</span></button>
-    <button class="num-btn" onclick="numPress('*')">*</button>
-    <button class="num-btn" onclick="numPress('0')">0</button>
-    <button class="num-btn" onclick="numBackspace()">⌫</button>
-  </div>
-  <div class="lock-timer" id="lockTimerLabel"></div>
-</div>
+        <div class="main-layout">
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>📍 Location & Weather</h3>
+                    <div class="weather-info" id="weatherInfo">
+                        <span>🌍 Fetching location...</span>
+                    </div>
+                </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MAIN APP
-════════════════════════════════════════════════════════════ -->
-<div id="app">
+                <div class="sidebar-section">
+                    <h3>⚡ Quick Actions</h3>
+                    <div class="quick-actions">
+                        <div class="quick-btn" data-command="What's the weather like?">🌤️ Weather</div>
+                        <div class="quick-btn" data-command="Tell me the latest news">📰 News</div>
+                        <div class="quick-btn" data-command="What time is it in Lagos?">⏰ Time</div>
+                        <div class="quick-btn" data-command="Search for top AI news">🔍 Search</div>
+                        <div class="quick-btn" data-command="Remember my name is Boss">📝 Remember</div>
+                        <div class="quick-btn" data-command="What do you remember about me?">🧠 Recall</div>
+                    </div>
+                </div>
 
-  <!-- Header -->
-  <div class="hdr">
-    <div class="hdr-top">
-      <span class="brand">JARVIS</span>
-      <span class="version-badge">V4.4.0</span>
+                <div class="sidebar-section">
+                    <h3>🧠 Memory Stats</h3>
+                    <div class="memory-stats" id="memoryStats">
+                        Conversations: <span id="convCount">0</span><br>
+                        Last sync: <span id="lastSync">Never</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>🔧 System</h3>
+                    <div class="memory-stats">
+                        <div id="rateLimitInfo">Rate limit: 30/min</div>
+                        <div>Model: Llama 3.3 70B</div>
+                        <button id="clearMemoryBtn" style="margin-top: 10px; background: rgba(255,0,0,0.2); border: 1px solid rgba(255,0,0,0.3); padding: 5px 10px; border-radius: 5px; cursor: pointer; width: 100%;">Clear Memory</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message jarvis-message">
+                        <div class="message-avatar">🔵</div>
+                        <div class="message-content">
+                            Good day, Sir! JARVIS at your service. How may I assist you today?
+                            <div class="message-time">Just now</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="message-avatar">🔵</div>
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-container">
+                        <div class="message-input-wrapper">
+                            <textarea id="messageInput" placeholder="Message JARVIS..." rows="1"></textarea>
+                        </div>
+                        <div class="input-buttons">
+                            <button class="input-btn" id="voiceBtn" title="Voice Input">🎤</button>
+                            <button class="input-btn" id="emojiBtn" title="Emoji">😊</button>
+                            <button class="input-btn send-btn" id="sendBtn">➤</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="hdr-stats">
-      <div class="stat"><div class="stat-dot"></div><span>ONLINE</span></div>
-      <div class="stat" id="memBadge">MEM: <span id="memCount">0</span></div>
-      <div class="stat" id="locStat">LOC: ACQUIRING</div>
-      <div class="stat">AES-256 ACTIVE</div>
+
+    <div class="offline-banner" id="offlineBanner">
+        📡 Offline Mode - Messages will be queued
     </div>
-  </div>
 
-  <!-- Time bar -->
-  <div class="time-bar">
-    <span id="timeDisplay">--:--:--</span>
-    <span id="dateDisplay">-- --- ----</span>
-    <span id="tzDisplay">WAT (UTC+1)</span>
-  </div>
-
-  <!-- Weather HUD Card -->
-  <div id="weatherCard">
-    <div class="wc-row">
-      <div>
-        <div class="wc-temp" id="wcTemp">--°C</div>
-        <div class="wc-cond" id="wcCond">—</div>
-        <div class="wc-loc" id="wcLoc">📍 Locating...</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <div class="wc-icon" id="wcIcon">🌡️</div>
-        <button class="wc-close" onclick="document.getElementById('weatherCard').style.display='none'">HIDE</button>
-      </div>
-    </div>
-    <div class="wc-details">
-      <div class="wc-det">💨 <span id="wcWind">--</span> km/h</div>
-      <div class="wc-det">💧 <span id="wcHumid">--</span>%</div>
-      <div class="wc-det">🕐 <span id="wcUpdated">--</span></div>
-    </div>
-  </div>
-
-  <!-- News Panel -->
-  <div id="newsPanel">
-    <div class="news-hdr">
-      <span>📡 INTEL FEED</span>
-      <button class="news-close" onclick="closeNews()">✕ CLOSE</button>
-    </div>
-    <div id="newsContent"><div class="ni-loading">Retrieving intelligence, Sir...</div></div>
-  </div>
-
-  <!-- Chat -->
-  <div id="chatBox"></div>
-
-  <!-- Reminder Toast -->
-  <div id="reminderToast" id="reminderToast"></div>
-
-  <!-- Quick Buttons -->
-  <div class="quick-grid">
-    <button class="q-btn" onclick="quickCmd('What is the current weather and temperature where I am?')"><span class="q-icon">🌤️</span>Weather</button>
-    <button class="q-btn" onclick="loadNews('Nigeria')"><span class="q-icon">📰</span>News</button>
-    <button class="q-btn" onclick="quickCmd('What is the current time and date in Nigeria?')"><span class="q-icon">🕐</span>Time</button>
-    <button class="q-btn" onclick="quickCmd('Give me a system status report')"><span class="q-icon">📊</span>Status</button>
-    <button class="q-btn" onclick="quickCmd('Search latest Nigeria tech news')"><span class="q-icon">🔍</span>Search</button>
-    <button class="q-btn" onclick="quickCmd('Tell me something interesting today')"><span class="q-icon">💡</span>Intel</button>
-    <button class="q-btn" onclick="openReminder()"><span class="q-icon">⏰</span>Remind</button>
-    <button class="q-btn" onclick="quickCmd('What are some productivity tips for today?')"><span class="q-icon">🚀</span>Boost</button>
-    <button class="q-btn" onclick="quickCmd('Tell me a joke, Sir')"><span class="q-icon">😄</span>Joke</button>
-    <button class="q-btn" onclick="quickCmd('What crypto prices are trending today?')"><span class="q-icon">📈</span>Crypto</button>
-    <button class="q-btn" onclick="quickCmd('Run full diagnostics on all JARVIS systems')"><span class="q-icon">🛡️</span>Scan</button>
-    <button class="q-btn" onclick="clearChat()"><span class="q-icon">🗑️</span>Clear</button>
-  </div>
-
-  <!-- Input -->
-  <div class="input-wrap">
-    <div class="input-row">
-      <button class="icon-btn" onclick="toggleLiveVoice()" title="Live Voice">🎙</button>
-      <input id="msgInput" type="text" placeholder="Issue a command, Sir…" autocomplete="off" autocorrect="off"/>
-      <button class="icon-btn" id="sendBtn" onclick="sendMessage()">📡</button>
-    </div>
-  </div>
-
-  <!-- Status bar -->
-  <div class="status-bar">
-    <div class="sb-item">🔒 GROQ LINK</div>
-    <div class="sb-item" id="sbLoc">📍 LOCATING</div>
-    <div class="sb-item">🛡️ SECURE</div>
-    <div class="sb-item" id="sbTime">--:--</div>
-  </div>
-</div>
-
-<!-- Live Voice Modal -->
-<div id="liveModal">
-  <div class="live-ring"><span class="live-mic">🎙</span></div>
-  <div class="live-label">LISTENING</div>
-  <div class="live-transcript" id="liveTranscript">Speak your command…</div>
-  <button class="live-close" onclick="toggleLiveVoice()">🔇 &nbsp;STOP</button>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     SCRIPTS
-════════════════════════════════════════════════════════════ -->
-<script>
-// ── Constants ──────────────────────────────────────────────────────────────
-const PASSCODE      = "615113";
-const USER_ID       = "boss_muhammed_aali";
-const AUTO_LOCK_MS  = 5 * 60 * 1000; // 5 minutes
-
-// ── State ──────────────────────────────────────────────────────────────────
-let enteredCode    = "";
-let userLat        = null;
-let userLon        = null;
-let userLocName    = "";
-let isTTSRunning   = false;
-let recognition    = null;
-let liveActive     = false;
-let autoLockTimer  = null;
-let reminders      = JSON.parse(localStorage.getItem("jarvis_reminders") || "[]");
-let weatherData    = null;
-
-// ── Passcode Lock ──────────────────────────────────────────────────────────
-function numPress(d) {
-  if (d === "*") { enteredCode = ""; updateDots(); return; }
-  if (enteredCode.length >= 6) return;
-  enteredCode += d;
-  updateDots();
-  if (enteredCode.length === 6) {
-    setTimeout(() => {
-      if (enteredCode === PASSCODE) {
-        document.getElementById("lockScreen").style.display = "none";
-        document.getElementById("app").style.display = "flex";
-        document.getElementById("lockMsg").textContent = "ENTER ACCESS CODE";
-        enteredCode = "";
-        updateDots();
-        initApp();
-      } else {
-        document.querySelectorAll(".dot").forEach(d => d.classList.add("error"));
-        document.getElementById("lockMsg").textContent = "ACCESS DENIED";
-        setTimeout(() => {
-          enteredCode = "";
-          updateDots();
-          document.getElementById("lockMsg").textContent = "ENTER ACCESS CODE";
-        }, 1000);
-      }
-    }, 120);
-  }
-}
-
-function numBackspace() {
-  enteredCode = enteredCode.slice(0, -1);
-  updateDots();
-}
-
-function updateDots() {
-  for (let i = 0; i < 6; i++) {
-    const d = document.getElementById(`d${i}`);
-    d.classList.remove("filled", "error");
-    if (i < enteredCode.length) d.classList.add("filled");
-  }
-}
-
-// Auto-lock
-function resetAutoLock() {
-  clearTimeout(autoLockTimer);
-  autoLockTimer = setTimeout(lockScreen, AUTO_LOCK_MS);
-}
-
-function lockScreen() {
-  document.getElementById("app").style.display = "none";
-  document.getElementById("lockScreen").style.display = "flex";
-  document.getElementById("lockTimerLabel").textContent = "";
-  enteredCode = ""; updateDots();
-  stopTTS();
-}
-
-// Show countdown in lock screen label if idle
-function startLockCountdown() {
-  let remaining = AUTO_LOCK_MS / 1000;
-  const label = document.getElementById("lockTimerLabel");
-  const interval = setInterval(() => {
-    remaining -= 1;
-    label.textContent = remaining > 0 ? `Auto-lock in ${remaining}s` : "";
-    if (remaining <= 0) clearInterval(interval);
-  }, 1000);
-}
-
-// Reset auto-lock on any interaction
-["click","touchstart","keydown","mousemove"].forEach(ev =>
-  document.addEventListener(ev, resetAutoLock, { passive: true })
-);
-
-// ── App Init ───────────────────────────────────────────────────────────────
-function initApp() {
-  startClock();
-  getLocation();
-  resetAutoLock();
-  startReminderChecker();
-  addMsg("SESSION INITIATED — AUTHENTICATION VERIFIED", "system");
-  addMsg("Good day, Boss Muhammed Aali. All systems are nominal. How may I assist you, Sir?", "bot");
-  registerSW();
-}
-
-// ── Clock ──────────────────────────────────────────────────────────────────
-function startClock() {
-  function tick() {
-    const now = new Date();
-    const lag = new Intl.DateTimeFormat("en-NG", {
-      timeZone:"Africa/Lagos", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:true
-    });
-    const lad = new Intl.DateTimeFormat("en-NG", {
-      timeZone:"Africa/Lagos", weekday:"short", day:"2-digit", month:"short", year:"numeric"
-    });
-    document.getElementById("timeDisplay").textContent = lag.format(now);
-    document.getElementById("dateDisplay").textContent = lad.format(now);
-    document.getElementById("sbTime").textContent = lag.format(now).substring(0,5);
-  }
-  tick(); setInterval(tick, 1000);
-}
-
-// ── Location ───────────────────────────────────────────────────────────────
-function getLocation() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
-    try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLat}&lon=${userLon}&format=json`);
-      const d = await r.json();
-      userLocName = d.address?.city || d.address?.town || d.address?.state || "Nigeria";
-      document.getElementById("locStat").textContent = `LOC: ${userLocName.toUpperCase()}`;
-      document.getElementById("sbLoc").textContent = `📍 ${userLocName}`;
-      document.getElementById("wcLoc").textContent = `📍 ${userLocName}`;
-    } catch { userLocName = "Nigeria"; }
-    fetchWeatherCard();
-  }, () => {
-    document.getElementById("locStat").textContent = "LOC: UNAVAIL";
-  });
-}
-
-// ── Weather HUD Card ───────────────────────────────────────────────────────
-const WMO_ICONS = {
-  0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",
-  51:"🌦️",53:"🌧️",55:"🌧️",61:"🌦️",63:"🌧️",65:"⛈️",
-  71:"🌨️",73:"❄️",75:"❄️",80:"🌦️",81:"🌧️",82:"⛈️",
-  95:"⛈️",96:"⛈️",99:"⛈️"
-};
-
-async function fetchWeatherCard() {
-  if (!userLat || !userLon) return;
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&timezone=auto`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    const c    = data.current;
-    const WMO_TEXT = {
-      0:"Clear Sky",1:"Mainly Clear",2:"Partly Cloudy",3:"Overcast",
-      45:"Foggy",48:"Icy Fog",51:"Light Drizzle",53:"Drizzle",55:"Heavy Drizzle",
-      61:"Light Rain",63:"Rain",65:"Heavy Rain",71:"Light Snow",73:"Snow",75:"Heavy Snow",
-      80:"Showers",81:"Heavy Showers",82:"Violent Showers",95:"Thunderstorm",99:"Severe Storm"
-    };
-    weatherData = {
-      temp: Math.round(c.temperature_2m),
-      unit: data.current_units?.temperature_2m || "°C",
-      condition: WMO_TEXT[c.weathercode] || "Unknown",
-      wind: Math.round(c.windspeed_10m),
-      humidity: c.relativehumidity_2m,
-      code: c.weathercode,
-    };
-    document.getElementById("wcTemp").textContent = `${weatherData.temp}${weatherData.unit}`;
-    document.getElementById("wcCond").textContent = weatherData.condition;
-    document.getElementById("wcWind").textContent = weatherData.wind;
-    document.getElementById("wcHumid").textContent = weatherData.humidity;
-    document.getElementById("wcIcon").textContent = WMO_ICONS[c.weathercode] || "🌡️";
-    document.getElementById("wcUpdated").textContent = new Date().toLocaleTimeString("en-NG",{timeZone:"Africa/Lagos",hour:"2-digit",minute:"2-digit"});
-    document.getElementById("weatherCard").style.display = "block";
-  } catch { /* silent fail */ }
-}
-
-// ── Chat ───────────────────────────────────────────────────────────────────
-function addMsg(text, role) {
-  const box = document.getElementById("chatBox");
-  const div = document.createElement("div");
-  div.className = `msg ${role}`;
-  if (role === "bot") {
-    const lbl = document.createElement("div");
-    lbl.className = "msg-label";
-    lbl.textContent = "◈ JARVIS";
-    div.appendChild(lbl);
-  } else if (role === "user") {
-    const lbl = document.createElement("div");
-    lbl.className = "msg-label";
-    lbl.style.textAlign = "right";
-    lbl.textContent = "YOU ◈";
-    div.appendChild(lbl);
-  }
-  const p = document.createElement("div");
-  p.textContent = text;
-  div.appendChild(p);
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-  return div;
-}
-
-function showTyping() {
-  const box = document.getElementById("chatBox");
-  const div = document.createElement("div");
-  div.className = "msg bot";
-  div.id = "typingIndicator";
-  div.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
-
-function removeTyping() {
-  const t = document.getElementById("typingIndicator");
-  if (t) t.remove();
-}
-
-async function sendMessage(overrideText) {
-  const input = document.getElementById("msgInput");
-  const text  = overrideText || input.value.trim();
-  if (!text) return;
-  if (!overrideText) input.value = "";
-  addMsg(text, "user");
-  showTyping();
-  resetAutoLock();
-  try {
-    const body = { message: text, userId: USER_ID };
-    if (userLat) { body.lat = userLat; body.lon = userLon; }
-    const res  = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    removeTyping();
-    const reply = data.reply || "Systems nominal, Sir.";
-    addMsg(reply, "bot");
-    speak(reply);
-    if (data.memorySize) {
-      document.getElementById("memCount").textContent = data.memorySize;
-    }
-    if (data.weather && !weatherData) weatherData = data.weather;
-  } catch (err) {
-    removeTyping();
-    addMsg("JARVIS core connection lost. Retrying, Sir.", "bot");
-    console.error(err);
-  }
-}
-
-function quickCmd(cmd) {
-  document.getElementById("msgInput").value = cmd;
-  sendMessage();
-}
-
-function clearChat() {
-  document.getElementById("chatBox").innerHTML = "";
-  addMsg("Chat cleared. Ready for new commands, Sir.", "system");
-}
-
-// ── TTS ────────────────────────────────────────────────────────────────────
-function speak(text) {
-  stopTTS();
-  if (!window.speechSynthesis) return;
-  const clean = text.replace(/[#*_`>]/g, "").substring(0, 300);
-  const utt   = new SpeechSynthesisUtterance(clean);
-  utt.lang  = "en-US";
-  utt.rate  = 0.92;
-  utt.pitch = 1.05;
-  const voices = speechSynthesis.getVoices();
-  const female = voices.find(v => /female|woman|samantha|google uk english female|zira/i.test(v.name));
-  if (female) utt.voice = female;
-  isTTSRunning = true;
-  utt.onend = () => { isTTSRunning = false; };
-  speechSynthesis.speak(utt);
-}
-
-function stopTTS() {
-  if (window.speechSynthesis) speechSynthesis.cancel();
-  isTTSRunning = false;
-}
-
-// ── Voice Input ────────────────────────────────────────────────────────────
-function toggleLiveVoice() {
-  const modal = document.getElementById("liveModal");
-  if (liveActive) {
-    liveActive = false;
-    modal.classList.remove("active");
-    if (recognition) { try { recognition.stop(); } catch {} }
-    return;
-  }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMsg("Voice recognition not supported on this browser, Sir.", "system"); return; }
-  recognition = new SR();
-  recognition.lang = "en-US";
-  recognition.interimResults = true;
-  recognition.continuous = false;
-  recognition.onresult = (e) => {
-    const t = Array.from(e.results).map(r => r[0].transcript).join("");
-    document.getElementById("liveTranscript").textContent = t;
-    if (e.results[e.results.length - 1].isFinal) {
-      liveActive = false;
-      modal.classList.remove("active");
-      document.getElementById("msgInput").value = t;
-      sendMessage();
-    }
-  };
-  recognition.onerror = () => { liveActive = false; modal.classList.remove("active"); };
-  recognition.onend   = () => { if (liveActive) { liveActive = false; modal.classList.remove("active"); } };
-  liveActive = true;
-  modal.classList.add("active");
-  document.getElementById("liveTranscript").textContent = "Speak your command…";
-  recognition.start();
-}
-
-// ── News ───────────────────────────────────────────────────────────────────
-async function loadNews(topic = "Nigeria") {
-  const panel   = document.getElementById("newsPanel");
-  const content = document.getElementById("newsContent");
-  panel.style.display = "block";
-  content.innerHTML   = '<div class="ni-loading">Retrieving intelligence feed, Sir…</div>';
-  try {
-    const res  = await fetch(`/api/news?topic=${encodeURIComponent(topic)}&count=5`);
-    const data = await res.json();
-    if (!data.articles || data.articles.length === 0) {
-      content.innerHTML = '<div class="ni-loading">No headlines found, Sir.</div>';
-      return;
-    }
-    content.innerHTML = data.articles.map(a => `
-      <div class="news-item" onclick="quickCmd('Tell me more about: ${a.title.replace(/'/g,"\\'")}')">
-        <div class="ni-title">${a.title}</div>
-        <div class="ni-meta"><span>📡 ${a.source || "Unknown"}</span><span>${a.date || ""}</span></div>
-      </div>`).join("");
-  } catch {
-    content.innerHTML = '<div class="ni-loading">Intel feed offline, Sir.</div>';
-  }
-}
-
-function closeNews() {
-  document.getElementById("newsPanel").style.display = "none";
-}
-
-// ── Reminders ─────────────────────────────────────────────────────────────
-function openReminder() {
-  const label = prompt("Reminder label:");
-  if (!label) return;
-  const timeStr = prompt("Time (HH:MM, 24hr):");
-  if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) {
-    addMsg("Invalid time format, Sir. Use HH:MM.", "system"); return;
-  }
-  const [hh, mm] = timeStr.split(":").map(Number);
-  reminders.push({ id: Date.now(), label, hh, mm, fired: false });
-  localStorage.setItem("jarvis_reminders", JSON.stringify(reminders));
-  addMsg(`Reminder set for ${timeStr} — "${label}", Sir.`, "system");
-  requestNotificationPermission();
-}
-
-function startReminderChecker() {
-  setInterval(() => {
-    const now  = new Date();
-    const nowH = parseInt(new Intl.DateTimeFormat("en-NG",{timeZone:"Africa/Lagos",hour:"2-digit",hour12:false}).format(now));
-    const nowM = parseInt(new Intl.DateTimeFormat("en-NG",{timeZone:"Africa/Lagos",minute:"2-digit"}).format(now));
-    reminders.forEach(r => {
-      if (!r.fired && r.hh === nowH && r.mm === nowM) { r.fired = true; fireReminder(r.label); }
-    });
-    if (nowH === 0 && nowM === 0) reminders.forEach(r => r.fired = false);
-    localStorage.setItem("jarvis_reminders", JSON.stringify(reminders));
-  }, 30000);
-}
-
-function fireReminder(label) {
-  const toast = document.getElementById("reminderToast");
-  toast.textContent = `⏰ REMINDER: ${label}`;
-  toast.style.display = "block";
-  setTimeout(() => { toast.style.display = "none"; }, 6000);
-  addMsg(`⏰ Reminder, Sir: ${label}`, "bot");
-  speak(`Reminder, Sir. ${label}`);
-  if (Notification.permission === "granted" && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification("JARVIS Reminder", {
-        body: label, icon: "/icons/icon-192.png", vibrate: [200,100,200], tag: "jarvis-reminder",
-      });
-    });
-  }
-}
-
-async function requestNotificationPermission() {
-  if ("Notification" in window && Notification.permission === "default") {
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") addMsg("Push notifications enabled, Sir.", "system");
-  }
-}
-
-// ── Service Worker ─────────────────────────────────────────────────────────
-function registerSW() {
-  if (!("serviceWorker" in navigator)) return;
-  navigator.serviceWorker.register("/sw.js").then(reg => {
-    reg.addEventListener("updatefound", () => {
-      const newSW = reg.installing;
-      if (!newSW) return;
-      newSW.addEventListener("statechange", () => {
-        if (newSW.state === "installed" && navigator.serviceWorker.controller) {
-          newSW.postMessage("skipWaiting");
-          window.location.reload();
+    <script>
+        // ============= CONFIGURATION =============
+        const API_URL = '/api/chat'; // Replace with your actual endpoint
+        const USER_ID = `user_${Math.random().toString(36).substr(2, 9)}`;
+        
+        let messageQueue = [];
+        let isOnline = navigator.onLine;
+        let conversationId = `conv_${Date.now()}`;
+        let currentLat = null;
+        let currentLon = null;
+        
+        // DOM Elements
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const emojiBtn = document.getElementById('emojiBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const latencySpan = document.getElementById('latency');
+        const weatherInfo = document.getElementById('weatherInfo');
+        const convCountSpan = document.getElementById('convCount');
+        const offlineBanner = document.getElementById('offlineBanner');
+        const clearMemoryBtn = document.getElementById('clearMemoryBtn');
+        
+        // ============= INITIALIZATION =============
+        async function init() {
+            await getLocation();
+            await syncOfflineQueue();
+            setupEventListeners();
+            startHeartbeat();
+            loadConversationCount();
+            
+            // Auto-resize textarea
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            });
         }
-      });
-    });
-  }).catch(console.error);
-}
-
-// ── Input Enter key ────────────────────────────────────────────────────────
-document.getElementById("msgInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") sendMessage();
-});
-
-if (window.speechSynthesis) {
-  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
-}
-</script>
-</body>
-</html>
+        
+        // ============= LOCATION & WEATHER =============
+        function getLocation() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
+                    await updateWeatherInfo();
+                }, (error) => {
+                    console.error('Geolocation error:', error);
+                    weatherInfo.innerHTML = '<span>🌍 Location access denied</span>';
+                });
+            } else {
+                weatherInfo.innerHTML = '<span>🌍 Geolocation not supported</span>';
+            }
+        }
+        
+        async function updateWeatherInfo() {
+            if (!currentLat || !currentLon) return;
+            
+            try {
+                const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
+                const geoData = await geoRes.json();
+                
