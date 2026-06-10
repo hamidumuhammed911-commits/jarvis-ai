@@ -1,69 +1,77 @@
-// sw.js — JARVIS PWA Service Worker
+// JARVIS Service Worker — V4.3.1
+// KEY FIX: API routes (/api/*) are NEVER cached — always network-only.
+// This eliminates the "Systems nominal" ghost response bug.
 
-const CACHE_NAME    = 'jarvis-v4.2.0';
-const OFFLINE_URL   = '/index.html';
+const CACHE_NAME = "jarvis-v4.3.1";
+
+// Static assets that are safe to cache
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/jarvis-features.js',
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/jarvis-features.js",
+  "/jarvis-reminders.js",
 ];
 
-// Install — cache static assets
-self.addEventListener('install', event => {
+// ── Install: cache static assets only ────────────────────────────────────────
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
+  // Activate immediately — don't wait for old SW to die
   self.skipWaiting();
 });
 
-// Activate — delete old caches
-self.addEventListener('activate', event => {
+// ── Activate: delete ALL old caches ──────────────────────────────────────────
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
+    caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => {
+            console.log("[JARVIS SW] Deleting old cache:", key);
+            return caches.delete(key);
+          })
       )
     )
   );
   self.clients.claim();
 });
 
-// Fetch — network first, cache fallback
-self.addEventListener('fetch', event => {
-  const { request } = event;
-  const url = new URL(request.url);
+// ── Fetch: network-only for /api/*, cache-first for static ───────────────────
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
 
-  // Always go network-only for API calls
-  if (url.pathname.startsWith('/api/')) {
+  // CRITICAL: Never intercept API calls — always go to network
+  if (url.pathname.startsWith("/api/")) {
     event.respondWith(
-      fetch(request).catch(() =>
+      fetch(event.request).catch(() =>
         new Response(
-          JSON.stringify({ reply: "I'm offline, Sir. API unavailable." }),
-          { headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({ reply: "Network unavailable, Sir. Check your connection." }),
+          { headers: { "Content-Type": "application/json" } }
         )
       )
     );
     return;
   }
 
-  // Network first for everything else
+  // For static assets: cache-first with network fallback
   event.respondWith(
-    fetch(request)
-      .then(response => {
-        // Cache successful GET responses
-        if (request.method === 'GET' && response.status === 200) {
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        // Only cache successful same-origin GET requests
+        if (
+          response.ok &&
+          event.request.method === "GET" &&
+          url.origin === self.location.origin
+        ) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      })
-      .catch(() =>
-        caches.match(request).then(cached => cached || caches.match(OFFLINE_URL))
-      )
+      });
+    })
   );
 });
