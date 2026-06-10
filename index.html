@@ -1095,4 +1095,440 @@
                 `;
                 
                 emojis.forEach(emoji => {
+                                        const btn = document.createElement('button');
+                    btn.textContent = emoji;
+                    btn.style.cssText = `
+                        background: rgba(0, 212, 255, 0.1);
+                        border: 1px solid rgba(0, 212, 255, 0.3);
+                        border-radius: 10px;
+                        padding: 10px;
+                        font-size: 20px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        color: white;
+                    `;
+                    
+                    btn.onmouseenter = () => {
+                        btn.style.background = 'rgba(0, 212, 255, 0.3)';
+                        btn.style.transform = 'scale(1.05)';
+                    };
+                    btn.onmouseleave = () => {
+                        btn.style.background = 'rgba(0, 212, 255, 0.1)';
+                        btn.style.transform = 'scale(1)';
+                    };
+                    
+                    btn.onclick = () => {
+                        messageInput.value += emoji;
+                        messageInput.focus();
+                        // Trigger input event for auto-resize
+                        const event = new Event('input', { bubbles: true });
+                        messageInput.dispatchEvent(event);
+                        emojiContainer.remove();
+                    };
+                    emojiContainer.appendChild(btn);
+                });
+                
+                // Add frequently used section
+                const freqLabel = document.createElement('div');
+                freqLabel.textContent = '⚡ Recent';
+                freqLabel.style.cssText = `
+                    grid-column: span 4;
+                    font-size: 10px;
+                    color: #00d4ff;
+                    text-align: center;
+                    margin-top: 5px;
+                    letter-spacing: 1px;
+                `;
+                emojiContainer.appendChild(freqLabel);
+                
+                // Get recently used emojis from localStorage
+                const recentEmojis = JSON.parse(localStorage.getItem('jarvis_recent_emojis') || '[]');
+                const recentToShow = recentEmojis.slice(0, 4);
+                
+                recentToShow.forEach(emoji => {
+                    const btn = document.createElement('button');
+                    btn.textContent = emoji;
+                    btn.style.cssText = `
+                        background: rgba(0, 212, 255, 0.2);
+                        border: 1px solid rgba(0, 212, 255, 0.5);
+                        border-radius: 10px;
+                        padding: 8px;
+                        font-size: 18px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    `;
+                    btn.onclick = () => {
+                        messageInput.value += emoji;
+                        messageInput.focus();
+                        messageInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        emojiContainer.remove();
+                    };
+                    emojiContainer.appendChild(btn);
+                });
+                
+                // Add recent if we have them
+                if (recentToShow.length < 4) {
+                    for (let i = 0; i < 4 - recentToShow.length; i++) {
+                        const placeholder = document.createElement('div');
+                        placeholder.style.cssText = 'opacity: 0.3; text-align: center; padding: 8px; font-size: 12px;';
+                        placeholder.textContent = '⭐';
+                        emojiContainer.appendChild(placeholder);
+                    }
+                }
+                
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '✖ Close';
+                closeBtn.style.cssText = `
+                    background: rgba(255, 50, 50, 0.3);
+                    border: 1px solid rgba(255, 50, 50, 0.5);
+                    border-radius: 10px;
+                    padding: 10px;
+                    cursor: pointer;
+                    grid-column: span 4;
+                    font-size: 12px;
+                    transition: all 0.2s;
+                `;
+                closeBtn.onmouseenter = () => {
+                    closeBtn.style.background = 'rgba(255, 50, 50, 0.5)';
+                };
+                closeBtn.onmouseleave = () => {
+                    closeBtn.style.background = 'rgba(255, 50, 50, 0.3)';
+                };
+                closeBtn.onclick = () => emojiContainer.remove();
+                emojiContainer.appendChild(closeBtn);
+                
+                document.body.appendChild(emojiContainer);
+                
+                // Animate entrance
+                emojiContainer.style.transform = 'scale(0.9)';
+                emojiContainer.style.opacity = '0';
+                emojiContainer.style.transition = 'all 0.2s ease';
+                setTimeout(() => {
+                    emojiContainer.style.transform = 'scale(1)';
+                    emojiContainer.style.opacity = '1';
+                }, 10);
+                
+                // Close on click outside
+                setTimeout(() => {
+                    const closeHandler = (e) => {
+                        if (!emojiContainer.contains(e.target) && e.target !== emojiBtn) {
+                            emojiContainer.remove();
+                            document.removeEventListener('click', closeHandler);
+                        }
+                    };
+                    document.addEventListener('click', closeHandler);
+                }, 100);
+            });
+            
+            // Add image upload feature
+            const imageUploadBtn = document.createElement('button');
+            imageUploadBtn.innerHTML = '🖼️';
+            imageUploadBtn.className = 'input-btn';
+            imageUploadBtn.title = 'Upload Image';
+            imageUploadBtn.style.cssText = `
+                background: rgba(0, 212, 255, 0.1);
+                border: 1px solid rgba(0, 212, 255, 0.3);
+            `;
+            
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.style.display = 'none';
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    await handleImageUpload(file);
+                }
+                fileInput.value = '';
+            };
+            
+            imageUploadBtn.onclick = () => fileInput.click();
+            document.body.appendChild(fileInput);
+            
+            // Insert image button before voice button
+            const inputButtons = document.querySelector('.input-buttons');
+            inputButtons.insertBefore(imageUploadBtn, voiceBtn);
+            
+            clearMemoryBtn.addEventListener('click', clearMemory);
+            
+            // Image upload handler
+            async function handleImageUpload(file) {
+                if (!file.type.startsWith('image/')) {
+                    addMessage("Please upload an image file, Sir.", false, true);
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    addMessage("Image too large, Sir. Maximum 5MB.", false, true);
+                    return;
+                }
+                
+                addMessage(`📸 Uploading image: ${file.name}`, false, false);
+                
+                // Convert to base64
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64Image = reader.result;
+                    
+                    // Show image preview in chat
+                    const imagePreview = document.createElement('div');
+                    imagePreview.className = 'message user-message';
+                    imagePreview.innerHTML = `
+                        <div class="message-avatar">👤</div>
+                        <div class="message-content">
+                            <img src="${base64Image}" style="max-width: 200px; max-height: 200px; border-radius: 10px; margin-bottom: 5px;">
+                            <div>📷 ${file.name}</div>
+                            <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(imagePreview);
+                    imagePreview.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    
+                    // Send to API for analysis
+                    typingIndicator.classList.add('active');
+                    
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: `[IMAGE UPLOAD] ${file.name}`,
+                                image: base64Image,
+                                userId: USER_ID,
+                                conversationId: conversationId,
+                                lat: currentLat,
+                                lon: currentLon
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        typingIndicator.classList.remove('active');
+                        addMessage(data.response || "Image processed, Sir.", false, false);
+                    } catch (err) {
+                        typingIndicator.classList.remove('active');
+                        addMessage("Failed to process image, Sir. The vision module may be offline.", false, true);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // Add theme toggle
+            const themeToggle = document.createElement('button');
+            themeToggle.innerHTML = '🌙';
+            themeToggle.className = 'input-btn';
+            themeToggle.title = 'Toggle Theme';
+            themeToggle.style.cssText = `
+                background: rgba(0, 212, 255, 0.1);
+                border: 1px solid rgba(0, 212, 255, 0.3);
+            `;
+            
+            let isDarkTheme = true;
+            themeToggle.onclick = () => {
+                isDarkTheme = !isDarkTheme;
+                if (isDarkTheme) {
+                    document.body.style.background = 'linear-gradient(135deg, #0a0e1a 0%, #0f1420 50%, #1a1f2e 100%)';
+                    themeToggle.innerHTML = '🌙';
+                    themeToggle.title = 'Switch to Light Theme';
+                } else {
+                    document.body.style.background = 'linear-gradient(135deg, #e0e4f0 0%, #c8d0e0 50%, #b0b8d0 100%)';
+                    document.body.style.color = '#1a1f2e';
+                    themeToggle.innerHTML = '☀️';
+                    themeToggle.title = 'Switch to Dark Theme';
+                    
+                    // Update component colors for light theme
+                    document.querySelectorAll('.message-content').forEach(el => {
+                        if (!el.closest('.user-message')) {
+                            el.style.background = 'rgba(255, 255, 255, 0.9)';
+                            el.style.color = '#1a1f2e';
+                        }
+                    });
+                }
+                // Reset colors on theme change
+                if (!isDarkTheme) {
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        .jarvis-message .message-content { background: rgba(255, 255, 255, 0.9) !important; color: #1a1f2e !important; }
+                        .sidebar, .header, .chat-area { background: rgba(255, 255, 255, 0.7) !important; }
+                        .message-input-wrapper { background: rgba(255, 255, 255, 0.8) !important; }
+                        #messageInput { color: #1a1f2e !important; }
+                        .status-item { background: rgba(255, 255, 255, 0.8) !important; color: #1a1f2e !important; }
+                        .quick-btn { background: rgba(0, 100, 200, 0.1) !important; color: #1a1f2e !important; }
+                    `;
+                    document.head.appendChild(style);
+                } else {
+                    const existingStyle = document.querySelector('style[data-theme]');
+                    if (existingStyle) existingStyle.remove();
+                }
+            };
+            
+            inputButtons.insertBefore(themeToggle, imageUploadBtn);
+            
+            // Add typing sound effect toggle
+            let typingSounds = false;
+            const soundToggle = document.createElement('button');
+            soundToggle.innerHTML = '🔇';
+            soundToggle.className = 'input-btn';
+            soundToggle.title = 'Typing Sounds (Off)';
+            soundToggle.style.cssText = `
+                background: rgba(0, 212, 255, 0.1);
+                border: 1px solid rgba(0, 212, 255, 0.3);
+            `;
+            
+            soundToggle.onclick = () => {
+                typingSounds = !typingSounds;
+                if (typingSounds) {
+                    soundToggle.innerHTML = '🔊';
+                    soundToggle.title = 'Typing Sounds (On)';
+                    // Initialize audio context on user gesture
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    const audioCtx = new AudioContext();
+                    audioCtx.resume();
+                } else {
+                    soundToggle.innerHTML = '🔇';
+                    soundToggle.title = 'Typing Sounds (Off)';
+                }
+            };
+            
+            inputButtons.insertBefore(soundToggle, themeToggle);
+            
+            // Add character counter
+            const charCounter = document.createElement('div');
+            charCounter.style.cssText = `
+                position: absolute;
+                bottom: 5px;
+                right: 10px;
+                font-size: 10px;
+                opacity: 0.5;
+                pointer-events: none;
+            `;
+            document.querySelector('.message-input-wrapper').style.position = 'relative';
+            document.querySelector('.message-input-wrapper').appendChild(charCounter);
+            
+            messageInput.addEventListener('input', () => {
+                const length = messageInput.value.length;
+                charCounter.textContent = `${length}/2000`;
+                if (length > 1800) {
+                    charCounter.style.color = '#ffaa00';
+                } else if (length > 1900) {
+                    charCounter.style.color = '#ff6666';
+                } else {
+                    charCounter.style.color = '';
+                }
+            });
+            
+            // Add maxlength attribute
+            messageInput.maxLength = 2000;
+            
+            // Quick action buttons
+            document.querySelectorAll('.quick-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const command = btn.getAttribute('data-command');
+                    if (command) sendMessage(command);
+                });
+            });
+            
+            // Add keyboard shortcut help
+            const shortcutHelp = document.createElement('div');
+            shortcutHelp.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                left: 20px;
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(10px);
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-size: 10px;
+                font-family: monospace;
+                z-index: 999;
+                cursor: pointer;
+                transition: all 0.3s;
+            `;
+            shortcutHelp.innerHTML = '⌨️ Ctrl+E Export | Ctrl+K Clear';
+            shortcutHelp.onclick = () => {
+                shortcutHelp.style.opacity = '0';
+                setTimeout(() => {
+                    shortcutHelp.remove();
+                }, 500);
+            };
+            document.body.appendChild(shortcutHelp);
+            
+            setTimeout(() => {
+                shortcutHelp.style.opacity = '0.7';
+            }, 3000);
+            
+            // Export shortcut (Ctrl+E)
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'e') {
+                    e.preventDefault();
+                    exportConversation();
+                }
+                if (e.ctrlKey && e.key === 'k') {
+                    e.preventDefault();
+                    clearMemory();
+                }
+                if (e.ctrlKey && e.key === 'l') {
+                    e.preventDefault();
+                    loadConversationHistory();
+                }
+            });
+            
+            // Online/Offline detection
+            window.addEventListener('online', async () => {
+                isOnline = true;
+                offlineBanner.classList.remove('active');
+                addMessage("🌐 Connection restored, Sir. Syncing offline messages...", false, false);
+                await syncOfflineQueue();
+            });
+            
+            window.addEventListener('offline', () => {
+                isOnline = false;
+                offlineBanner.classList.add('active');
+                addMessage("📡 Connection lost, Sir. Messages will be saved offline.", false, true);
+            });
+            
+            // Load conversation history
+            const loadHistoryBtn = document.createElement('button');
+            loadHistoryBtn.textContent = '📜 Load History';
+            loadHistoryBtn.className = 'quick-btn';
+            loadHistoryBtn.style.marginTop = '10px';
+            loadHistoryBtn.onclick = loadConversationHistory;
+            document.querySelector('.sidebar-section:last-child').appendChild(loadHistoryBtn);
+            
+            // Add clear queue button
+            const clearQueueBtn = document.createElement('button');
+            clearQueueBtn.textContent = '🗑️ Clear Queue';
+            clearQueueBtn.className = 'quick-btn';
+            clearQueueBtn.style.marginTop = '5px';
+            clearQueueBtn.style.background = 'rgba(255, 50, 50, 0.2)';
+            clearQueueBtn.onclick = () => {
+                if (confirm('Clear all queued offline messages?')) {
+                    messageQueue = [];
+                    localStorage.removeItem('jarvis_queue');
+                    offlineBanner.classList.remove('active');
+                    addMessage("✅ Offline queue cleared, Sir.", false, false);
+                }
+            };
+            document.querySelector('.sidebar-section:last-child').appendChild(clearQueueBtn);
+        }
+        
+        // Export conversation function
+        function exportConversation() {
+            const conversations = JSON.parse(localStorage.getItem('jarvis_conversations') || '[]');
+            const userConvos = conversations.filter(c => c.userId === USER_ID);
+            
+            if (userConvos.length === 0) {
+                addMessage("No conversation history to export, Sir.", false, true);
+                return;
+            }
+            
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                version: '2.0',
+                userId: USER_ID,
+                conversationId: conversationId,
+                totalMessages: userConvos.length,
+                messages: userConvos.map(c => ({
+                    role: c.isUser ? 'user' : 'assistant',
+                    content: c.text,
+                    timestamp: c.timestamp,
                     
