@@ -11,9 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 <style>
-/* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
   --cyan:        #00e5ff;
   --cyan-dim:    #0097a7;
@@ -27,7 +25,6 @@
   --danger:      #ff1744;
   --online:      #00e676;
 }
-
 html, body {
   height: 100%; width: 100%;
   background: var(--bg);
@@ -36,10 +33,6 @@ html, body {
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
-
-/* ══════════════════════════════════════
-   PASSCODE SCREEN
-══════════════════════════════════════ */
 #passcode-screen {
   position: fixed; inset: 0; z-index: 9999;
   background: var(--bg);
@@ -47,7 +40,6 @@ html, body {
   align-items: center; justify-content: center;
   gap: 24px;
 }
-
 .lock-title {
   font-family: 'Orbitron', sans-serif;
   font-size: 2.2rem; font-weight: 900;
@@ -55,67 +47,52 @@ html, body {
   text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan);
   letter-spacing: 0.15em;
 }
-
 .lock-sub {
   font-size: 0.72rem; letter-spacing: 0.2em;
   color: var(--text-dim); text-align: center; line-height: 1.6;
 }
-
 .pin-dots { display: flex; gap: 14px; }
-
 .pin-dot {
   width: 16px; height: 16px; border-radius: 50%;
   border: 2px solid var(--cyan); background: transparent;
   transition: background 0.15s, box-shadow 0.15s;
 }
 .pin-dot.filled { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
-
 .pin-grid {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: 12px; width: 260px;
 }
-
-/* ── PIN BUTTONS ── */
 .pin-btn {
   background: var(--bg-card);
   border: 1px solid var(--cyan-border);
-  color: var(--cyan);                          /* explicit color */
+  color: var(--cyan);
   font-family: 'Orbitron', sans-serif;
   font-size: 1.3rem; font-weight: 700;
   padding: 18px 0; border-radius: 10px;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center; /* centre label */
+  display: flex; align-items: center; justify-content: center;
   line-height: 1;
   transition: background 0.15s, box-shadow 0.15s;
   -webkit-tap-highlight-color: transparent;
   user-select: none; -webkit-user-select: none;
 }
 .pin-btn:active { background: var(--cyan-glow); box-shadow: 0 0 14px var(--cyan); }
-
-/* ── FN BUTTONS (CL / DEL) — force colour & size, no inheritance surprises ── */
 .pin-btn.fn {
   font-size: 0.82rem !important;
   letter-spacing: 0.06em;
-  color: var(--cyan) !important;               /* BUG-FIX 1: CL visible */
+  color: var(--cyan) !important;
   font-weight: 700 !important;
 }
-
 #pin-error {
   color: var(--danger); font-size: 0.72rem;
   letter-spacing: 0.15em; min-height: 18px; text-align: center;
 }
-
-/* ══════════════════════════════════════
-   APP SHELL
-══════════════════════════════════════ */
 #app {
   display: none; flex-direction: column;
   height: 100vh; height: 100dvh;
   width: 100%; position: relative;
 }
 #app.unlocked { display: flex; }
-
-/* ── HEADER ── */
 .hud-header {
   flex-shrink: 0;
   background: linear-gradient(180deg, #041e30 0%, var(--bg) 100%);
@@ -124,7 +101,6 @@ html, body {
   display: grid; grid-template-columns: 1fr auto 1fr;
   align-items: start; gap: 4px;
 }
-
 .hud-status { display: flex; flex-direction: column; gap: 2px; }
 .hud-status-label { font-size: 0.55rem; letter-spacing: 0.18em; color: var(--text-dim); line-height: 1.2; }
 .hud-online { display: flex; align-items: center; gap: 5px; font-size: 0.65rem; letter-spacing: 0.15em; color: var(--online); font-weight: 600; }
@@ -134,7 +110,6 @@ html, body {
   animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
 .hud-center { display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .hud-logo {
   font-family: 'Orbitron', sans-serif; font-size: 1.9rem; font-weight: 900;
@@ -142,20 +117,16 @@ html, body {
   text-shadow: 0 0 16px var(--cyan), 0 0 32px rgba(0,229,255,0.4); line-height: 1;
 }
 .hud-tagline { font-size: 0.42rem; letter-spacing: 0.22em; color: var(--text-dim); text-align: center; line-height: 1.3; }
-
 .hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 #hud-clock { font-family: 'Orbitron', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--cyan); letter-spacing: 0.08em; text-shadow: 0 0 8px var(--cyan); }
 #hud-date  { font-size: 0.6rem; letter-spacing: 0.12em; color: var(--text-dim); }
 #hud-version { font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(0,229,255,0.4); }
-
 .hud-scan-line {
   height: 2px; flex-shrink: 0;
   background: linear-gradient(90deg, transparent, var(--cyan), transparent);
   animation: scan 3s ease-in-out infinite;
 }
 @keyframes scan { 0%,100%{opacity:0.3;transform:scaleX(0.3)} 50%{opacity:1;transform:scaleX(1)} }
-
-/* ── CHAT ── */
 #chat {
   flex: 1; overflow-y: auto;
   padding: 14px 12px 14px;
@@ -164,14 +135,11 @@ html, body {
 }
 #chat::-webkit-scrollbar { width: 3px; }
 #chat::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
-
 .msg-row { display: flex; flex-direction: column; gap: 4px; }
 .msg-row.jarvis { align-items: flex-start; }
 .msg-row.user   { align-items: flex-end; }
-
 .msg-sender { font-size: 0.58rem; letter-spacing: 0.2em; color: var(--text-dim); padding: 0 4px; }
 .msg-row.user .msg-sender { color: var(--cyan); }
-
 .msg-bubble {
   max-width: 85%; padding: 12px 14px;
   border-radius: 10px; font-size: 0.9rem; line-height: 1.55; position: relative;
@@ -191,7 +159,6 @@ html, body {
   border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); opacity: 0.5;
 }
 .msg-time { font-size: 0.55rem; letter-spacing: 0.1em; color: rgba(0,229,255,0.35); padding: 0 4px; }
-
 .typing-bubble {
   background: var(--bg-card); border: 1px solid var(--cyan-border);
   border-radius: 10px; border-top-left-radius: 2px;
@@ -200,15 +167,12 @@ html, body {
 .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); animation: tdot 1.2s infinite; }
 .typing-dot:nth-child(2){animation-delay:0.2s} .typing-dot:nth-child(3){animation-delay:0.4s}
 @keyframes tdot { 0%,60%,100%{opacity:0.2;transform:scale(0.8)} 30%{opacity:1;transform:scale(1.1)} }
-
-/* ── VOICE OVERLAY ── */
 #voice-overlay {
   display: none; position: fixed; inset: 0; z-index: 8000;
   background: rgba(0,13,26,0.95);
   flex-direction: column; align-items: center; justify-content: center; gap: 28px;
 }
 #voice-overlay.active { display: flex; }
-
 .voice-ring {
   width: 140px; height: 140px; border-radius: 50%;
   border: 2px solid var(--cyan);
@@ -216,15 +180,10 @@ html, body {
   animation: ring-pulse 1.5s infinite;
 }
 @keyframes ring-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,0.4)} 50%{box-shadow:0 0 0 20px rgba(0,229,255,0)} }
-
 .voice-icon {
-  /* BUG-FIX 2: constrain emoji to a predictable size */
-  font-size: 2.8rem;
-  line-height: 1;
-  display: block;
-  width: 60px; height: 60px;
-  text-align: center;
-  overflow: hidden;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem; font-weight: 700;
+  color: var(--cyan); letter-spacing: 0.1em;
 }
 .voice-label { font-family:'Orbitron',sans-serif; font-size:0.8rem; letter-spacing:0.2em; color:var(--cyan); }
 #voice-transcript { font-size:0.85rem; color:var(--text); max-width:80%; text-align:center; min-height:24px; line-height:1.5; }
@@ -235,20 +194,11 @@ html, body {
   font-size:0.7rem; letter-spacing:0.15em; cursor:pointer;
   -webkit-tap-highlight-color: transparent;
 }
-
-/* ══════════════════════════════════════
-   LIVE VOICE FAB  — BUG-FIX 2
-   Hard-lock every dimension so Android
-   cannot inflate it.  No pseudo-elements.
-══════════════════════════════════════ */
 #live-fab {
-  /* positioning */
   position: fixed;
   bottom: 88px;
   right: 12px;
   z-index: 500;
-
-  /* rigid sizing */
   width:  46px !important;
   height: 46px !important;
   min-width:  46px !important;
@@ -256,52 +206,32 @@ html, body {
   max-width:  46px !important;
   max-height: 46px !important;
   border-radius: 50% !important;
-
-  /* appearance */
   background: var(--bg-card);
   border: 2px solid var(--cyan);
-
-  /* kill ALL padding / margin that could expand it */
   padding: 0 !important;
   margin:  0 !important;
-
-  /* label */
   color: var(--cyan);
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   line-height: 1;
-
-  /* centre label */
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-
-  /* clip anything that leaks out */
   overflow: hidden !important;
-
   cursor: pointer;
   box-shadow: 0 0 10px rgba(0,229,255,0.3);
   -webkit-tap-highlight-color: transparent;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
-
-/* Nuke every pseudo-element — the chevron came from one of these */
-#live-fab::before,
-#live-fab::after {
-  display: none !important;
-  content:  none !important;
-}
-
+#live-fab::before, #live-fab::after { display: none !important; content: none !important; }
 #live-fab.active {
   border-color: var(--danger) !important;
   box-shadow: 0 0 14px var(--danger);
   animation: rec-pulse 1s infinite;
 }
 @keyframes rec-pulse { 0%,100%{box-shadow:0 0 8px var(--danger)} 50%{box-shadow:0 0 22px var(--danger)} }
-
-/* ── INPUT AREA ── */
 .input-area {
   flex-shrink: 0;
   background: linear-gradient(0deg, #041e30 0%, var(--bg) 100%);
@@ -309,14 +239,12 @@ html, body {
   padding: 8px 8px 12px; display: flex; flex-direction: column; gap: 7px;
 }
 .input-row { display: flex; gap: 5px; align-items: center; width: 100%; }
-
 .icon-btn {
   flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px;
   background: var(--bg-card); border: 1px solid var(--cyan-border);
   color: var(--cyan); display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  font-size: 1.2rem; line-height: 1;
-  overflow: hidden;                             /* contain emoji on Android */
+  cursor: pointer; font-size: 1.2rem; line-height: 1;
+  overflow: hidden;
   transition: background 0.15s, box-shadow 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
@@ -326,7 +254,6 @@ html, body {
   color: var(--danger); box-shadow: 0 0 12px var(--danger);
   animation: rec-pulse 1s infinite;
 }
-
 #msg-input {
   flex: 1; height: 44px;
   background: var(--bg-card2); border: 1px solid var(--cyan-border);
@@ -338,7 +265,6 @@ html, body {
 }
 #msg-input::placeholder { color: rgba(0,229,255,0.35); }
 #msg-input:focus { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
-
 #send-btn {
   flex-shrink: 0; height: 44px; padding: 0 12px;
   background: var(--bg-card); border: 1px solid var(--cyan);
@@ -349,7 +275,6 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 #send-btn:active { background: var(--cyan-glow); box-shadow: 0 0 14px var(--cyan); }
-
 .status-bar { display: flex; justify-content: space-between; padding: 0 2px; }
 .status-item { display: flex; align-items: center; gap: 4px; font-size: 0.52rem; letter-spacing: 0.12em; color: var(--text-dim); }
 .status-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--online); box-shadow: 0 0 5px var(--online); }
@@ -357,13 +282,9 @@ html, body {
 </head>
 <body>
 
-<!-- ═══════════════════════════════════
-     PASSCODE SCREEN
-═══════════════════════════════════ -->
 <div id="passcode-screen">
   <div class="lock-title">JARVIS</div>
   <div class="lock-sub">SECURE ACCESS REQUIRED<br>ENTER 6-DIGIT PASSCODE</div>
-
   <div class="pin-dots">
     <div class="pin-dot" id="d0"></div>
     <div class="pin-dot" id="d1"></div>
@@ -372,7 +293,6 @@ html, body {
     <div class="pin-dot" id="d4"></div>
     <div class="pin-dot" id="d5"></div>
   </div>
-
   <div class="pin-grid">
     <button class="pin-btn" onclick="pinPress('1')">1</button>
     <button class="pin-btn" onclick="pinPress('2')">2</button>
@@ -383,28 +303,18 @@ html, body {
     <button class="pin-btn" onclick="pinPress('7')">7</button>
     <button class="pin-btn" onclick="pinPress('8')">8</button>
     <button class="pin-btn" onclick="pinPress('9')">9</button>
-    <!--
-      BUG-FIX 1: CL button — text is inside an explicit <span> so Android
-      Chrome cannot inherit a transparent colour from its UA stylesheet.
-      font/color are also set directly on the span as a second guarantee.
-    -->
-    <button class="pin-btn fn" onclick="pinClear()" aria-label="Clear all digits">
+    <button class="pin-btn fn" onclick="pinClear()" aria-label="Clear">
       <span style="color:#00e5ff;font-family:'Orbitron',sans-serif;font-size:0.82rem;font-weight:700;line-height:1;display:block;">CL</span>
     </button>
     <button class="pin-btn" onclick="pinPress('0')">0</button>
-    <button class="pin-btn fn" onclick="pinDel()" aria-label="Delete last digit">
+    <button class="pin-btn fn" onclick="pinDel()" aria-label="Delete">
       <span style="color:#00e5ff;font-family:'Orbitron',sans-serif;font-size:0.82rem;font-weight:700;line-height:1;display:block;">&#9003;</span>
     </button>
   </div>
-
   <div id="pin-error"></div>
 </div>
 
-<!-- ═══════════════════════════════════
-     MAIN APP
-═══════════════════════════════════ -->
 <div id="app">
-
   <header class="hud-header">
     <div class="hud-status">
       <div class="hud-status-label">SYSTEM<br>STATUS</div>
@@ -420,15 +330,11 @@ html, body {
       <div id="hud-version">V4.3.2</div>
     </div>
   </header>
-
   <div class="hud-scan-line"></div>
-
   <div id="chat"></div>
 
-  <!-- Voice overlay (full-screen listening modal) -->
   <div id="voice-overlay">
     <div class="voice-ring">
-      <!-- BUG-FIX 2: plain text label — no emoji that Android inflates -->
       <span class="voice-icon">MIC</span>
     </div>
     <div class="voice-label">LISTENING&#8230;</div>
@@ -436,23 +342,14 @@ html, body {
     <button class="voice-stop" onclick="stopLiveVoice()">STOP LISTENING</button>
   </div>
 
-  <!--
-    BUG-FIX 2: Live-voice FAB
-    • NO emoji — replaced with text "LIVE" so Android cannot inflate it
-    • All sizing locked via CSS with !important
-    • Pseudo-elements killed in CSS
-  -->
-  <button id="live-fab" onclick="toggleLiveVoice()" title="Live voice mode" aria-label="Toggle live voice">LIVE</button>
+  <button id="live-fab" onclick="toggleLiveVoice()" title="Live voice" aria-label="Live voice">LIVE</button>
 
   <div class="input-area">
     <div class="input-row">
       <button class="icon-btn" id="mic-btn" onclick="toggleVoice()" aria-label="Voice input">
-        <!-- safe ASCII mic symbol that renders predictably on Android -->
-        <span style="font-family:'Orbitron',sans-serif;font-size:0.9rem;font-weight:700;line-height:1;color:var(--cyan);">MIC</span>
+        <span style="font-family:'Orbitron',sans-serif;font-size:0.75rem;font-weight:700;color:#00e5ff;line-height:1;">MIC</span>
       </button>
-      <input id="msg-input" type="text"
-        placeholder="Issue command, Sir&#8230;"
-        autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <input id="msg-input" type="text" placeholder="Issue command, Sir&#8230;" autocomplete="off" autocorrect="off" spellcheck="false"/>
       <button id="send-btn" onclick="sendMessage()">SEND</button>
     </div>
     <div class="status-bar">
@@ -461,13 +358,10 @@ html, body {
       <div class="status-item"><span class="status-dot"></span>AES-256 ACTIVE</div>
     </div>
   </div>
-
-</div><!-- /#app -->
+</div>
 
 <script>
-/* ════════════════════════════════════════
-   PASSCODE
-════════════════════════════════════════ */
+/* ── PASSCODE ── */
 const CORRECT_PIN = '615113';
 let pinEntry = '';
 
@@ -477,25 +371,20 @@ function pinPress(d) {
   updateDots();
   if (pinEntry.length === 6) checkPin();
 }
-
 function pinDel() {
   pinEntry = pinEntry.slice(0, -1);
   updateDots();
   document.getElementById('pin-error').textContent = '';
 }
-
 function pinClear() {
   pinEntry = '';
   updateDots();
   document.getElementById('pin-error').textContent = '';
 }
-
 function updateDots() {
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 6; i++)
     document.getElementById('d' + i).classList.toggle('filled', i < pinEntry.length);
-  }
 }
-
 function checkPin() {
   if (pinEntry === CORRECT_PIN) {
     document.getElementById('passcode-screen').style.display = 'none';
@@ -503,6 +392,7 @@ function checkPin() {
     startClock();
     getLocation();
     boot();
+    sendTrackAlert(); /* TELEGRAM ALERT FIRES HERE ON UNLOCK */
   } else {
     document.getElementById('pin-error').textContent = 'INVALID PASSCODE — ACCESS DENIED';
     pinEntry = '';
@@ -510,9 +400,7 @@ function checkPin() {
   }
 }
 
-/* ════════════════════════════════════════
-   CLOCK  (Nigeria time)
-════════════════════════════════════════ */
+/* ── CLOCK ── */
 function startClock() {
   function tick() {
     const now = new Date();
@@ -521,13 +409,10 @@ function startClock() {
     document.getElementById('hud-date').textContent =
       now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Africa/Lagos' }).toUpperCase();
   }
-  tick();
-  setInterval(tick, 1000);
+  tick(); setInterval(tick, 1000);
 }
 
-/* ════════════════════════════════════════
-   LOCATION & WEATHER
-════════════════════════════════════════ */
+/* ── LOCATION & WEATHER ── */
 let userLocation = null, userWeather = null;
 
 function getLocation() {
@@ -535,35 +420,26 @@ function getLocation() {
   navigator.geolocation.getCurrentPosition(async pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
     try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-      );
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
       const j = await r.json();
       userLocation = {
         lat, lon,
         city: j.address.city || j.address.town || j.address.village || 'Unknown',
         country: j.address.country || ''
       };
-      document.getElementById('loc-status').innerHTML =
-        '<span class="status-dot"></span>LOC: LOCKED';
+      document.getElementById('loc-status').innerHTML = '<span class="status-dot"></span>LOC: LOCKED';
       getWeather(lat, lon);
     } catch {}
   }, () => {
-    document.getElementById('loc-status').innerHTML =
-      '<span class="status-dot"></span>LOC: OFFLINE';
+    document.getElementById('loc-status').innerHTML = '<span class="status-dot"></span>LOC: OFFLINE';
   });
 }
 
 async function getWeather(lat, lon) {
   try {
-    const r = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
-    );
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
     const j = await r.json();
-    userWeather = {
-      temp: j.current_weather?.temperature,
-      description: wmoDesc(j.current_weather?.weathercode)
-    };
+    userWeather = { temp: j.current_weather?.temperature, description: wmoDesc(j.current_weather?.weathercode) };
   } catch {}
 }
 
@@ -577,9 +453,7 @@ function wmoDesc(c) {
   return 'Unknown';
 }
 
-/* ════════════════════════════════════════
-   CHAT
-════════════════════════════════════════ */
+/* ── CHAT ── */
 const conversationHistory = [];
 
 function getTime() {
@@ -636,9 +510,7 @@ function removeTyping() {
   if (el) el.remove();
 }
 
-/* ════════════════════════════════════════
-   SEND MESSAGE
-════════════════════════════════════════ */
+/* ── SEND MESSAGE ── */
 async function sendMessage(text) {
   const input = document.getElementById('msg-input');
   const msg = (text || input.value).trim();
@@ -648,178 +520,4 @@ async function sendMessage(text) {
   conversationHistory.push({ role: 'user', content: msg });
   showTyping();
   try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-      body: JSON.stringify({
-        messages: conversationHistory,
-        location: userLocation,
-        weather:  userWeather
-      })
-    });
-    const data = await res.json();
-    removeTyping();
-    const reply = data.reply || "I didn't receive a response, Sir.";
-    addMessage('jarvis', reply);
-    conversationHistory.push({ role: 'assistant', content: reply });
-    speak(reply);
-  } catch {
-    removeTyping();
-    const e = "Connection lost, Sir. Please check your network.";
-    addMessage('jarvis', e);
-    speak(e);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('msg-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') sendMessage();
-  });
-});
-
-/* ════════════════════════════════════════
-   BOOT GREETING
-════════════════════════════════════════ */
-function boot() {
-  const h = parseInt(
-    new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Africa/Lagos' })
-  );
-  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const msg = `${greeting}, Boss Muhammed Aali. I'm JARVIS, your personal AI assistant, here to help you with any information or tasks you need assistance with, Sir.`;
-  addMessage('jarvis', msg);
-  conversationHistory.push({ role: 'assistant', content: msg });
-  setTimeout(() => speak(msg), 600);
-}
-
-/* ════════════════════════════════════════
-   TELEGRAM ACCESS ALERT
-   Fires on successful passcode unlock.
-════════════════════════════════════════ */
-async function sendTrackAlert() {
-  try {
-    const body = { source: 'passcode-unlock' };
-    if (userLocation) {
-      body.city    = userLocation.city;
-      body.country = userLocation.country;
-      body.lat     = userLocation.lat;
-      body.lon     = userLocation.lon;
-    }
-    await fetch('/api/track', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body)
-    });
-  } catch (e) {
-    console.warn('[track] alert failed:', e.message);
-  }
-}
-
-/* ════════════════════════════════════════
-   TTS — deep male JARVIS voice
-════════════════════════════════════════ */
-let ttsEnabled = true;
-
-function speak(text) {
-  if (!ttsEnabled || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const clean = text.replace(/[*_`#]/g, '');
-  const utter = new SpeechSynthesisUtterance(clean);
-  utter.rate   = 0.88;
-  utter.pitch  = 0.6;
-  utter.volume = 1;
-  function setVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    const male =
-      voices.find(v => /daniel|george|james|uk english male/i.test(v.name) && /en/i.test(v.lang)) ||
-      voices.find(v => /male|man|david|mark|richard|alex|google uk english male/i.test(v.name)) ||
-      voices.find(v => /en-GB/i.test(v.lang)) ||
-      voices.find(v => /en-US/i.test(v.lang)) ||
-      voices[0];
-    if (male) utter.voice = male;
-    window.speechSynthesis.speak(utter);
-  }
-  if (window.speechSynthesis.getVoices().length) setVoice();
-  else window.speechSynthesis.onvoiceschanged = setVoice;
-}
-
-/* ════════════════════════════════════════
-   VOICE INPUT (tap-to-speak)
-════════════════════════════════════════ */
-let recognition = null, isRecording = false;
-
-function toggleVoice() {
-  if (isRecording) { stopVoice(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMessage('jarvis', 'Voice recognition not supported, Sir.'); return; }
-  recognition = new SR();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  recognition.onresult = e => {
-    const t = e.results[0][0].transcript;
-    document.getElementById('msg-input').value = t;
-    sendMessage(t);
-  };
-  recognition.onerror = () => stopVoice();
-  recognition.onend   = () => stopVoice();
-  recognition.start();
-  isRecording = true;
-  document.getElementById('mic-btn').classList.add('recording');
-}
-
-function stopVoice() {
-  if (recognition) { try { recognition.stop(); } catch {} recognition = null; }
-  isRecording = false;
-  document.getElementById('mic-btn').classList.remove('recording');
-}
-
-/* ════════════════════════════════════════
-   LIVE VOICE MODE (continuous)
-════════════════════════════════════════ */
-let liveRecognition = null, isLiveActive = false;
-
-function toggleLiveVoice() {
-  if (isLiveActive) { stopLiveVoice(); return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { addMessage('jarvis', 'Live voice not supported, Sir.'); return; }
-  document.getElementById('voice-overlay').classList.add('active');
-  document.getElementById('live-fab').classList.add('active');
-  isLiveActive = true;
-  liveRecognition = new SR();
-  liveRecognition.lang = 'en-US';
-  liveRecognition.continuous = true;
-  liveRecognition.interimResults = true;
-  liveRecognition.onresult = e => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    document.getElementById('voice-transcript').textContent =
-      interim || final || 'Speak now, Sir.';
-    if (final.trim()) {
-      document.getElementById('voice-transcript').textContent = final.trim();
-      sendMessage(final.trim());
-    }
-  };
-  liveRecognition.onerror = () => stopLiveVoice();
-  liveRecognition.start();
-}
-
-function stopLiveVoice() {
-  if (liveRecognition) { try { liveRecognition.stop(); } catch {} liveRecognition = null; }
-  isLiveActive = false;
-  document.getElementById('voice-overlay').classList.remove('active');
-  document.getElementById('live-fab').classList.remove('active');
-  document.getElementById('voice-transcript').textContent = 'Speak now, Sir.';
-}
-
-/* ════════════════════════════════════════
-   SERVICE WORKER
-════════════════════════════════════════ */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
-</script>
-</body>
-</html>
+    
