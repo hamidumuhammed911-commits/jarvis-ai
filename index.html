@@ -167,6 +167,7 @@ html, body {
 .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); animation: tdot 1.2s infinite; }
 .typing-dot:nth-child(2){animation-delay:0.2s} .typing-dot:nth-child(3){animation-delay:0.4s}
 @keyframes tdot { 0%,60%,100%{opacity:0.2;transform:scale(0.8)} 30%{opacity:1;transform:scale(1.1)} }
+
 #voice-overlay {
   display: none; position: fixed; inset: 0; z-index: 8000;
   background: rgba(0,13,26,0.95);
@@ -194,17 +195,19 @@ html, body {
   font-size:0.7rem; letter-spacing:0.15em; cursor:pointer;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ── INTERACTIVE FLOATING LIVE BUTTON STATE ── */
 #live-fab {
   position: fixed;
-  bottom: 88px;
-  right: 12px;
+  bottom: 82px;
+  right: 18px;
   z-index: 500;
-  width:  46px !important;
-  height: 46px !important;
-  min-width:  46px !important;
-  min-height: 46px !important;
-  max-width:  46px !important;
-  max-height: 46px !important;
+  width:  52px !important;
+  height: 52px !important;
+  min-width:  52px !important;
+  min-height: 52px !important;
+  max-width:  52px !important;
+  max-height: 52px !important;
   border-radius: 50% !important;
   background: var(--bg-card);
   border: 2px solid var(--cyan);
@@ -212,27 +215,32 @@ html, body {
   margin:  0 !important;
   color: var(--cyan);
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.5rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   line-height: 1;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   overflow: hidden !important;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(0,229,255,0.3);
+  box-shadow: 0 0 15px rgba(0,229,255,0.25), inset 0 0 10px rgba(0,229,255,0.1);
   -webkit-tap-highlight-color: transparent;
-  transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.1s;
 }
 #live-fab:active { transform: scale(0.92); }
 #live-fab::before, #live-fab::after { display: none !important; content: none !important; }
+
 #live-fab.active {
   border-color: var(--danger) !important;
-  box-shadow: 0 0 14px var(--danger);
-  animation: rec-pulse 1s infinite;
+  color: var(--danger) !important;
+  animation: rec-pulse 1.2s infinite;
 }
-@keyframes rec-pulse { 0%,100%{box-shadow:0 0 8px var(--danger)} 50%{box-shadow:0 0 22px var(--danger)} }
+@keyframes rec-pulse { 
+  0%, 100% { box-shadow: 0 0 10px rgba(255,23,68,0.4), inset 0 0 8px rgba(255,23,68,0.2); } 
+  50% { box-shadow: 0 0 24px var(--danger), inset 0 0 12px rgba(255,23,68,0.4); } 
+}
+
 .input-area {
   flex-shrink: 0;
   background: linear-gradient(0deg, #041e30 0%, var(--bg) 100%);
@@ -422,11 +430,9 @@ function getLocation() {
     document.getElementById('loc-status').innerHTML = '<span class="status-dot offline"></span>LOC: UNSUPPORTED';
     return;
   }
-  
   navigator.geolocation.getCurrentPosition(async pos => {
     const { latitude: lat, longitude: lon } = pos.coords;
     try {
-      // Added User-Agent and structured headers to prevent Nominatim endpoint from rejecting requests from Android WebViews
       const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
         headers: { 'Accept': 'application/json', 'User-Agent': 'JARVIS-PWA-V4' }
       });
@@ -439,7 +445,6 @@ function getLocation() {
       document.getElementById('loc-status').innerHTML = '<span class="status-dot"></span>LOC: LOCKED';
       getWeather(lat, lon);
     } catch (err) {
-      // Fallback display if Nominatim is completely down but coordinates exist
       document.getElementById('loc-status').innerHTML = `<span class="status-dot"></span>LOC: GPS OK`;
       getWeather(lat, lon);
     }
@@ -588,15 +593,20 @@ async function sendTrackAlert() {
   }
 }
 
-/* ── TTS ── */
+/* ── DEEP MALE SYNTH TTS ENGINE V4.3.2 ── */
 let ttsEnabled = true;
 
 function speak(text) {
   if (!ttsEnabled || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
+  
   const clean = text.replace(/[*_`#]/g, '');
   const utter = new SpeechSynthesisUtterance(clean);
-  utter.rate = 0.88; utter.pitch = 0.6; utter.volume = 1;
+  
+  utter.rate = 0.82; 
+  utter.pitch = 0.1; 
+  utter.volume = 1.0;
+  
   function setVoice() {
     const voices = window.speechSynthesis.getVoices();
     const male =
@@ -605,14 +615,19 @@ function speak(text) {
       voices.find(v => /en-GB/i.test(v.lang)) ||
       voices.find(v => /en-US/i.test(v.lang)) ||
       voices[0];
+      
     if (male) utter.voice = male;
     window.speechSynthesis.speak(utter);
   }
-  if (window.speechSynthesis.getVoices().length) setVoice();
-  else window.speechSynthesis.onvoiceschanged = setVoice;
+  
+  if (window.speechSynthesis.getVoices().length) {
+    setVoice();
+  } else {
+    window.speechSynthesis.onvoiceschanged = setVoice;
+  }
 }
 
-/* ── VOICE INPUT ── */
+/* ── STANDARD VOICE MIC BUTTON ── */
 let recognition = null, isRecording = false;
 
 function toggleVoice() {
@@ -641,16 +656,18 @@ function stopVoice() {
   document.getElementById('mic-btn').classList.remove('recording');
 }
 
-/* ── LIVE VOICE MODE ── */
+/* ── LIVE CONTINUOUS RADAR OVERLAY VOICE MODE ── */
 let liveRecognition = null, isLiveActive = false;
 
 function toggleLiveVoice() {
   if (isLiveActive) { stopLiveVoice(); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { addMessage('jarvis', 'Live voice not supported, Sir.'); return; }
+  
   document.getElementById('voice-overlay').classList.add('active');
   document.getElementById('live-fab').classList.add('active');
   isLiveActive = true;
+  
   liveRecognition = new SR();
   liveRecognition.lang = 'en-US';
   liveRecognition.continuous = true;
@@ -679,7 +696,7 @@ function stopLiveVoice() {
   document.getElementById('voice-transcript').textContent = 'Speak now, Sir.';
 }
 
-/* ── SERVICE WORKER ── */
+/* ── SERVICE WORKER PWA INTEGRATION ── */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
