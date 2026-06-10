@@ -567,3 +567,259 @@ async function getWeather(lat, lon) {
   } catch {}
 }
 
+function wmoDesc(c) {
+  if (c === 0) return 'Clear sky';
+  if (c <= 2)  return 'Partly cloudy';
+  if (c <= 3)  return 'Overcast';
+  if (c <= 67) return 'Rainy';
+  if (c <= 77) return 'Snow';
+  if (c <= 99) return 'Thunderstorm';
+  return 'Unknown';
+}
+
+/* ════════════════════════════════════════
+   CHAT
+════════════════════════════════════════ */
+const conversationHistory = [];
+
+function getTime() {
+  return new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false, timeZone: 'Africa/Lagos'
+  });
+}
+
+function addMessage(role, text) {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  sender.textContent = role === 'jarvis' ? 'JARVIS' : 'BOSS MUHAMMED AALI';
+  const bubble = document.createElement('div');
+  bubble.className = `msg-bubble ${role}-bubble`;
+  bubble.textContent = text;
+  if (role === 'jarvis') {
+    const c = document.createElement('div');
+    c.className = 'msg-corner';
+    bubble.appendChild(c);
+  }
+  const t = document.createElement('div');
+  t.className = 'msg-time';
+  t.textContent = getTime();
+  row.appendChild(sender);
+  row.appendChild(bubble);
+  row.appendChild(t);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping() {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'msg-row jarvis';
+  row.id = 'typing-row';
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  sender.textContent = 'JARVIS';
+  const bubble = document.createElement('div');
+  bubble.className = 'typing-bubble';
+  bubble.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  row.appendChild(sender);
+  row.appendChild(bubble);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-row');
+  if (el) el.remove();
+}
+
+/* ════════════════════════════════════════
+   SEND MESSAGE
+════════════════════════════════════════ */
+async function sendMessage(text) {
+  const input = document.getElementById('msg-input');
+  const msg = (text || input.value).trim();
+  if (!msg) return;
+  input.value = '';
+  addMessage('user', msg);
+  conversationHistory.push({ role: 'user', content: msg });
+  showTyping();
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify({
+        messages: conversationHistory,
+        location: userLocation,
+        weather:  userWeather
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+    const reply = data.reply || "I didn't receive a response, Sir.";
+    addMessage('jarvis', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    speak(reply);
+  } catch {
+    removeTyping();
+    const e = "Connection lost, Sir. Please check your network.";
+    addMessage('jarvis', e);
+    speak(e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msg-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+});
+
+/* ════════════════════════════════════════
+   BOOT GREETING
+════════════════════════════════════════ */
+function boot() {
+  const h = parseInt(
+    new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Africa/Lagos' })
+  );
+  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const msg = `${greeting}, Boss Muhammed Aali. I'm JARVIS, your personal AI assistant, here to help you with any information or tasks you need assistance with, Sir.`;
+  addMessage('jarvis', msg);
+  conversationHistory.push({ role: 'assistant', content: msg });
+  setTimeout(() => speak(msg), 600);
+}
+
+/* ════════════════════════════════════════
+   TELEGRAM ACCESS ALERT
+   Fires on successful passcode unlock.
+════════════════════════════════════════ */
+async function sendTrackAlert() {
+  try {
+    const body = { source: 'passcode-unlock' };
+    if (userLocation) {
+      body.city    = userLocation.city;
+      body.country = userLocation.country;
+      body.lat     = userLocation.lat;
+      body.lon     = userLocation.lon;
+    }
+    await fetch('/api/track', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body)
+    });
+  } catch (e) {
+    console.warn('[track] alert failed:', e.message);
+  }
+}
+
+/* ════════════════════════════════════════
+   TTS — deep male JARVIS voice
+════════════════════════════════════════ */
+let ttsEnabled = true;
+
+function speak(text) {
+  if (!ttsEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const clean = text.replace(/[*_`#]/g, '');
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.rate   = 0.88;
+  utter.pitch  = 0.6;
+  utter.volume = 1;
+  function setVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    const male =
+      voices.find(v => /daniel|george|james|uk english male/i.test(v.name) && /en/i.test(v.lang)) ||
+      voices.find(v => /male|man|david|mark|richard|alex|google uk english male/i.test(v.name)) ||
+      voices.find(v => /en-GB/i.test(v.lang)) ||
+      voices.find(v => /en-US/i.test(v.lang)) ||
+      voices[0];
+    if (male) utter.voice = male;
+    window.speechSynthesis.speak(utter);
+  }
+  if (window.speechSynthesis.getVoices().length) setVoice();
+  else window.speechSynthesis.onvoiceschanged = setVoice;
+}
+
+/* ════════════════════════════════════════
+   VOICE INPUT (tap-to-speak)
+════════════════════════════════════════ */
+let recognition = null, isRecording = false;
+
+function toggleVoice() {
+  if (isRecording) { stopVoice(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMessage('jarvis', 'Voice recognition not supported, Sir.'); return; }
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript;
+    document.getElementById('msg-input').value = t;
+    sendMessage(t);
+  };
+  recognition.onerror = () => stopVoice();
+  recognition.onend   = () => stopVoice();
+  recognition.start();
+  isRecording = true;
+  document.getElementById('mic-btn').classList.add('recording');
+}
+
+function stopVoice() {
+  if (recognition) { try { recognition.stop(); } catch {} recognition = null; }
+  isRecording = false;
+  document.getElementById('mic-btn').classList.remove('recording');
+}
+
+/* ════════════════════════════════════════
+   LIVE VOICE MODE (continuous)
+════════════════════════════════════════ */
+let liveRecognition = null, isLiveActive = false;
+
+function toggleLiveVoice() {
+  if (isLiveActive) { stopLiveVoice(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { addMessage('jarvis', 'Live voice not supported, Sir.'); return; }
+  document.getElementById('voice-overlay').classList.add('active');
+  document.getElementById('live-fab').classList.add('active');
+  isLiveActive = true;
+  liveRecognition = new SR();
+  liveRecognition.lang = 'en-US';
+  liveRecognition.continuous = true;
+  liveRecognition.interimResults = true;
+  liveRecognition.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('voice-transcript').textContent =
+      interim || final || 'Speak now, Sir.';
+    if (final.trim()) {
+      document.getElementById('voice-transcript').textContent = final.trim();
+      sendMessage(final.trim());
+    }
+  };
+  liveRecognition.onerror = () => stopLiveVoice();
+  liveRecognition.start();
+}
+
+function stopLiveVoice() {
+  if (liveRecognition) { try { liveRecognition.stop(); } catch {} liveRecognition = null; }
+  isLiveActive = false;
+  document.getElementById('voice-overlay').classList.remove('active');
+  document.getElementById('live-fab').classList.remove('active');
+  document.getElementById('voice-transcript').textContent = 'Speak now, Sir.';
+}
+
+/* ════════════════════════════════════════
+   SERVICE WORKER
+════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
