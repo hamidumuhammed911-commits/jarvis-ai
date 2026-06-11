@@ -1,16 +1,12 @@
-// JARVIS Service Worker — V4.3.2
-// KEY FIX: API routes (/api/*) are NEVER cached — always network-only.
-// This eliminates the "Systems nominal" ghost response bug.
+// JARVIS Service Worker — V4.3.3
+// KEY FIX: index.html is NEVER cached — always network-only.
+// API routes (/api/*) are NEVER cached — always network-only.
 
-const CACHE_NAME = "jarvis-v4.3.2";
+const CACHE_NAME = "jarvis-v4.3.3";
 
-// Static assets that are safe to cache
+// Static assets that are safe to cache (index.html removed — always fresh)
 const STATIC_ASSETS = [
-  "/",
-  "/index.html",
   "/manifest.json",
-  "/jarvis-features.js",
-  "/jarvis-reminders.js",
 ];
 
 // ── Install: cache static assets only ────────────────────────────────────────
@@ -39,11 +35,11 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// ── Fetch: network-only for /api/*, cache-first for static ───────────────────
+// ── Fetch: network-only for /api/* and index.html, cache-first for static ────
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // CRITICAL: Never intercept API calls — always go to network
+  // CRITICAL: Never cache API calls — always go to network
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -56,12 +52,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // For static assets: cache-first with network fallback
+  // CRITICAL: Never cache index.html — always fetch fresh from network
+  if (url.pathname === "/" || url.pathname === "/index.html") {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  // For other static assets: cache-first with network fallback
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        // Only cache successful same-origin GET requests
         if (
           response.ok &&
           event.request.method === "GET" &&
