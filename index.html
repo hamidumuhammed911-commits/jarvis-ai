@@ -523,6 +523,23 @@ async function sendMessage(text) {
   conversationHistory.push({ role: 'user', content: msg });
   showTyping();
 
+  /* ── Weather shortcut — answer locally without calling Groq ── */
+  if (/weather|temperature|temp|hot|cold|rain|sunny|forecast|climate/i.test(msg)) {
+    removeTyping();
+    let reply;
+    if (userWeather && userLocation) {
+      reply = `Current weather in ${userLocation.city}, Sir: ${userWeather.temp}°C, ${userWeather.description}.`;
+    } else if (userWeather) {
+      reply = `Current weather, Sir: ${userWeather.temp}°C, ${userWeather.description}.`;
+    } else {
+      reply = `Weather data is not available yet, Sir. Please allow GPS access and try again in a moment.`;
+    }
+    addMessage('jarvis', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    speak(reply);
+    return;
+  }
+
   const weatherStr = userWeather
     ? `${userWeather.temp}°C, ${userWeather.description}`
     : null;
@@ -542,8 +559,8 @@ async function sendMessage(text) {
     let reply = data.reply || "I didn't receive a response, Sir.";
 
     /* ── Handle SEARCH:: trigger ── */
-    if (reply.startsWith('SEARCH::')) {
-      const query = reply.replace('SEARCH::', '').trim();
+    if (reply.includes('SEARCH::')) {
+      const query = reply.split('SEARCH::')[1].split('\n')[0].trim();
       try {
         const sr = await fetch('/api/news?q=' + encodeURIComponent(query));
         const sd = await sr.json();
