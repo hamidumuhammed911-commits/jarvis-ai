@@ -31,7 +31,7 @@ Rules:
 - Be concise but thorough. No fluff.
 - For image requests, respond ONLY with: IMAGE_GEN::prompt here
 - For time questions, use the Nigeria time above.
-- If asked to search the web, respond with: SEARCH::[query]
+- If asked to search the web, respond ONLY with: SEARCH::[query] — no other text, no explanation, no greeting, just SEARCH::[query] alone on its own.
 - Speak with confidence like JARVIS from Iron Man.`;
 
   const GROQ_KEY = process.env.GROQ_API_KEY;
@@ -70,4 +70,4 @@ Rules:
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
-  }
+}
